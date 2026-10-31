@@ -7,7 +7,7 @@ import {
   readStore,
   dateLabel,
   timeLabel,
-} from "../dist/data.js";
+} from "../public/data.js";
 test("combines sport, neighbourhood, level and search without leaking other results", () => {
   const found = filterEvents(events, {
     sport: "Badminton",

@@ -9,8 +9,8 @@ import {
   migrateDrafts,
   indiaDate,
   readObject,
-} from "../dist/domain.js";
-import { events } from "../dist/data.js";
+} from "../public/domain.js";
+import { events } from "../public/data.js";
 const now = new Date("2026-10-31T18:00:00Z");
 const valid = {
   title: "Sunday Social Doubles",
