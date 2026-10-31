@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#3156f5" />
+    <meta
+      name="description"
+      content="Find your next game with Mercury. Discover local sports sessions, meet your people, and make more time to play."
+    />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Mercury — Your next game starts here</title>
+    <link rel="icon" type="image/svg+xml" href="assets/mark.svg" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@1,700;1,800;1,900&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="header">
+      <a href="#/" class="brand" aria-label="Mercury home"
+        ><img src="assets/mark.svg" alt="" width="34" height="34" />mercury<span
+          class="brand-dot"
+          >™</span
+        ></a
+      >
+      <nav aria-label="Main navigation">
+        <a href="#/explore" data-nav="explore">Find a game</a
+        ><a href="#/how-it-works" data-nav="how-it-works">How it works</a
+        ><a href="#/host" data-nav="host">For organizers</a>
+      </nav>
+      <div class="header-actions">
+        <button
+          class="location"
+          id="location-button"
+          aria-label="Choose location"
+        >
+          <span>⌖</span> Mumbai <span>⌄</span></button
+        ><a class="button small dark" href="#/my-games"
+          >My games <span>↗</span></a
+        >
+      </div>
+    </header>
+    <main id="main" tabindex="-1"></main>
+    <footer>
+      <a href="#/" class="brand">mercury<span class="brand-dot">™</span></a>
+      <p>More playing. Less planning.</p>
+      <div>
+        <a href="#/about">About Mercury</a
+        ><a href="#/privacy">Privacy & demo data</a
+        ><span>© 2026 NextPlay Sports Private Limited</span>
+      </div>
+    </footer>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <dialog id="location-dialog">
+      <button class="close" aria-label="Close location picker">×</button>
+      <p class="eyebrow">YOUR HOME COURT</p>
+      <h2>Where do you play?</h2>
+      <p>
+        We’re starting in Mumbai. Explore sample sessions in our first
+        neighbourhoods.
+      </p>
+      <button class="button primary" id="choose-mumbai">
+        Mumbai · Powai & beyond <span>✓</span>
+      </button>
+      <p class="fine">More cities will follow as real hosts join Mercury.</p>
+    </dialog>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
