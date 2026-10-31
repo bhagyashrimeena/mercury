@@ -2,7 +2,7 @@
 
 A fresh, responsive sports discovery website for **Mercury**, by NextPlay Sports Private Limited.
 
-## Version 0.1: interactive product preview
+## Version 0.2: participation and organizer studio
 
 The first release implements the discovery → event details → demo registration → saved pass journey. **All events, hosts, venues, prices and availability are illustrative. No real reservations or payments are made.**
 
@@ -14,7 +14,11 @@ The first release implements the discovery → event details → demo registrati
 - Event details with formats, inclusion lists, solo entry, rules and cancellation disclosure.
 - Registration validation, recoverable session drafts, duplicate booking prevention and demo passes.
 - Saved games and bookings persisted in browser local storage, with removal controls.
-- Organizer profiles and a local organizer event-draft workspace.
+- Organizer profiles and a local organizer studio: autosave, recovery, edit, player-facing preview, validation and removal with undo.
+- Mobile bottom navigation and a persistent event registration action.
+- URL-preserved search filters, price/time ordering and available-spots filtering.
+- Registration rules sheet that preserves form inputs and returns keyboard focus.
+- Native event sharing where supported, with a copy-link fallback.
 - Keyboard focus styles, skip link, native form validation, live announcements and reduced-motion support.
 
 ## Run locally
@@ -32,7 +36,7 @@ npm run check
 npm test
 ```
 
-Node 20 or later is required for checks. Tests cover filtering, booking validation, full sessions, malformed storage, India-time formatting and inventory invariants.
+Node 20 or later is required for checks. 16 tests cover filtering and URL round trips, booking validation, full sessions, malformed storage, India-time formatting, organizer validation, legacy draft migration, updates without duplication, and inventory invariants.
 
 ## Structure
 
@@ -40,6 +44,7 @@ Node 20 or later is required for checks. Tests cover filtering, booking validati
 - `dist/styles.css` — responsive design tokens and components
 - `dist/app.js` — routes, views and interactions
 - `dist/data.js` — sample inventory and shared logic
+- `dist/domain.js` — filter URLs, sorting and organizer draft validation
 - `dist/assets/` — self-hosted imagery and original provisional logo mark
 - `tests/` — Node unit tests
 - `.openai/hosting.json` — private Sites deployment configuration
