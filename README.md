@@ -69,3 +69,9 @@ Mercury Blue `#3156F5`, Chalk `#F7F8F2`, Ink `#10131A`, Volt `#D9FF38`. Manrope 
 Illustrative sports photos are self-hosted from Unsplash images `photo-1554068865-24cecd4e34b8` (tennis), `photo-1622279457486-62dcc4a431d6` (court), and `photo-1626224583764-f87db24ac4ea` (badminton). They are not photographs of listed venues.
 
 No production records, tokens, local database files or test-only browser fixtures belong in this repository or deployment.
+
+## v0.4 — curated external discovery
+
+Nine source-backed listings now populate discovery and the homepage. External detail pages link to the organizer, show source freshness and eligibility, and never create Mercury game passes. Signed-in players can save listings and submit corrections. Outbound-link counters are aggregate per listing/day. See [research, outreach queue and maintenance](docs/curated-discovery.md).
+
+Apply the new schema-only `drizzle/0001_striped_revanche.sql` migration after the original migration for local preview. Sites applies it during deployment. External content is source-controlled in `public/catalogue.js`, not seeded into native events.

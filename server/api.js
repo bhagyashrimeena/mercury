@@ -1,3 +1,4 @@
+import { findListing, currentListings, listingStatus, indiaDay } from '../public/catalogue.js';
 import { validateDraft, newId } from '../public/domain.js';
 const ACTIVE = "('confirmed','checked_in')";
 const PUBLIC_SELECT = `SELECT e.*,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE}) AS registered FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
@@ -56,7 +57,20 @@ async function dispatch({ db, user, now, path: p, method: m, body: b }) {
     const route = p.join('/');
     if (m === 'GET' && route === 'health') {
         await one(db, 'SELECT 1 AS ok');
-        return { ok: true, version: '0.3.0', paymentsEnabled: false };
+        return { ok: true, version: '0.4.0', paymentsEnabled: false };
+    }
+    if (m === 'GET' && route === 'listings')
+        return { listings: currentListings(now).map(e => ({ ...e, availability: listingStatus(e, now) })) };
+    if (p[0] === 'listings' && p.length >= 2) {
+        const listing = findListing(p[1]);
+        if (!listing) fail(404, 'This listing is not available.', 'not_found');
+        if (m === 'GET' && p.length === 2)
+            return { listing: { ...listing, availability: listingStatus(listing, now) } };
+        if (m === 'POST' && p.length === 3 && p[2] === 'click') {
+            // Aggregate link activations, not unique people or confirmed registrations.
+            await run(db, 'INSERT INTO listing_clicks(listing_id,day,count) VALUES(?,?,1) ON CONFLICT(listing_id,day) DO UPDATE SET count=count+1', listing.id, indiaDay(now));
+            return { ok: true };
+        }
     }
     if (m === 'GET' && route === 'events') {
         const rows = await all(db, `${PUBLIC_SELECT} WHERE e.status='published' AND e.starts_at>? ORDER BY e.starts_at LIMIT 100`, now);
@@ -69,14 +83,35 @@ async function dispatch({ db, user, now, path: p, method: m, body: b }) {
         return { event: publicEvent(row) };
     }
     if (m === 'GET' && route === 'session' && !user)
-        return { user: null, organizer: null, saved: [], notifications: [], paymentsEnabled: false };
+        return { user: null, organizer: null, saved: [], savedListings: [], notifications: [], paymentsEnabled: false };
     const uid = await ensureUser(db, user, now);
     if (m === 'GET' && route === 'session') {
         const profile = await one(db, 'SELECT name,email FROM users WHERE id=?', uid);
         const organizer = await one(db, 'SELECT name,bio,contact FROM organizers WHERE user_id=?', uid);
         const saved = await all(db, 'SELECT event_id FROM saved_events WHERE user_id=?', uid);
+        const savedListings = await all(db, 'SELECT listing_id FROM saved_listings WHERE user_id=?', uid);
         const notifications = await all(db, 'SELECT id,event_id,message,read_at,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 50', uid);
-        return { user: { name: profile.name, email: profile.email }, organizer, saved: saved.map(x => x.event_id), notifications, paymentsEnabled: false };
+        return { user: { name: profile.name, email: profile.email }, organizer, saved: saved.map(x => x.event_id), savedListings: savedListings.map(x => x.listing_id), notifications, paymentsEnabled: false };
+    }
+    if (m === 'GET' && route === 'saved-listings') {
+        const rows = await all(db, 'SELECT listing_id FROM saved_listings WHERE user_id=? ORDER BY created_at DESC', uid);
+        return { listings: rows.map(r => findListing(r.listing_id)).filter(Boolean).map(e => ({ ...e, availability: listingStatus(e, now) })) };
+    }
+    if (m === 'POST' && p[0] === 'listings' && p.length === 3) {
+        const listing = findListing(p[1]);
+        if (!listing) fail(404, 'This listing is not available.', 'not_found');
+        if (p[2] === 'save') {
+            if (typeof b.saved !== 'boolean') fail(422, 'Choose whether to save this listing.', 'validation_failed');
+            if (b.saved) await run(db, 'INSERT INTO saved_listings(user_id,listing_id,created_at) VALUES(?,?,?) ON CONFLICT(user_id,listing_id) DO NOTHING', uid, listing.id, now);
+            else await run(db, 'DELETE FROM saved_listings WHERE user_id=? AND listing_id=?', uid, listing.id);
+            return { ok: true };
+        }
+        if (p[2] === 'report') {
+            const reason = clean(b.reason, 500);
+            if (reason.length < 10) fail(422, 'Please describe the correction in at least 10 characters.', 'validation_failed');
+            await run(db, 'INSERT INTO listing_reports(user_id,listing_id,reason,updated_at) VALUES(?,?,?,?) ON CONFLICT(user_id,listing_id) DO UPDATE SET reason=excluded.reason,updated_at=excluded.updated_at', uid, listing.id, reason, now);
+            return { ok: true };
+        }
     }
     if (m === 'POST' && route === 'profile') {
         const name = clean(b.name, 80);

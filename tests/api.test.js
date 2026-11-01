@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { apiHandler } from '../server/api.js';
 const now = Date.parse('2026-11-01T00:00:00Z');
 const host = { userId: 'host-1', email: 'host@example.test', fullName: 'Host One' };
 const player = n => ({ userId: 'player-' + n, email: `player${n}@example.test`, fullName: 'Player ' + n });
 const draft = { title: 'Sunday Rally Test', sport: 'Badminton', area: 'Powai', venue: 'Test Hall, 1 Test Road, Mumbai', description: 'A friendly badminton session with rotating doubles.', date: '2026-11-08', time: '08:00', capacity: 2, price: 0, level: 'All levels', format: 'Social play', included: 'Court and shuttles', bring: 'Racket and water', cancellation: 'Cancel for free before the session starts.' };
-function database() { const sqlite = new DatabaseSync(':memory:'); sqlite.exec('PRAGMA foreign_keys=ON'); sqlite.exec(readFileSync(new URL('../drizzle/0000_damp_selene.sql', import.meta.url), 'utf8')); const db = { prepare(sql) { let args = []; const q = { bind(...values) { args = values; return q; }, async first() { return sqlite.prepare(sql).get(...args) || null; }, async all() { return { results: sqlite.prepare(sql).all(...args) }; }, async run() { const r = sqlite.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; }, sync() { const r = sqlite.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; } }; return q; }, async batch(queries) { sqlite.exec('BEGIN'); try {
+function database() { const sqlite = new DatabaseSync(':memory:'); sqlite.exec('PRAGMA foreign_keys=ON'); for (const file of readdirSync(new URL('../drizzle/', import.meta.url)).filter(f => f.endsWith('.sql')).sort()) sqlite.exec(readFileSync(new URL('../drizzle/' + file, import.meta.url), 'utf8')); const db = { prepare(sql) { let args = []; const q = { bind(...values) { args = values; return q; }, async first() { return sqlite.prepare(sql).get(...args) || null; }, async all() { return { results: sqlite.prepare(sql).all(...args) }; }, async run() { const r = sqlite.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; }, sync() { const r = sqlite.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; } }; return q; }, async batch(queries) { sqlite.exec('BEGIN'); try {
         const results = queries.map(q => q.sync());
         sqlite.exec('COMMIT');
         return results;
@@ -27,3 +27,45 @@ test('cancellation releases capacity and cancelled request keys cannot resurrect
 test('attendance is owner-only, idempotent, and blocks subsequent player cancellation', async () => { const h = harness(); const id = await h.publish(); const { data: b } = await h.join(id, 1); assert.equal((await h.req('organizer/events/' + id + '/check-in', player(1), { bookingId: b.id })).status, 404); assert.equal((await h.req('organizer/events/' + id + '/check-in', host, { bookingId: b.id })).status, 200); assert.equal((await h.req('organizer/events/' + id + '/check-in', host, { bookingId: b.id })).status, 200); assert.equal((await h.req('bookings/' + b.id + '/cancel', player(1), {})).status, 409); const roster = (await h.req('organizer/events/' + id + '/attendees')).data.attendees; assert.equal(roster[0].status, 'checked_in'); assert.equal(roster[0].email, undefined); h.sqlite.close(); });
 test('host cancellation updates every active pass and notifies players once', async () => { const h = harness(); const id = await h.publish(); await h.join(id, 1); await h.join(id, 2); await h.req('organizer/events/' + id + '/cancel', host, {}); await h.req('organizer/events/' + id + '/cancel', host, {}); assert.equal((await h.req('events')).data.events.length, 0); assert.equal((await h.req('events/' + id)).data.event.status, 'cancelled'); assert.equal((await h.req('bookings', player(1))).data.bookings[0].status, 'event_cancelled'); assert.equal((await h.req('session', player(1))).data.notifications.filter(n => n.message.includes('cancelled by')).length, 1); assert.equal((await h.req('organizer/events/' + id + '/publish', host, {})).status, 409); h.sqlite.close(); });
 test('saved games and read status are isolated between accounts', async () => { const h = harness(); const id = await h.publish(); await h.req('saved/' + id, player(1), { saved: true }); assert.deepEqual((await h.req('session', player(1))).data.saved, [id]); assert.deepEqual((await h.req('session', player(2))).data.saved, []); await h.join(id, 1); await h.req('notifications/read', player(1), {}); assert.ok((await h.req('session', player(1))).data.notifications.every(n => n.read_at)); assert.ok((await h.req('session', host)).data.notifications.some(n => !n.read_at)); await h.req('saved/' + id, player(1), { saved: false }); assert.deepEqual((await h.req('session', player(1))).data.saved, []); h.sqlite.close(); });
+
+// External discovery cannot create Mercury passes or imply availability.
+test('external discovery is public, expires in IST and never creates native bookings', async () => {
+  const h = harness(); const r = await h.req('listings', null);
+  assert.equal(r.status, 200); assert.equal(r.data.listings.length, 9);
+  const id = r.data.listings[0].id;
+  assert.equal((await h.req('listings/missing', null)).status, 404);
+  assert.equal((await h.req('listings', null, undefined, 'GET', { now: Date.parse('2027-01-01') })).data.listings.length, 0);
+  assert.equal((await h.req('listings/' + id, null, undefined, 'GET', { now: Date.parse('2026-11-02T12:30:00Z') })).data.listing.availability.code, 'closed');
+  assert.equal((await h.join(id, 1)).status, 409);
+  assert.equal(h.sqlite.prepare('SELECT COUNT(*) n FROM bookings').get().n, 0);
+  h.sqlite.close();
+});
+test('external saves are private, persistent, idempotent and separate from reservations', async () => {
+  const h = harness(), id = 'mumbai-pickleball-cup-s3';
+  assert.equal((await h.req('listings/' + id + '/save', null, { saved: true })).status, 401);
+  assert.equal((await h.req('listings/missing/save', player(1), { saved: true })).status, 404);
+  assert.equal((await h.req('listings/' + id + '/save', player(1), { saved: 'yes' })).status, 422);
+  for (let i = 0; i < 2; i++) assert.equal((await h.req('listings/' + id + '/save', player(1), { saved: true })).status, 200);
+  assert.deepEqual((await h.req('session', player(1))).data.savedListings, [id]);
+  assert.equal((await h.req('saved-listings', player(2))).data.listings.length, 0);
+  assert.equal((await h.req('saved-listings', player(1))).data.listings.length, 1);
+  assert.equal((await h.req('bookings', player(1))).data.bookings.length, 0);
+  await h.req('listings/' + id + '/save', player(1), { saved: false });
+  assert.equal((await h.req('saved-listings', player(1))).data.listings.length, 0);
+  h.sqlite.close();
+});
+test('corrections require identity and origin; click counts store no player identity', async () => {
+  const h = harness(), id = 'basch-pickleball-2026', route = 'listings/' + id;
+  assert.equal((await h.req(route + '/report', null, { reason: 'The venue has changed.' })).status, 401);
+  assert.equal((await h.req(route + '/report', player(1), { reason: 'short' })).status, 422);
+  assert.equal((await h.req(route + '/report', player(1), { reason: 'The venue has changed.' }, 'POST', { origin: 'https://evil.test' })).status, 403);
+  await h.req(route + '/report', player(1), { reason: 'Please check the venue.' });
+  await h.req(route + '/report', player(1), { reason: 'Please check the new venue.' });
+  assert.equal(h.sqlite.prepare('SELECT COUNT(*) n FROM listing_reports').get().n, 1);
+  assert.equal((await h.req(route + '/report', player(2))).status, 404);
+  for (let i = 0; i < 2; i++) assert.equal((await h.req(route + '/click', null, {})).status, 200);
+  assert.equal((await h.req('listings/missing/click', null, {})).status, 404);
+  assert.equal(h.sqlite.prepare('SELECT count FROM listing_clicks WHERE listing_id=?').get(id).count, 2);
+  assert.deepEqual(h.sqlite.prepare('PRAGMA table_info(listing_clicks)').all().map(r => r.name), ['listing_id', 'day', 'count']);
+  h.sqlite.close();
+});

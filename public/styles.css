@@ -2578,3 +2578,33 @@ dialog .button {
 @media(max-width:900px){.studio-layout{grid-template-columns:1fr}.manage-grid{grid-template-columns:1fr 1fr}.account-link{font-size:11px}.header-actions{gap:10px}.header-actions .location{display:none}}
 @media(max-width:600px){.manage-grid{grid-template-columns:1fr}.studio-layout .form-grid{grid-template-columns:1fr}.roster-row{align-items:flex-start;flex-direction:column}.pass-reference{font-size:14px}.studio-layout{gap:25px}.account-toolbar{align-items:flex-start;gap:20px}.roster-summary{gap:16px}.roster-summary .button{flex:1;font-size:12px}.account-link{display:none}.section-space{margin-top:35px}}
 .pass-card>.button+.button{margin-top:10px}
+/* Curated discovery: Mercury artwork, never an organizer poster or endorsement. */
+.listing-art,.listing-masthead{background:var(--blue,#253ce7);color:white;position:relative;overflow:hidden}
+.listing-art{display:flex;min-height:220px;padding:26px;flex-direction:column;justify-content:space-between;gap:14px;text-decoration:none}
+.listing-art>span:first-child{text-transform:uppercase;font-size:12px;font-weight:700;letter-spacing:.14em;z-index:1}
+.listing-art b{font-family:'Space Grotesk',sans-serif;font-size:29px;line-height:1.15;max-width:240px;z-index:1}
+.listing-art small{font-size:10px;letter-spacing:.16em;z-index:1}
+.listing-art .listing-art-symbol{position:absolute;font-size:190px;line-height:1;right:-25px;top:25px;opacity:.16;transform:rotate(-20deg)}
+.listing-art.tennis,.listing-masthead.tennis{background:#ddeb73;color:#1c291f}
+.listing-art.badminton,.listing-masthead.badminton{background:#1d4e45;color:#e8f2bd}
+.directory-card .card-content{display:flex;flex-direction:column;flex:1}
+.directory-card{display:flex;flex-direction:column}
+.directory-card h3{min-height:0}
+.directory-card .card-bottom{margin-top:auto}
+.listing-status{font-size:12px;font-weight:600;line-height:1.5;color:#415149;margin:12px 0}
+.listing-status.closed,.listing-status.ended{color:#9b3838}
+.listing-status.stale,.listing-status.deadline{color:#795010}
+.directory-note{background:#eff1e8;border:1px solid #dce0d2;padding:22px 26px;display:flex;gap:20px;align-items:center;border-radius:4px;margin:20px 0 30px}
+.directory-note p{margin:0;line-height:1.65;font-size:14px}
+.directory-note .tiny-star{font-size:32px;color:var(--blue,#253ce7)}
+.directory-filters{flex-wrap:wrap;gap:10px}
+.directory-filters .search-field{flex:1 1 100%;min-width:180px}
+.directory-filters label{min-width:140px;flex:1}
+.directory-filters select{max-width:100%;width:100%}
+.listing-masthead{min-height:220px;padding:32px 42px;display:flex;flex-direction:column;justify-content:space-between;border-radius:4px}
+.listing-masthead>span{position:absolute;right:50px;top:-65px;font-size:300px;opacity:.15}
+.listing-masthead>p:last-child{font-size:24px;font-weight:600;line-height:1.4;margin:0;z-index:1}
+.listing-price{font-size:30px!important;overflow-wrap:anywhere}
+.booking-panel .button{white-space:normal;text-align:center}
+#listing-correction textarea{display:block;width:100%;margin:12px 0;padding:14px;background:white;border:1px solid #b9beb6;border-radius:4px;font:inherit;resize:vertical}
+@media(max-width:650px){.directory-filters label{flex-basis:calc(50% - 10px);min-width:0}.directory-note{padding:18px}.directory-note .tiny-star{display:none}.listing-art{min-height:190px}.listing-masthead{padding:25px;min-height:190px}.listing-masthead>p:last-child{font-size:20px}.directory-card .fine{font-size:11px}}
