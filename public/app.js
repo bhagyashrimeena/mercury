@@ -496,7 +496,7 @@ async function shareEvent(e) {
   }
   const sheet = openSheet(
     "Bring your people.",
-    `<p>Share a look at ${esc(e.title)}.</p><label class="share-label">Event link<input id="share-url" readonly value="${esc(url.href)}"></label><button id="copy-link" class="button primary">Copy event link ↗</button><p id="copy-status" role="status" class="fine">This private preview requires access through the owner’s ChatGPT account.</p>`,
+    `<p>Share a look at ${esc(e.title)}.</p><label class="share-label">Event link<input id="share-url" readonly value="${esc(url.href)}"></label><button id="copy-link" class="button primary">Copy event link ↗</button><p id="copy-status" role="status" class="fine">This private pilot requires an approved Mercury account.</p>`,
   );
   sheet.querySelector("#share-url").onclick = (e) => e.target.select();
   sheet.querySelector("#copy-link").onclick = async () => {
@@ -566,7 +566,7 @@ dialog.onclick = (e) => {
   if (e.target === dialog) dialog.close();
 };
 function go(url){history.pushState(null,'',url.replace(/^#/,''));route()}
-document.addEventListener('click',e=>{const a=e.target.closest('a');if(!a||e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||a.target||a.download)return;const href=a.getAttribute('href');if(!href||href.startsWith('/signin-with-chatgpt')||href.startsWith('/signout-with-chatgpt'))return;if(href.startsWith('/')||href.startsWith('#/')){e.preventDefault();go(href)}});
+document.addEventListener('click',e=>{const a=e.target.closest('a');if(!a||e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||a.target||a.download)return;const href=a.getAttribute('href');if(!href||href.startsWith('/signin')||href.startsWith('/signout'))return;if(href.startsWith('/')||href.startsWith('#/')){e.preventDefault();go(href)}});
 window.addEventListener('popstate',route);
 window.addEventListener("hashchange", route);
 route();

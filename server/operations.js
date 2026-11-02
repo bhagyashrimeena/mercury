@@ -1,4 +1,5 @@
 import { createBackup } from './backup.js';
+import { clientIp } from './client-ip.js';
 import { findListing, listings, listingStatus } from '../public/catalogue.js';
 export const POLICY_VERSION = '2026-11-02';
 const one = (db, sql, ...v) => db.prepare(sql).bind(...v).first();
@@ -25,7 +26,7 @@ export async function operations({ db, user, now, path: p, method: m, body: b, r
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || name.length < 2 || message.length < 15 || !['General help','Sign-in issue','Listing correction','Organizer enquiry','Privacy request'].includes(category) || b.consent !== true)
       fail(422, 'Add your name, a valid email, a message and permission to respond.', 'validation_failed');
     // Platform-provided connecting IP is used only to derive a short-lived rate bucket.
-    const address = request.headers.get('cf-connecting-ip') || 'unknown';
+    const address = clientIp(request);
     await consumeLimit(db, 'support-ip:' + address, 10, now, fail);
     await consumeLimit(db, 'support-email:' + email.toLowerCase(), 3, now, fail);
     const id = crypto.randomUUID();
