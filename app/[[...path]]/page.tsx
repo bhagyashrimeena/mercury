@@ -2,19 +2,19 @@ import { siteOrigin, publicLaunch } from '../../lib/site-config';
 import { findListing, listingDate } from '../../public/catalogue.js';
 import Script from 'next/script';
 import type { Metadata } from 'next';
-import { env } from 'cloudflare:workers';
+import { getDatabase } from '../../db/vercel';
 import { shell } from '../shell';
 export const dynamic = 'force-dynamic';
-async function isWithdrawn(id: string) { if (!env.DB) return true; try { const r = await env.DB.prepare('SELECT hidden FROM listing_overrides WHERE listing_id=?').bind(id).first<{hidden:number}>(); return !!r?.hidden; } catch { return true; } }
+async function isWithdrawn(id: string) { const db = getDatabase(); if (!db) return true; try { const r = await db.prepare('SELECT hidden FROM listing_overrides WHERE listing_id=?').bind(id).first<{hidden:number}>(); return !!r?.hidden; } catch { return true; } }
 const esc = (s: unknown) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 type Props = {
     params: Promise<{
         path?: string[];
     }>;
 };
-async function eventFor(path: string[]) { if (path[0] !== 'event' || !path[1] || !env.DB)
+async function eventFor(path: string[]) { const db = getDatabase(); if (path[0] !== 'event' || !path[1] || !db)
     return null; try {
-    return await env.DB.prepare("SELECT id,title,description,sport,area,venue,date,time,price,status FROM events WHERE id=? AND status IN ('published','cancelled')").bind(path[1]).first<{
+    return await db.prepare("SELECT id,title,description,sport,area,venue,date,time,price,status FROM events WHERE id=? AND status IN ('published','cancelled')").bind(path[1]).first<{
         id: string;
         title: string;
         description: string;

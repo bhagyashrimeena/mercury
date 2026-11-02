@@ -1,4 +1,5 @@
 import { operations, POLICY_VERSION, isAdmin, consumeLimit } from './operations.js';
+import { clientIp } from './client-ip.js';
 import { findListing, currentListings, listingStatus, indiaDay } from '../public/catalogue.js';
 import { validateDraft, newId } from '../public/domain.js';
 const ACTIVE = "('confirmed','checked_in')";
@@ -48,7 +49,12 @@ export async function apiHandler(request, db, user, { now = Date.now(), adminEma
         let body = {};
         if (!['GET', 'HEAD'].includes(method))
             body = await parseBody(request);
-        const result = await dispatch({ request, db, user, now, path, method, body, config: { adminEmail } });
+        const options = { request, db, user, now, path, method, body, config: { adminEmail } };
+        // PostgreSQL needs an event-row lock across the capacity check and insert.
+        // The SQLite test adapter keeps its existing serial-write behavior.
+        const result = method === 'POST' && path[0] === 'events' && path[2] === 'register' && db.withEventLock
+            ? await db.withEventLock(path[1], lockedDb => dispatch({ ...options, db: lockedDb }))
+            : await dispatch(options);
         return Response.json(result, { headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Vary': 'Cookie' } });
     }
     catch (error) {
@@ -78,7 +84,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
             return { listing: { ...listing, availability: override?.hidden ? { code: 'withdrawn', label: 'Listing withdrawn', reason: override.reason } : listingStatus(listing, now) } };
         if (override?.hidden && p[2] === 'click') fail(410, 'This listing was withdrawn.', 'listing_withdrawn');
         if (m === 'POST' && p.length === 3 && p[2] === 'click') {
-            await consumeLimit(db, 'click:' + (request.headers.get('cf-connecting-ip') || 'unknown') + ':' + listing.id, 30, now, fail);
+            await consumeLimit(db, 'click:' + clientIp(request) + ':' + listing.id, 30, now, fail);
             // Aggregate link activations, not unique people or confirmed registrations.
             await run(db, 'INSERT INTO listing_clicks(listing_id,day,count) VALUES(?,?,1) ON CONFLICT(listing_id,day) DO UPDATE SET count=count+1', listing.id, indiaDay(now));
             return { ok: true };
