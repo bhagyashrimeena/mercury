@@ -463,38 +463,10 @@ function organizer(name) {
   main.innerHTML = `<div class="page-width">${demoBanner()}<a class="back" href="/explore">← All games</a><section class="page-intro"><p class="eyebrow blue">SAMPLE ORGANIZER</p><h1>${esc(name)}</h1><p>A sample community bringing people together through ${list[0].sport.toLowerCase()}.</p><p class="fine">Illustrative host profile. This is not a verified or onboarded organizer.</p></section><h2>The next games</h2><div class="event-grid">${list.map(card).join("")}</div></div>`;
   bindSaves();
 }
-function info(page) {
-  const content =
-    page === "privacy"
-      ? [
-          "Your data. Your call.",
-          "This is a private development preview.",
-          "Saved games, your demo player name, playing level, demo bookings and organizer drafts stay in this browser’s local storage. Organizer forms recover automatically from local storage; registration drafts temporarily use session storage. They are not sent to a Mercury database.",
-          "Use My games → Clear local demo data to remove these records. This preview does not collect payments, verify identities, send notifications, or create actual reservations.",
-          "Google Fonts is used for typography and may receive standard connection information. The hosting provider also processes technical requests to serve this website. Sports photos are illustrative and do not depict the sample venues.",
-        ]
-      : page === "how-it-works"
-        ? [
-            "A little less planning. A lot more play.",
-            "Find your game. Make it a plan. Show up.",
-            "Browse by sport, neighbourhood, level and format. Every event should tell you who it’s for, whether you can come alone, what it costs and what to bring.",
-            "Open a sample game and try registration. Your demo pass appears in My games. Save interesting sessions using the heart button.",
-            "For launch, real hosts, confirmed venues, secure accounts, payment verification, cancellation handling and confirmations will be connected. No real reservations are available in this preview.",
-          ]
-        : [
-            "For the love of the game.",
-            "Meet Mercury.",
-            "Mercury is being built by NextPlay Sports Private Limited to help people discover sports opportunities, find their people and make playing a habit.",
-            "We’re starting with a simple idea: it should be easier to go from “we should play” to actually being on court.",
-            "This first preview explores discovery and participation in Mumbai using clearly marked sample events.",
-          ];
-  main.innerHTML = `<div class="page-width prose"><p class="eyebrow blue">MERCURY / ${esc(page.replaceAll("-", " "))}</p><h1>${content[0]}</h1><h2>${content[1]}</h2>${content
-    .slice(2)
-    .map((p) => `<p>${p}</p>`)
-    .join(
-      "",
-    )}<a class="button primary" href="/explore">Explore the preview ${arrow}</a></div>`;
+function info() {
+  main.innerHTML = `<div class="page-width prose"><p class="eyebrow blue">FOR THE LOVE OF THE GAME</p><h1>Meet <em>Mercury.</em></h1><h2>More playing. Less planning.</h2><p>Mercury is built by NextPlay Sports Private Limited to make sports opportunities easier to find. We’re starting around Mumbai with tournaments, leagues and camps across badminton, tennis and pickleball.</p><p>We research listings from organizers and booking platforms, show the source and check date, and send you to the organizer to confirm details and register. An external listing is not a partnership or a reserved place.</p><p>Run an event? <a href="/support?category=Organizer%20enquiry" class="text-link">Tell us about it</a>. Found a detail that changed? Send a correction from the listing.</p><a class="button primary" href="/explore">Find your next game ↗</a></div>`;
 }
+
 function openSheet(title, body) {
   const sheet = document.querySelector("#action-sheet");
   sheet.innerHTML = `<button class="close" aria-label="Close dialog">×</button><h2 id="sheet-title">${esc(title)}</h2><div>${body}</div>`;
@@ -574,12 +546,12 @@ async function route() {
     a.classList.toggle("current", a.dataset.nav === page);
     if (
       a.dataset.nav === (page || "home") ||
-      (a.dataset.nav === "explore" && ["event", "register"].includes(page))
+      (a.dataset.nav === "explore" && ["event", "register", "listing"].includes(page))
     )
       a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
-  document.body.classList.toggle("has-event-cta", page === "event");
+  document.body.classList.toggle("has-event-cta", !!main.querySelector('.mobile-event-cta'));
   window.scrollTo(0, 0);
   main.focus({ preventScroll: true });
 }

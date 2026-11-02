@@ -39,3 +39,12 @@ test('combined discovery respects sport, source, city area, format and free-entr
   assert.deepEqual(filterLineup(all, { solo: '1' }).map(e => e.id), ['native']);
   assert.equal(filterLineup(all, { query: 'not-a-real-event' }).length, 0);
 });
+
+import { validateCatalogue } from '../server/catalogue-validation.js';
+test('import rejects invented dates, duplicate IDs, unsafe links and missing fee units',()=>{
+  assert.equal(validateCatalogue(listings,'2026-11-02').valid,true);
+  const base=structuredClone(listings[0]);
+  for(const patch of [{date:'2026-02-30'},{checkedOn:'2027-01-01'},{deadline:'2026-11-03T18:00:00'},{deadline:'2026-02-30T18:00:00+05:30'},{deadline:'2026-11-03T24:00:00+05:30'},{registrationUrl:'javascript:alert(1)'},{sourceUrl:'https://user:secret@example.com/'},{registrationUrl:'https://127.0.0.1/'},{priceNote:''}]) assert.equal(validateCatalogue([{...base,...patch}],'2026-11-02').valid,false,JSON.stringify(patch));
+  assert.equal(validateCatalogue([base,base],'2026-11-02').valid,false);
+  assert.equal(validateCatalogue([{...base,sport:'Cricket'}],'2026-11-02').valid,true);
+});

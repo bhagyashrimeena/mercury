@@ -7,7 +7,7 @@ const now = Date.parse('2026-11-01T00:00:00Z');
 const host = { userId: 'host-1', email: 'host@example.test', fullName: 'Host One' };
 const player = n => ({ userId: 'player-' + n, email: `player${n}@example.test`, fullName: 'Player ' + n });
 const draft = { title: 'Sunday Rally Test', sport: 'Badminton', area: 'Powai', venue: 'Test Hall, 1 Test Road, Mumbai', description: 'A friendly badminton session with rotating doubles.', date: '2026-11-08', time: '08:00', capacity: 2, price: 0, level: 'All levels', format: 'Social play', included: 'Court and shuttles', bring: 'Racket and water', cancellation: 'Cancel for free before the session starts.' };
-function database() { const sqlite = new DatabaseSync(':memory:'); sqlite.exec('PRAGMA foreign_keys=ON'); for (const file of readdirSync(new URL('../drizzle/', import.meta.url)).filter(f => f.endsWith('.sql')).sort()) sqlite.exec(readFileSync(new URL('../drizzle/' + file, import.meta.url), 'utf8')); const db = { prepare(sql) { let args = []; const q = { bind(...values) { args = values; return q; }, async first() { return sqlite.prepare(sql).get(...args) || null; }, async all() { return { results: sqlite.prepare(sql).all(...args) }; }, async run() { const r = sqlite.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; }, sync() { const r = sqlite.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; } }; return q; }, async batch(queries) { sqlite.exec('BEGIN'); try {
+function database() { const sqlite = new DatabaseSync(':memory:'); sqlite.exec('PRAGMA foreign_keys=ON'); for (const file of readdirSync(new URL('../drizzle/', import.meta.url)).filter(f => f.endsWith('.sql')).sort()) sqlite.exec(readFileSync(new URL('../drizzle/' + file, import.meta.url), 'utf8')); const db = { prepare(sql) { let args = []; const q = { bind(...values) { args = values; return q; }, async first() { return sqlite.prepare(sql).get(...args) || null; }, async all() { return { results: sqlite.prepare(sql).all(...args) }; }, async run() { const r = sqlite.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; }, sync() { if (/^SELECT\s/i.test(sql)) return {results:sqlite.prepare(sql).all(...args)}; const r = sqlite.prepare(sql).run(...args); return { meta: { changes: Number(r.changes) } }; } }; return q; }, async batch(queries) { sqlite.exec('BEGIN'); try {
         const results = queries.map(q => q.sync());
         sqlite.exec('COMMIT');
         return results;
@@ -16,7 +16,7 @@ function database() { const sqlite = new DatabaseSync(':memory:'); sqlite.exec('
         sqlite.exec('ROLLBACK');
         throw e;
     } } }; return { db, sqlite }; }
-function harness() { const { db, sqlite } = database(); const req = async (path, user = host, body, method = body ? 'POST' : 'GET', options = {}) => { const request = new Request('https://mercury.test/api/' + path, { method, headers: { Origin: options.origin || 'https://mercury.test', 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); const r = await apiHandler(request, db, user, { now: options.now ?? now }); return { status: r.status, data: await r.json() }; }; const create = async (data = {}) => { await req('organizer/profile', host, { name: 'Weekend Club', bio: 'For the love of play', contact: 'host@example.test' }); const result = await req('organizer/events', host, { ...draft, ...data }); assert.equal(result.status, 200); return result.data.id; }; const publish = async (data = {}) => { const id = await create(data); assert.equal((await req(`organizer/events/${id}/publish`, host, {})).status, 200); return id; }; const join = (id, n, extra = {}) => req(`events/${id}/register`, player(n), { name: 'Player ' + n, level: 'Beginner', rulesAccepted: true, adultConfirmed: true, revision: 1, idempotencyKey: 'request-key-player-' + n, ...extra }); return { req, create, publish, join, sqlite }; }
+function harness() { const { db, sqlite } = database(); const consented = new Set(); const req = async (path, user = host, body, method = body ? 'POST' : 'GET', options = {}) => { if (user && options.consent !== false && path !== 'account/consent' && !consented.has(user.userId)) { await apiHandler(new Request('https://mercury.test/api/account/consent', { method:'POST',headers:{Origin:'https://mercury.test','Content-Type':'application/json'},body:JSON.stringify({accepted:true,adult:true,version:'2026-11-02'}) }),db,user,{now}); consented.add(user.userId); } const request = new Request('https://mercury.test/api/' + path, { method, headers: { Origin: options.origin || 'https://mercury.test', 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); const r = await apiHandler(request, db, user, { now: options.now ?? now, adminEmail: options.adminEmail ?? 'host@example.test' }); return { status: r.status, data: await r.json() }; }; const create = async (data = {}) => { await req('organizer/profile', host, { name: 'Weekend Club', bio: 'For the love of play', contact: 'host@example.test' }); const result = await req('organizer/events', host, { ...draft, ...data }); assert.equal(result.status, 200); return result.data.id; }; const publish = async (data = {}) => { const id = await create(data); assert.equal((await req(`organizer/events/${id}/publish`, host, {})).status, 200); return id; }; const join = (id, n, extra = {}) => req(`events/${id}/register`, player(n), { name: 'Player ' + n, level: 'Beginner', rulesAccepted: true, adultConfirmed: true, revision: 1, idempotencyKey: 'request-key-player-' + n, ...extra }); return { req, create, publish, join, sqlite }; }
 test('auth, origin and owner boundaries protect private records', async () => { const h = harness(); assert.equal((await h.req('session', null)).data.user, null); assert.equal((await h.req('organizer/events', null)).status, 401); const id = await h.publish(); assert.equal((await h.req('organizer/events/' + id + '/attendees', player(1))).status, 404); assert.equal((await h.req('organizer/events/' + id, player(1), { ...draft, revision: 1 }, 'PATCH')).status, 404); assert.equal((await h.req('profile', host, { name: 'Changed' }, 'POST', { origin: 'https://evil.test' })).status, 403); assert.equal((await h.req('organizer/events/' + id + '/cancel', player(1), {})).status, 404); h.sqlite.close(); });
 test('drafts are private; free publication and paid blocking are enforced', async () => { const h = harness(); const id = await h.create(); assert.equal((await h.req('events')).data.events.length, 0); assert.equal((await h.req('events/' + id)).status, 404); await h.req('organizer/events/' + id + '/publish', host, {}); assert.equal((await h.req('events')).data.events.length, 1); const paid = await h.create({ price: 450 }); const result = await h.req('organizer/events/' + paid + '/publish', host, {}); assert.equal(result.status, 409); assert.equal(result.data.error.code, 'payments_unavailable'); assert.equal((await h.join(paid, 1)).status, 409); h.sqlite.close(); });
 test('simultaneous requests never oversell the final places', async () => { const h = harness(); const id = await h.publish(); const results = await Promise.all(Array.from({ length: 12 }, (_, i) => h.join(id, i))); assert.equal(results.filter(r => r.status === 200).length, 2); assert.equal(results.filter(r => r.status === 409).length, 10); assert.equal((await h.req('events/' + id)).data.event.spots, 0); assert.equal(h.sqlite.prepare('SELECT count(*) n FROM bookings').get().n, 2); h.sqlite.close(); });
@@ -68,4 +68,98 @@ test('corrections require identity and origin; click counts store no player iden
   assert.equal(h.sqlite.prepare('SELECT count FROM listing_clicks WHERE listing_id=?').get(id).count, 2);
   assert.deepEqual(h.sqlite.prepare('PRAGMA table_info(listing_clicks)').all().map(r => r.name), ['listing_id', 'day', 'count']);
   h.sqlite.close();
+});
+
+test('sign-in alone persists no profile; consent is explicit, versioned and adult-only', async () => {
+  const h=harness(), u=player(50), opts={consent:false};
+  const session=await h.req('session',u,undefined,'GET',opts);
+  assert.equal(session.data.consentAccepted,false);
+  assert.equal(h.sqlite.prepare('SELECT COUNT(*) n FROM users').get().n,0);
+  assert.equal((await h.req('listings/mumbai-pickleball-cup-s3/save',u,{saved:true},'POST',opts)).data.error.code,'consent_required');
+  for(const body of [{accepted:false,adult:true,version:'2026-11-02'},{accepted:true,adult:false,version:'2026-11-02'},{accepted:true,adult:true,version:'old'}]) assert.equal((await h.req('account/consent',u,body)).status,422);
+  assert.equal((await h.req('account/consent',u,{accepted:true,adult:true,version:'2026-11-02'})).status,200);
+  assert.equal((await h.req('session',u,undefined,'GET',opts)).data.consentAccepted,true);
+  h.sqlite.close();
+});
+test('public support validates permission and limits abuse without leaking requests', async()=>{
+  const h=harness(), message={name:'Test User',email:'support@example.test',category:'Sign-in issue',message:'I need help signing into my account.',consent:true};
+  assert.equal((await h.req('support',null,{...message,consent:false})).status,422);
+  assert.equal((await h.req('support',null,{...message,website:'bot'})).status,422);
+  assert.equal((await h.req('support',null,message,'POST',{origin:'https://evil.test'})).status,403);
+  assert.equal((await h.req('support',null,message,'POST',{adminEmail:''})).status,503);
+  for(let n=0;n<3;n++) assert.equal((await h.req('support',null,message)).status,200);
+  assert.equal((await h.req('support',null,message)).status,429);
+  assert.equal((await h.req('admin/overview',null)).status,403);
+  assert.equal((await h.req('admin/overview',player(1))).status,403);
+  assert.equal((await h.req('admin/overview')).data.support.length,3);
+  assert.equal((await h.req('admin/overview',host,undefined,'GET',{adminEmail:''})).status,403);
+  assert.ok(h.sqlite.prepare('SELECT bucket FROM request_limits').all().every(r=>/^[a-f0-9]{64}$/.test(r.bucket)));
+  h.sqlite.close();
+});
+test('owner withdrawal hides discovery and click entry; restoration preserves the listing identity',async()=>{
+  const h=harness(), id='mumbai-pickleball-cup-s3';
+  assert.equal((await h.req('admin/listing/'+id,player(1),{hidden:true,reason:'Cancelled'})).status,403);
+  assert.equal((await h.req('admin/listing/'+id,host,{hidden:true,reason:'x'})).status,422);
+  assert.equal((await h.req('admin/listing/'+id,host,{hidden:true,reason:'Organizer cancelled this event'})).status,200);
+  assert.ok(!(await h.req('listings',null)).data.listings.some(e=>e.id===id));
+  assert.equal((await h.req('listings/'+id,null)).data.listing.availability.code,'withdrawn');
+  assert.equal((await h.req('listings/'+id+'/click',null,{})).status,410);
+  await h.req('admin/listing/'+id,host,{hidden:false,reason:''});
+  assert.ok((await h.req('listings',null)).data.listings.some(e=>e.id===id));
+  h.sqlite.close();
+});
+test('export isolates accounts and excludes owner notes; discovery deletion removes only own records',async()=>{
+  const h=harness(), a=player(1), b=player(2), id='mumbai-pickleball-cup-s3';
+  await h.req('listings/'+id+'/save',a,{saved:true}); await h.req('listings/'+id+'/save',b,{saved:true});
+  const support=await h.req('support',a,{name:'Player One',email:a.email,category:'General help',message:'Please help with this listing.',consent:true});
+  await h.req('admin/support/'+support.data.id,host,{status:'open',note:'Internal routing information'});
+  const exp=(await h.req('account/export',a)).data.data;
+  assert.equal(exp.profile[0].id,a.userId); assert.equal(exp.support.length,1); assert.equal(exp.support[0].internal_note,undefined);
+  assert.equal((await h.req('account/export',b)).data.data.support.length,0);
+  assert.equal((await h.req('account/export',null)).status,401);
+  assert.equal((await h.req('account/delete',a,{confirmation:'DELETE'})).status,422);
+  assert.equal((await h.req('account/delete',a,{confirmation:'DELETE MY ACCOUNT'})).status,200);
+  assert.equal(h.sqlite.prepare('SELECT COUNT(*) n FROM users WHERE id=?').get(a.userId).n,0);
+  assert.equal((await h.req('saved-listings',b)).data.listings.length,1);
+  assert.equal(h.sqlite.prepare('SELECT COUNT(*) n FROM support_requests WHERE user_id=?').get(a.userId).n,0);
+  const event=await h.publish(); await h.join(event,2);
+  assert.equal((await h.req('account/delete',b,{confirmation:'DELETE MY ACCOUNT'})).data.error.code,'history_requires_review');
+  h.sqlite.close();
+});
+test('correction review can reopen and retention removes only old resolved records',async()=>{
+  const h=harness(), id='basch-pickleball-2026';
+  await h.req('listings/'+id+'/report',player(1),{reason:'Please confirm the entry fee.'});
+  await h.req('admin/correction',host,{listingId:id,userId:'player-1',resolved:true});
+  assert.equal(h.sqlite.prepare('SELECT status FROM listing_reports').get().status,'resolved');
+  await h.req('listings/'+id+'/report',player(1),{reason:'Another detail needs checking.'});
+  assert.equal(h.sqlite.prepare('SELECT status FROM listing_reports').get().status,'open');
+  await h.req('admin/correction',host,{listingId:id,userId:'player-1',resolved:true});
+  const support=await h.req('support',null,{name:'Test User',email:'support@example.test',category:'General help',message:'Please review this general question.',consent:true});
+  await h.req('admin/support/'+support.data.id,host,{status:'resolved',note:'Handled'});
+  await h.req('support',null,{name:'Still Open',email:'open@example.test',category:'General help',message:'Keep this request open for review.',consent:true});
+  assert.equal((await h.req('admin/retention',player(2),{})).status,403);
+  const r=await h.req('admin/retention',host,{},'POST',{now:now+91*86400000});
+  assert.equal(r.status,200); assert.equal(h.sqlite.prepare('SELECT COUNT(*) n FROM listing_reports').get().n,0);
+  assert.equal(h.sqlite.prepare('SELECT COUNT(*) n FROM support_requests').get().n,1);
+  h.sqlite.close();
+});
+
+import { restoreBackup } from '../scripts/restore-backup.mjs';
+import { mkdtempSync,rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join as joinPath } from 'node:path';
+test('owner backups restore into a new database and refuse overwriting existing files',async()=>{
+  const h=harness(), id=await h.publish(); await h.join(id,1);
+  await h.req('listings/mumbai-pickleball-cup-s3/save',player(1),{saved:true});
+  await h.req('support',player(1),{name:'Player One',email:'p1@example.test',category:'General help',message:'Synthetic support request for recovery test.',consent:true});
+  assert.equal((await h.req('admin/backup',player(1))).status,403);
+  const snapshot=await h.req('admin/backup'); assert.equal(snapshot.status,200);
+  const dir=mkdtempSync(joinPath(tmpdir(),'mercury-recovery-')),file=joinPath(dir,'recovered.sqlite');
+  try {
+    const counts=restoreBackup(snapshot.data,file);
+    assert.equal(counts.bookings,1); assert.equal(counts.support_requests,1); assert.equal(counts.saved_listings,1);
+    const recovered=new DatabaseSync(file); assert.equal(recovered.prepare('SELECT title FROM events').get().title,draft.title);recovered.close();
+    assert.throws(()=>restoreBackup(snapshot.data,file),/EEXIST/);
+    assert.throws(()=>restoreBackup({...snapshot.data,tables:{}},joinPath(dir,'bad.sqlite')),/complete/);
+  }finally{rmSync(dir,{recursive:true,force:true});h.sqlite.close();}
 });

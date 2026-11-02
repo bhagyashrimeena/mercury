@@ -2,7 +2,7 @@
 
 Sports discovery and participation for Mercury, by NextPlay Sports Private Limited.
 
-**v0.3 is a database-backed private pilot for free events.** The blue, chalk and lime design is retained from v0.2. Real events start empty; sample games remain clearly separate and never reserve places.
+**v0.5 prepares Mercury for an external-event discovery launch.** Nine sourced listings are already available. Support, privacy controls and an owner desk are implemented; the site remains owner-private pending the hosted browser rehearsal and explicit public release. See the [launch checklist and operations runbook](docs/launch-readiness.md).
 
 ## What works
 
@@ -28,7 +28,7 @@ Sports discovery and participation for Mercury, by NextPlay Sports Private Limit
 - `public/app.js`: visual homepage and explicitly separated local sample experience.
 - `public/domain.js`: shared validation and filtering rules.
 - `public/styles.css`, `public/assets/`: responsive design and self-hosted imagery.
-- `tests/`: 26 tests, including SQLite-backed API integration tests.
+- `tests/`: 40 tests, including SQLite-backed API integration tests.
 
 Sites provisions D1 as `DB` and applies migrations before uploading the Worker. Authentication is handled by Sites; the server uses the site-scoped authenticated ID, never an email address, as the ownership key. Client-supplied user IDs are not accepted. Writes require same-origin JSON requests. Personal API responses are not cached. The preview remains owner-private and noindex.
 
@@ -60,7 +60,7 @@ GitHub CI runs syntax, domain and server integration tests without external serv
 
 See [v0.3 verification](docs/verification-v03.md) and [pilot runbook](docs/pilot-runbook.md). A hosted signed-in smoke test remains necessary: the agent's browser was outside the owner's private sign-in session. Unit/API tests do not prove the platform login handoff. The private gate has not been bypassed.
 
-Before wider launch: confirm actual hosts and venues, complete the signed-in pilot, establish the support/privacy contact and launch policies, and explicitly choose the audience. Paid events additionally need a payment provider account, server-created orders, signed idempotent webhooks and verified refund handling. Custom domain, public SEO/sitemap, real venue photos, email/SMS and results/Gameprints are later launch work; none is falsely represented as complete.
+Before wider launch: complete the [remaining release gates](docs/launch-readiness.md), including hosted sign-in/mobile checks, catalogue recheck, policy review and audience selection. Paid native events remain disabled; payment and refund infrastructure is outside the external-discovery launch.
 
 ## Brand and assets
 
@@ -74,4 +74,10 @@ No production records, tokens, local database files or test-only browser fixture
 
 Nine source-backed listings now populate discovery and the homepage. External detail pages link to the organizer, show source freshness and eligibility, and never create Mercury game passes. Signed-in players can save listings and submit corrections. Outbound-link counters are aggregate per listing/day. See [research, outreach queue and maintenance](docs/curated-discovery.md).
 
-Apply the new schema-only `drizzle/0001_striped_revanche.sql` migration after the original migration for local preview. Sites applies it during deployment. External content is source-controlled in `public/catalogue.js`, not seeded into native events.
+Apply the new schema-only `drizzle/0001_striped_revanche.sql` migration after the original migration for local preview. Sites applies it during deployment. External content is source-controlled in `public/catalogue-data.js`, not seeded into native events.
+
+## v0.5 — launch operations
+
+`/support` accepts requests without a Mercury account once site access is public. `/admin` is restricted to the configured owner and provides support/correction review, listing withdrawal, aggregate clicks/saves, private backup download and manual retention cleanup. `/account` provides the adult notice, personal export and account closure controls. Terms and privacy reflect these flows.
+
+For local development, apply `drizzle/0001_striped_revanche.sql` and then `drizzle/0002_cooing_skreet.sql` after the original migration, using the same local command shown above with the appropriate filename. Sites applies the new migration on deployment. Configure the owner secret and launch/origin variables as documented in the [runbook](docs/launch-readiness.md); never commit secret values.

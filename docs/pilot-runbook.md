@@ -2,7 +2,7 @@
 
 The site remains owner-private. Use the existing Mercury URL while signed in to the owning ChatGPT account.
 
-1. Open **My games**. If prompted, continue with ChatGPT. Open **Your account** and save your player name.
+1. Open **My games**. If prompted, continue with ChatGPT. Open **Your account**, review the Privacy and Terms pages, and complete the adult account notice before saving your player name.
 2. Open **Host** / **For organizers**. Add an organizer name, bio and optional public contact email.
 3. Create a future free event with a real confirmed venue, address, capacity, level, inclusion list and arrival instructions. Sessions currently last 90 minutes. Save the draft.
 4. Review the draft, then choose **Publish free game**. Confirm publication. The game should appear in **Find a game**.
@@ -25,7 +25,7 @@ Do not publish a test event as a genuine invitation. Use explicit test titles fo
 
 ## Before wider launch
 
-Complete the hosted signed-in smoke test and a real event rehearsal. Confirm the responsible support/privacy contact, retention and launch terms. Add real inventory and confirm venue rights/arrangements. Choose sharing/public access explicitly. Review mobile behavior on physical devices.
+Complete the hosted signed-in smoke test and a real event rehearsal. Review the implemented support/privacy policies and owner inbox; use [the v0.5 launch checklist](launch-readiness.md) for the remaining release gates. Add real inventory and confirm venue rights/arrangements. Choose sharing/public access explicitly. Review mobile behavior on physical devices.
 
 Payments remain disabled until provider credentials, order creation, webhook verification, duplicate/retry handling, reconciliation and refunds have passed end-to-end tests. A success redirect must never be treated as proof of payment. Public indexing, sitemap/canonical configuration and custom domain should be enabled only when real inventory and the launch audience are ready.
 

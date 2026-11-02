@@ -2608,3 +2608,20 @@ dialog .button {
 .booking-panel .button{white-space:normal;text-align:center}
 #listing-correction textarea{display:block;width:100%;margin:12px 0;padding:14px;background:white;border:1px solid #b9beb6;border-radius:4px;font:inherit;resize:vertical}
 @media(max-width:650px){.directory-filters label{flex-basis:calc(50% - 10px);min-width:0}.directory-note{padding:18px}.directory-note .tiny-star{display:none}.listing-art{min-height:190px}.listing-masthead{padding:25px;min-height:190px}.listing-masthead>p:last-child{font-size:20px}.directory-card .fine{font-size:11px}}
+/* Launch support/account surfaces. */
+.service-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start;margin-bottom:70px}
+.service-columns .form-card{max-width:none;margin:0}
+.service-columns label:not(.checkbox),#account-consent label:not(.checkbox),.manage-grid form label{display:flex;flex-direction:column;gap:8px;margin:14px 0;font-size:13px;font-weight:600}
+.service-columns input:not([type=checkbox]),.service-columns select,.service-columns textarea,.manage-grid form input,.manage-grid form textarea,.manage-grid form select{width:100%;padding:13px;background:white;border:1px solid #bfc4ce;border-radius:6px;font:inherit;min-height:44px}
+.service-columns textarea,.manage-grid form textarea{resize:vertical}
+.service-columns .checkbox{align-items:flex-start;line-height:1.6}
+.service-columns .checkbox input{flex-shrink:0;margin-top:4px}
+.service-columns .support-trap{position:absolute!important;left:-10000px!important;max-width:1px;overflow:hidden}
+.support-reference{display:block;word-break:break-all;padding:15px;background:var(--chalk);font-size:14px;margin:15px 0}
+.owner-stats{display:flex;flex-wrap:wrap;gap:30px;background:var(--lime);padding:24px;margin-bottom:35px;border-radius:10px}
+.owner-stats b{display:block;font-size:32px}
+.manage-grid .form-card{min-width:0;overflow-wrap:anywhere}
+.listing-status.withdrawn{color:#9b3838}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--blue);outline-offset:4px}
+@media(max-width:760px){.service-columns{grid-template-columns:1fr;gap:20px}.service-columns input:not([type=checkbox]),.service-columns select,.service-columns textarea,.directory-filters input,.directory-filters select{font-size:16px}.service-columns .form-card{padding:22px}.owner-stats{gap:18px}.booking-panel{min-width:0}.form-card{overflow-wrap:anywhere}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

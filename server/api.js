@@ -1,3 +1,4 @@
+import { operations, POLICY_VERSION, isAdmin, consumeLimit } from './operations.js';
 import { findListing, currentListings, listingStatus, indiaDay } from '../public/catalogue.js';
 import { validateDraft, newId } from '../public/domain.js';
 const ACTIVE = "('confirmed','checked_in')";
@@ -12,8 +13,12 @@ const all = async (db, sql, ...values) => (await db.prepare(sql).bind(...values)
 const run = (db, sql, ...values) => db.prepare(sql).bind(...values).run();
 export function publicEvent(row) { if (!row)
     return null; return { id: row.id, title: row.title, sport: row.sport, area: row.area, venue: row.venue, description: row.description, date: row.date, time: row.time, startsAt: row.starts_at, duration: row.duration, capacity: row.capacity, price: row.price, level: row.level, type: row.format, format: row.format + ' · individual entry', included: row.included.split('\n').filter(Boolean), bring: row.bring, cancellation: row.cancellation, status: row.status, revision: row.revision, host: row.host, hostBio: row.host_bio, hostContact: row.host_contact, spots: Math.max(0, row.capacity - Number(row.registered)), registered: Number(row.registered), image: row.sport === 'Badminton' ? 'badminton.jpg' : row.sport === 'Tennis' ? 'tennis.jpg' : 'court.jpg', solo: true, isDemo: false, tag: 'YOUR NEXT GAME STARTS HERE' }; }
-async function ensureUser(db, user, now) { if (!user?.userId || !user?.email)
-    fail(401, 'Sign in to continue.', 'sign_in_required'); await run(db, 'INSERT INTO users(id,name,email,created_at) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email', user.userId, clean(user.fullName || 'Player', 80), user.email, now); return user.userId; }
+async function ensureUser(db, user, now) {
+    if (!user?.userId || !user?.email) fail(401, 'Sign in to continue.', 'sign_in_required');
+    const consent = await one(db, 'SELECT version FROM account_consents WHERE user_id=?', user.userId);
+    if (consent?.version !== POLICY_VERSION) fail(403, 'Open Account to accept the account notice before saving or joining games.', 'consent_required');
+    return user.userId;
+}
 async function ownedEvent(db, id, userId) { const e = await one(db, 'SELECT * FROM events WHERE id=? AND owner_id=?', id, userId); if (!e)
     fail(404, 'This event is not available in your organizer account.', 'not_found'); return e; }
 function eventValues(d) { return [d.title, d.sport, d.area, d.venue, d.description, d.date, d.time, Date.parse(`${d.date}T${d.time}:00+05:30`), d.capacity, d.price, d.level, d.format, d.included, d.bring, d.cancellation]; }
@@ -33,7 +38,7 @@ async function parseBody(request) { if (!(request.headers.get('content-type') ||
 catch {
     fail(400, 'The submitted data could not be read.', 'invalid_json');
 } }
-export async function apiHandler(request, db, user, { now = Date.now() } = {}) {
+export async function apiHandler(request, db, user, { now = Date.now(), adminEmail = '' } = {}) {
     try {
         if (!db)
             fail(503, 'Mercury is temporarily unavailable. Please try again.', 'database_unavailable');
@@ -43,30 +48,37 @@ export async function apiHandler(request, db, user, { now = Date.now() } = {}) {
         let body = {};
         if (!['GET', 'HEAD'].includes(method))
             body = await parseBody(request);
-        const result = await dispatch({ request, db, user, now, path, method, body });
+        const result = await dispatch({ request, db, user, now, path, method, body, config: { adminEmail } });
         return Response.json(result, { headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Vary': 'Cookie' } });
     }
     catch (error) {
         const known = error instanceof ApiError;
         if (!known)
-            console.error('Mercury API failure', error?.name || 'Error');
+            console.error('Mercury API failure', { name:error?.name || 'Error', path:new URL(request.url).pathname.slice(0,180) });
         return Response.json({ error: { code: known ? error.code : 'server_error', message: known ? error.message : 'Something went wrong. Please try again.', fields: known ? error.fields : null } }, { status: known ? error.status : 500, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
     }
 }
-async function dispatch({ db, user, now, path: p, method: m, body: b }) {
+async function dispatch({ request, db, user, now, path: p, method: m, body: b, config }) {
     const route = p.join('/');
+    const op = await operations({ db, user, now, path: p, method: m, body: b, request, config, fail });
+    if (op !== undefined) return op;
     if (m === 'GET' && route === 'health') {
         await one(db, 'SELECT 1 AS ok');
-        return { ok: true, version: '0.4.0', paymentsEnabled: false };
+        return { ok: true, version: '0.5.0', paymentsEnabled: false };
     }
-    if (m === 'GET' && route === 'listings')
-        return { listings: currentListings(now).map(e => ({ ...e, availability: listingStatus(e, now) })) };
+    if (m === 'GET' && route === 'listings') {
+        const hidden = new Set((await all(db, 'SELECT listing_id FROM listing_overrides WHERE hidden=1')).map(x => x.listing_id));
+        return { listings: currentListings(now).filter(e => !hidden.has(e.id)).map(e => ({ ...e, availability: listingStatus(e, now) })) };
+    }
     if (p[0] === 'listings' && p.length >= 2) {
         const listing = findListing(p[1]);
         if (!listing) fail(404, 'This listing is not available.', 'not_found');
+        const override = await one(db, 'SELECT hidden,reason FROM listing_overrides WHERE listing_id=?', listing.id);
         if (m === 'GET' && p.length === 2)
-            return { listing: { ...listing, availability: listingStatus(listing, now) } };
+            return { listing: { ...listing, availability: override?.hidden ? { code: 'withdrawn', label: 'Listing withdrawn', reason: override.reason } : listingStatus(listing, now) } };
+        if (override?.hidden && p[2] === 'click') fail(410, 'This listing was withdrawn.', 'listing_withdrawn');
         if (m === 'POST' && p.length === 3 && p[2] === 'click') {
+            await consumeLimit(db, 'click:' + (request.headers.get('cf-connecting-ip') || 'unknown') + ':' + listing.id, 30, now, fail);
             // Aggregate link activations, not unique people or confirmed registrations.
             await run(db, 'INSERT INTO listing_clicks(listing_id,day,count) VALUES(?,?,1) ON CONFLICT(listing_id,day) DO UPDATE SET count=count+1', listing.id, indiaDay(now));
             return { ok: true };
@@ -82,20 +94,22 @@ async function dispatch({ db, user, now, path: p, method: m, body: b }) {
             fail(404, 'This game is not available.', 'not_found');
         return { event: publicEvent(row) };
     }
-    if (m === 'GET' && route === 'session' && !user)
-        return { user: null, organizer: null, saved: [], savedListings: [], notifications: [], paymentsEnabled: false };
-    const uid = await ensureUser(db, user, now);
     if (m === 'GET' && route === 'session') {
+        if (!user?.userId || !user?.email) return { user:null, organizer:null, saved:[], savedListings:[], notifications:[], paymentsEnabled:false, consentAccepted:false, policyVersion:POLICY_VERSION, isAdmin:false };
+        const uid = user.userId;
         const profile = await one(db, 'SELECT name,email FROM users WHERE id=?', uid);
+        const consent = await one(db, 'SELECT version FROM account_consents WHERE user_id=?', uid);
         const organizer = await one(db, 'SELECT name,bio,contact FROM organizers WHERE user_id=?', uid);
         const saved = await all(db, 'SELECT event_id FROM saved_events WHERE user_id=?', uid);
         const savedListings = await all(db, 'SELECT listing_id FROM saved_listings WHERE user_id=?', uid);
         const notifications = await all(db, 'SELECT id,event_id,message,read_at,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 50', uid);
-        return { user: { name: profile.name, email: profile.email }, organizer, saved: saved.map(x => x.event_id), savedListings: savedListings.map(x => x.listing_id), notifications, paymentsEnabled: false };
+        return { user: { name:profile?.name || clean(user.fullName || 'Player',80), email:user.email }, organizer, saved:saved.map(x=>x.event_id), savedListings:savedListings.map(x=>x.listing_id), notifications, paymentsEnabled:false, consentAccepted:consent?.version === POLICY_VERSION, policyVersion:POLICY_VERSION, isAdmin:isAdmin(user,config) };
     }
+    const uid = await ensureUser(db, user, now);
     if (m === 'GET' && route === 'saved-listings') {
         const rows = await all(db, 'SELECT listing_id FROM saved_listings WHERE user_id=? ORDER BY created_at DESC', uid);
-        return { listings: rows.map(r => findListing(r.listing_id)).filter(Boolean).map(e => ({ ...e, availability: listingStatus(e, now) })) };
+        const hidden = new Set((await all(db, 'SELECT listing_id FROM listing_overrides WHERE hidden=1')).map(x=>x.listing_id));
+        return { listings: rows.map(r => findListing(r.listing_id)).filter(Boolean).map(e => ({ ...e, availability: hidden.has(e.id) ? {code:'withdrawn',label:'Listing withdrawn'} : listingStatus(e, now) })) };
     }
     if (m === 'POST' && p[0] === 'listings' && p.length === 3) {
         const listing = findListing(p[1]);
@@ -109,7 +123,7 @@ async function dispatch({ db, user, now, path: p, method: m, body: b }) {
         if (p[2] === 'report') {
             const reason = clean(b.reason, 500);
             if (reason.length < 10) fail(422, 'Please describe the correction in at least 10 characters.', 'validation_failed');
-            await run(db, 'INSERT INTO listing_reports(user_id,listing_id,reason,updated_at) VALUES(?,?,?,?) ON CONFLICT(user_id,listing_id) DO UPDATE SET reason=excluded.reason,updated_at=excluded.updated_at', uid, listing.id, reason, now);
+            await run(db, 'INSERT INTO listing_reports(user_id,listing_id,reason,updated_at) VALUES(?,?,?,?) ON CONFLICT(user_id,listing_id) DO UPDATE SET reason=excluded.reason,status=excluded.status,reviewed_at=NULL,updated_at=excluded.updated_at', uid, listing.id, reason, now);
             return { ok: true };
         }
     }
