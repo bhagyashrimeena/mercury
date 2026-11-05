@@ -1,0 +1,290 @@
+{
+  "page": {
+    "url": "http://localhost:3002/",
+    "title": "Mercury — Your next game starts here",
+    "viewport": 1440,
+    "content": 1425,
+    "height": 3340
+  },
+  "navigation": {
+    "name": "http://localhost:3002/",
+    "entryType": "navigation",
+    "startTime": 0,
+    "duration": 276.3999999910593,
+    "navigationId": 5525,
+    "initiatorType": "navigation",
+    "deliveryType": "",
+    "nextHopProtocol": "http/1.1",
+    "renderBlockingStatus": "non-blocking",
+    "contentType": "text/html",
+    "contentEncoding": "gzip",
+    "workerStart": 0,
+    "workerRouterEvaluationStart": 0,
+    "workerCacheLookupStart": 0,
+    "workerMatchedSourceType": "",
+    "workerFinalSourceType": "",
+    "redirectStart": 0,
+    "redirectEnd": 0,
+    "fetchStart": 0.7000000029802322,
+    "domainLookupStart": 0.7000000029802322,
+    "domainLookupEnd": 0.7000000029802322,
+    "connectStart": 0.7000000029802322,
+    "secureConnectionStart": 0,
+    "connectEnd": 0.7000000029802322,
+    "requestStart": 5.299999997019768,
+    "responseStart": 10.200000002980232,
+    "firstInterimResponseStart": 0,
+    "finalResponseHeadersStart": 10.200000002980232,
+    "responseEnd": 25,
+    "transferSize": 5285,
+    "encodedBodySize": 4985,
+    "decodedBodySize": 15929,
+    "responseStatus": 200,
+    "serverTiming": [],
+    "unloadEventStart": 0,
+    "unloadEventEnd": 0,
+    "domInteractive": 52,
+    "domContentLoadedEventStart": 52.29999999701977,
+    "domContentLoadedEventEnd": 52.3999999910593,
+    "domComplete": 276.3999999910593,
+    "loadEventStart": 276.3999999910593,
+    "loadEventEnd": 276.3999999910593,
+    "type": "navigate",
+    "redirectCount": 0,
+    "activationStart": 0,
+    "criticalCHRestart": 0,
+    "notRestoredReasons": null,
+    "confidence": {
+      "randomizedTriggerRate": 0.4994798,
+      "value": "low"
+    }
+  },
+  "lcp": 144,
+  "cls": 0.002993074672548819,
+  "shifts": [
+    {
+      "value": 0.00037692182209910744,
+      "sources": [
+        {
+          "node": "undefined.undefined",
+          "previous": {
+            "x": 52,
+            "y": 363.984375,
+            "width": 427,
+            "height": 49.1875,
+            "top": 363.984375,
+            "right": 479,
+            "bottom": 413.171875,
+            "left": 52
+          },
+          "current": {
+            "x": 52,
+            "y": 360.984375,
+            "width": 427,
+            "height": 49.1875,
+            "top": 360.984375,
+            "right": 479,
+            "bottom": 410.171875,
+            "left": 52
+          }
+        },
+        {
+          "node": "NAV.",
+          "previous": {
+            "x": 546.109375,
+            "y": 28.5,
+            "width": 265.1875,
+            "height": 39,
+            "top": 28.5,
+            "right": 811.296875,
+            "bottom": 67.5,
+            "left": 546.109375
+          },
+          "current": {
+            "x": 541.9375,
+            "y": 27,
+            "width": 264.265625,
+            "height": 42,
+            "top": 27,
+            "right": 806.203125,
+            "bottom": 69,
+            "left": 541.9375
+          }
+        },
+        {
+          "node": "DIV.header-actions",
+          "previous": {
+            "x": 1112.90625,
+            "y": 26.5,
+            "width": 260.09375,
+            "height": 43,
+            "top": 26.5,
+            "right": 1373,
+            "bottom": 69.5,
+            "left": 1112.90625
+          },
+          "current": {
+            "x": 1119.171875,
+            "y": 26.5,
+            "width": 253.828125,
+            "height": 43,
+            "top": 26.5,
+            "right": 1373,
+            "bottom": 69.5,
+            "left": 1119.171875
+          }
+        },
+        {
+          "node": "A.",
+          "previous": {
+            "x": 733.984375,
+            "y": 28.5,
+            "width": 77.3125,
+            "height": 39,
+            "top": 28.5,
+            "right": 811.296875,
+            "bottom": 67.5,
+            "left": 733.984375
+          },
+          "current": {
+            "x": 728.6875,
+            "y": 27,
+            "width": 78,
+            "height": 42,
+            "top": 27,
+            "right": 806.6875,
+            "bottom": 69,
+            "left": 728.6875
+          }
+        },
+        {
+          "node": "SPAN.brand-dot",
+          "previous": {
+            "x": 232.09375,
+            "y": 32.5,
+            "width": 13,
+            "height": 17,
+            "top": 32.5,
+            "right": 245.09375,
+            "bottom": 49.5,
+            "left": 232.09375
+          },
+          "current": {
+            "x": 217.8125,
+            "y": 33,
+            "width": 11.15625,
+            "height": 17,
+            "top": 33,
+            "right": 228.96875,
+            "bottom": 50,
+            "left": 217.8125
+          }
+        }
+      ]
+    },
+    {
+      "value": 0.001140854810027017,
+      "sources": [
+        {
+          "node": "DIV.header-actions",
+          "previous": {
+            "x": 1119.171875,
+            "y": 26.5,
+            "width": 253.828125,
+            "height": 43,
+            "top": 26.5,
+            "right": 1373,
+            "bottom": 69.5,
+            "left": 1119.171875
+          },
+          "current": {
+            "x": 1041.953125,
+            "y": 26.5,
+            "width": 331.046875,
+            "height": 43,
+            "top": 26.5,
+            "right": 1373,
+            "bottom": 69.5,
+            "left": 1041.953125
+          }
+        },
+        {
+          "node": "NAV.",
+          "previous": {
+            "x": 541.9375,
+            "y": 27,
+            "width": 264.265625,
+            "height": 42,
+            "top": 27,
+            "right": 806.203125,
+            "bottom": 69,
+            "left": 541.9375
+          },
+          "current": {
+            "x": 503.328125,
+            "y": 27,
+            "width": 264.265625,
+            "height": 42,
+            "top": 27,
+            "right": 767.59375,
+            "bottom": 69,
+            "left": 503.328125
+          }
+        },
+        {
+          "node": "A.",
+          "previous": {
+            "x": 728.6875,
+            "y": 27,
+            "width": 78,
+            "height": 42,
+            "top": 27,
+            "right": 806.6875,
+            "bottom": 69,
+            "left": 728.6875
+          },
+          "current": {
+            "x": 690.078125,
+            "y": 27,
+            "width": 78,
+            "height": 42,
+            "top": 27,
+            "right": 768.078125,
+            "bottom": 69,
+            "left": 690.078125
+          }
+        }
+      ]
+    },
+    {
+      "value": 0.0014752980404226942,
+      "sources": [
+        {
+          "node": "DIV.quickline-results",
+          "previous": {
+            "x": 321,
+            "y": 736.703125,
+            "width": 905.671875,
+            "height": 22,
+            "top": 736.703125,
+            "right": 1226.671875,
+            "bottom": 758.703125,
+            "left": 321
+          },
+          "current": {
+            "x": 321,
+            "y": 703.265625,
+            "width": 905.671875,
+            "height": 88.875,
+            "top": 703.265625,
+            "right": 1226.671875,
+            "bottom": 792.140625,
+            "left": 321
+          }
+        }
+      ]
+    }
+  ],
+  "resources": 24,
+  "transferBytes": 28230
+}

@@ -1,0 +1,95 @@
+{
+  "url": "http://localhost:3002/explore",
+  "violations": [],
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "nodes": [
+        {
+          "target": [
+            "a[data-nav=\"home\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⌂</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".current[data-nav=\"explore\"][aria-current=\"page\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⌕</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "a[data-nav=\"my-games\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">♡</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "a[href$=\"host\"][data-nav=\"host\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⊕</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".tennis.listing-art[href$=\"mumbai-flex-nov-2026\"] > .listing-art-symbol[aria-hidden=\"true\"]"
+          ],
+          "text": "<span class=\"listing-art-symbol\" aria-hidden=\"true\">◉</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".pickleball.listing-art[href$=\"ucan-november-2026\"] > .listing-art-symbol[aria-hidden=\"true\"]"
+          ],
+          "text": "<span class=\"listing-art-symbol\" aria-hidden=\"true\">◎</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "article:nth-child(3) > .tennis.listing-art > .listing-art-symbol[aria-hidden=\"true\"]"
+          ],
+          "text": "<span class=\"listing-art-symbol\" aria-hidden=\"true\">◉</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "article:nth-child(4) > .pickleball.listing-art > .listing-art-symbol[aria-hidden=\"true\"]"
+          ],
+          "text": "<span class=\"listing-art-symbol\" aria-hidden=\"true\">◎</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".badminton > .listing-art-symbol[aria-hidden=\"true\"]"
+          ],
+          "text": "<span class=\"listing-art-symbol\" aria-hidden=\"true\">◈</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".pickleball.listing-art[href$=\"basch-pickleball-2026\"] > .listing-art-symbol[aria-hidden=\"true\"]"
+          ],
+          "text": "<span class=\"listing-art-symbol\" aria-hidden=\"true\">◎</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "article:nth-child(7) > .pickleball.listing-art > .listing-art-symbol[aria-hidden=\"true\"]"
+          ],
+          "text": "<span class=\"listing-art-symbol\" aria-hidden=\"true\">◎</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "article:nth-child(8) > .tennis.listing-art > .listing-art-symbol[aria-hidden=\"true\"]"
+          ],
+          "text": "<span class=\"listing-art-symbol\" aria-hidden=\"true\">◉</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        }
+      ]
+    }
+  ]
+}

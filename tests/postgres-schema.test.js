@@ -8,8 +8,13 @@ test('Supabase schema applies on PostgreSQL and preserves booking constraints', 
   try {
     const migration = await readFile(new URL('../supabase/migrations/20261102_initial.sql', import.meta.url), 'utf8');
     await db.exec(migration);
+    await db.exec(await readFile(new URL('../supabase/migrations/20261105132850_site_metrics.sql', import.meta.url), 'utf8'));
     const { rows: tables } = await db.query("SELECT tablename FROM pg_tables WHERE schemaname='public'");
-    assert.equal(tables.length, 13);
+    assert.equal(tables.length, 14);
+    await db.query("INSERT INTO site_metrics(day,metric,count) VALUES('2026-11-05','home_view',1) ON CONFLICT(day,metric) DO UPDATE SET count=site_metrics.count+1");
+    await db.query("INSERT INTO site_metrics(day,metric,count) VALUES('2026-11-05','home_view',1) ON CONFLICT(day,metric) DO UPDATE SET count=site_metrics.count+1");
+    assert.equal((await db.query("SELECT count FROM site_metrics WHERE day='2026-11-05' AND metric='home_view'")).rows[0].count, 2);
+    assert.equal((await db.query("SELECT relrowsecurity FROM pg_class WHERE relname='site_metrics'")).rows[0].relrowsecurity, true);
 
     await db.query('INSERT INTO users(id,name,email,created_at) VALUES($1,$2,$3,$4)', ['player-1', 'Player One', 'one@example.test', Date.now()]);
     await db.query("INSERT INTO organizers(user_id,name,created_at) VALUES($1,$2,$3)", ['player-1', 'Test Club', Date.now()]);

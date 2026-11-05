@@ -1,0 +1,15 @@
+{
+  "page": {
+    "url": "http://localhost:3002/signin",
+    "title": "Sign in — Mercury",
+    "viewport": 390,
+    "content": 390,
+    "height": 916,
+    "linksBottom": 790.171875
+  },
+  "unnamed": [],
+  "missingAlt": [],
+  "invalidLabels": [],
+  "smallTargets": [],
+  "horizontalOverflow": false
+}

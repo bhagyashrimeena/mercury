@@ -1,6 +1,6 @@
 import { createBackup } from './backup.js';
 import { clientIp } from './client-ip.js';
-import { findListing, listings, listingStatus } from '../public/catalogue.js';
+import { findListing, listings, listingStatus, indiaDay } from '../public/catalogue.js';
 export const POLICY_VERSION = '2026-11-02';
 const one = (db, sql, ...v) => db.prepare(sql).bind(...v).first();
 const all = async (db, sql, ...v) => (await db.prepare(sql).bind(...v).all()).results;
@@ -68,12 +68,16 @@ export async function operations({ db, user, now, path: p, method: m, body: b, r
   if (m === 'GET' && route === 'admin/backup') return createBackup(db,now,fail);
   if (m === 'GET' && route === 'admin/overview') {
     const support = await all(db, 'SELECT * FROM support_requests ORDER BY CASE status WHEN \'open\' THEN 0 ELSE 1 END, created_at DESC LIMIT 100');
-    const corrections = await all(db, 'SELECT r.*,u.name,u.email FROM listing_reports r JOIN users u ON u.id=r.user_id ORDER BY r.updated_at DESC LIMIT 100');
+    const corrections = await all(db, 'SELECT r.*,u.name,u.email FROM listing_reports r JOIN users u ON u.id=r.user_id ORDER BY CASE r.status WHEN \'open\' THEN 0 ELSE 1 END, r.updated_at DESC LIMIT 100');
     const overrides = await all(db, 'SELECT * FROM listing_overrides');
     const clicks = await all(db, 'SELECT listing_id,SUM(count) AS count FROM listing_clicks WHERE day>=? GROUP BY listing_id', new Date(now - 30*86400000).toISOString().slice(0,10));
+    let metrics = [], metricsAvailable = true;
+    try {
+      metrics = await all(db, 'SELECT metric,SUM(count) AS count FROM site_metrics WHERE day>=? GROUP BY metric', indiaDay(now - 30*86400000));
+    } catch { metricsAvailable = false; }
     const saves = await all(db, 'SELECT listing_id,COUNT(*) AS count FROM saved_listings GROUP BY listing_id');
     const users = await one(db, 'SELECT COUNT(*) AS count FROM users');
-    return { support, corrections, overrides, clicks, saves, users: users.count, listings: listings.map(e => ({ id:e.id,title:e.title,checkedOn:e.checkedOn,date:e.date,sourceUrl:e.sourceUrl,availability:listingStatus(e,now) })) };
+    return { support, corrections, overrides, clicks, metrics, metricsAvailable, saves, users: users.count, listings: listings.map(e => ({ id:e.id,title:e.title,checkedOn:e.checkedOn,date:e.date,sourceUrl:e.sourceUrl,availability:listingStatus(e,now) })) };
   }
   if (m === 'POST' && p[1] === 'support' && p.length === 3) {
     if (!['open','resolved'].includes(b.status)) fail(422, 'Choose an open or resolved status.', 'validation_failed');
@@ -101,7 +105,9 @@ export async function operations({ db, user, now, path: p, method: m, body: b, r
       db.prepare('DELETE FROM listing_clicks WHERE day<?').bind(new Date(now - 365*86400000).toISOString().slice(0,10)),
       db.prepare('DELETE FROM request_limits WHERE expires_at<?').bind(now)
     ]);
-    return { removed: result.reduce((sum,r) => sum + r.meta.changes,0) };
+    let metricRemoved = 0;
+    try { metricRemoved = (await run(db, 'DELETE FROM site_metrics WHERE day<?', indiaDay(now - 90*86400000))).meta.changes; } catch { /* Older deployments may not have this table yet. */ }
+    return { removed: result.reduce((sum,r) => sum + r.meta.changes,0) + metricRemoved };
   }
   fail(404,'Not found.','not_found');
 }

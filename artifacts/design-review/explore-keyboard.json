@@ -1,0 +1,13 @@
+{
+  "filters": {
+    "opened": {
+      "expanded": "true",
+      "focus": "query"
+    },
+    "applied": {
+      "url": "?sport=Tennis",
+      "expanded": "false",
+      "focus": "directory-count"
+    }
+  }
+}

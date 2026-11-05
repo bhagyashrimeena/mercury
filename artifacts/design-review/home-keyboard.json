@@ -1,0 +1,12 @@
+{
+  "locationDialog": {
+    "opened": {
+      "open": true,
+      "focusInside": true
+    },
+    "closed": {
+      "open": false,
+      "focus": "location-button"
+    }
+  }
+}

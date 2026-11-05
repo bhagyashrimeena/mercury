@@ -1,0 +1,14 @@
+{
+  "page": {
+    "url": "http://localhost:3002/explore",
+    "title": "Find a game — Mercury",
+    "viewport": 390,
+    "content": 390,
+    "height": 6125
+  },
+  "unnamed": [],
+  "missingAlt": [],
+  "invalidLabels": [],
+  "smallTargets": [],
+  "horizontalOverflow": false
+}
