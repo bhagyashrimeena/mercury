@@ -40,4 +40,4 @@ npm run build
 
 For local signed-in development, configure the Supabase values in an ignored `.env.local`, apply the PostgreSQL schema, add `http://localhost:3000/auth/callback` to Supabase Auth redirect URLs, and run `npm run dev`. Do not commit secrets or production data.
 
-The 2026 pilot and launch notes in `docs/` describe the original Sites/D1 deployment and may contain historical provider instructions. Use [the Vercel guide](docs/vercel-deployment.md) for the current host and database setup.
+Use the [Vercel guide](docs/vercel-deployment.md) for the current host and database setup, and the [private-pilot runbook](docs/pilot-runbook.md) for hosted flow checks. The older launch-readiness and catalogue notes describe the previous Sites/D1 deployment and may contain historical provider instructions.
