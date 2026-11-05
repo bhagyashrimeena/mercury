@@ -5,7 +5,9 @@ const [url, widthText, heightText, output, mode, scope] = process.argv.slice(2);
 if (!url || !output) throw new Error('Usage: capture.mjs URL WIDTH HEIGHT OUTPUT');
 const width = Number(widthText), height = Number(heightText);
 if (!Number.isInteger(width) || !Number.isInteger(height)) throw new Error('Invalid viewport');
-const fixtureDate = indiaDay(Date.now() + 7 * 86400000);
+const pastBookingMode = ['fixture-past-games', 'fixture-expired-pass'].includes(mode);
+const cancelledBookingMode = mode === 'fixture-cancelled-booking';
+const fixtureDate = indiaDay(Date.now() + (pastBookingMode ? -1 : 7) * 86400000);
 const fixtureEvent = {
   id: 'review-state', title: 'Review fixture: Thursday Badminton', sport: 'Badminton',
   type: 'Social play', area: 'Powai', venue: 'Sample court, Powai, Mumbai',
@@ -16,7 +18,7 @@ const fixtureEvent = {
   hostContact: '', description: 'A sample free doubles session for reviewing full and cancelled game states.',
   included: ['Court time and shuttlecocks'], bring: 'Bring a racket, indoor shoes and water.',
   cancellation: 'Cancel a free place before the session starts.', image: 'badminton.jpg',
-  status: mode === 'fixture-cancelled' ? 'cancelled' : 'published', revision: 1,
+  status: mode === 'fixture-cancelled' || cancelledBookingMode ? 'cancelled' : 'published', revision: 1,
 };
 
 const tabs = await fetch('http://127.0.0.1:9223/json').then(response => response.json());
@@ -32,9 +34,9 @@ const pending = new Map();
 const outboundRequests = [];
 const organizerFixture = ['fixture-organizer', 'fixture-preview', 'fixture-roster'].includes(mode);
 const ownerFixture = mode === 'fixture-owner';
-const accountFixture = ['fixture-account', 'fixture-pass', 'fixture-register'].includes(mode) || organizerFixture || ownerFixture;
+const accountFixture = ['fixture-account', 'fixture-pass', 'fixture-register'].includes(mode) || pastBookingMode || cancelledBookingMode || organizerFixture || ownerFixture;
 const fixtureBooking = {
-  id: 'review-pass', event_id: fixtureEvent.id, status: 'confirmed', title: fixtureEvent.title,
+  id: 'review-pass', event_id: fixtureEvent.id, status: cancelledBookingMode ? 'event_cancelled' : 'confirmed', title: fixtureEvent.title,
   date: fixtureEvent.date, time: fixtureEvent.time, starts_at: fixtureEvent.startsAt,
   venue: fixtureEvent.venue, player_name: 'Review Player', level: 'Beginner', event_status: 'published',
 };
@@ -51,9 +53,9 @@ socket.addEventListener('message', event => {
     if (parts[1] === 'session') {
       payload = { user: accountFixture ? { name: 'Review Player', email: 'review@example.test' } : null,
         organizer: organizerFixture ? { name: 'Review fixture organizer', bio: 'A welcoming local badminton community.', contact: 'review@example.test' } : null,
-        saved: accountFixture ? [fixtureEvent.id] : [],
+        saved: accountFixture && !pastBookingMode && !cancelledBookingMode ? [fixtureEvent.id] : [],
         savedListings: accountFixture ? ['mumbai-flex-nov-2026'] : [],
-        notifications: accountFixture ? [{ id: 'review-note', event_id: fixtureEvent.id, message: 'Review fixture: your place is confirmed.', created_at: Date.now(), read_at: null }] : [],
+        notifications: accountFixture ? [{ id: 'review-note', event_id: fixtureEvent.id, message: cancelledBookingMode ? 'Review fixture: the organizer cancelled your game.' : pastBookingMode ? 'Review fixture: your earlier registration remains in My games.' : 'Review fixture: your place is confirmed.', created_at: Date.now(), read_at: null }] : [],
         paymentsEnabled: false, consentAccepted: accountFixture, isAdmin: ownerFixture };
       status = 200;
     } else if (parts[1] === 'support' && mode === 'fixture-support-failure') {
@@ -129,7 +131,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 250));
   }
   if (accountFixture) {
-    const destination = mode === 'fixture-pass' ? '/booking/review-pass' : mode === 'fixture-register' ? '/register/review-state' : mode === 'fixture-roster' ? '/roster/review-state' : organizerFixture ? '/host' : ownerFixture ? '/admin' : '/my-games';
+    const destination = ['fixture-pass', 'fixture-expired-pass'].includes(mode) ? '/booking/review-pass' : mode === 'fixture-register' ? '/register/review-state' : mode === 'fixture-roster' ? '/roster/review-state' : organizerFixture ? '/host' : ownerFixture ? '/admin' : '/my-games';
     await send('Runtime.evaluate', { expression: `history.pushState(null, '', '${destination}'); dispatchEvent(new PopStateEvent('popstate'))` });
     await new Promise(resolve => setTimeout(resolve, 1100));
   }
@@ -158,6 +160,25 @@ try {
     const fields = JSON.parse(retained.result.value);
     if (fields.name !== 'Review Player' || fields.email !== 'review@example.test' || !fields.message || !fields.consent || fields.button !== 'Retry' || !fields.error) throw new Error(`Support failure did not preserve input: ${retained.result.value}`);
     process.stdout.write(`Support retry preserved input: ${retained.result.value}\n`);
+  }
+  if (pastBookingMode) {
+    const reading = await send('Runtime.evaluate', {
+      expression: 'JSON.stringify({heading:document.querySelector(".page-intro h1")?.textContent,history:document.querySelector("details summary")?.textContent,historyOpen:document.querySelector("details")?.open,cancel:!!document.querySelector("#cancel-pass,[data-cancel-booking]")})',
+      returnByValue: true,
+    });
+    const state = JSON.parse(reading.result.value);
+    if (mode === 'fixture-past-games' && (!state.history?.includes('Started or past Mercury games') || !state.historyOpen || state.cancel)) throw new Error(`Started game grouping is wrong: ${reading.result.value}`);
+    if (mode === 'fixture-expired-pass' && (!state.heading?.includes('started') || state.cancel)) throw new Error(`Started pass state is wrong: ${reading.result.value}`);
+    process.stdout.write(`Started booking state: ${reading.result.value}\n`);
+  }
+  if (cancelledBookingMode) {
+    const reading = await send('Runtime.evaluate', {
+      expression: 'JSON.stringify({history:document.querySelector("details summary")?.textContent,historyOpen:document.querySelector("details")?.open,status:document.querySelector("details .state")?.textContent,cancel:!!document.querySelector("#cancel-pass,[data-cancel-booking]")})',
+      returnByValue: true,
+    });
+    const state = JSON.parse(reading.result.value);
+    if (!state.history?.includes('Cancelled registrations') || !state.historyOpen || state.status !== 'Cancelled by organizer' || state.cancel) throw new Error(`Cancelled booking grouping is wrong: ${reading.result.value}`);
+    process.stdout.write(`Cancelled booking state: ${reading.result.value}\n`);
   }
   if (mode === 'fixture-history') {
     const changed = await send('Runtime.evaluate', {
