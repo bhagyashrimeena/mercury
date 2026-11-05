@@ -1,0 +1,46 @@
+{
+  "url": "http://localhost:3002/listing/mumbai-flex-nov-2026",
+  "violations": [],
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "nodes": [
+        {
+          "target": [
+            "#location-button > span:nth-child(1)"
+          ],
+          "text": "<span>⌖</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "#location-button > span:nth-child(2)"
+          ],
+          "text": "<span>⌄</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".event-facts > div:nth-child(1) > span"
+          ],
+          "text": "<span>◷</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".event-facts > div:nth-child(2) > span"
+          ],
+          "text": "<span>⌖</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".event-facts > div:nth-child(3) > span"
+          ],
+          "text": "<span>◎</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        }
+      ]
+    }
+  ]
+}

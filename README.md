@@ -12,13 +12,15 @@ Mercury runs as a Next.js app on Vercel. Supabase provides PostgreSQL and Google
 
 The default pilot is private: `MERCURY_PUBLIC_LAUNCH=false` admits only `MERCURY_ADMIN_EMAIL` and any emails in `MERCURY_ALLOWED_EMAILS`. The flag also keeps pages out of search indexing. Decide the audience explicitly before changing it to `true`.
 
+For a staged release after the catalogue is reviewed, set `MERCURY_PUBLIC_BROWSE=true` to let signed-out visitors open home, Explore, event and listing details while accounts and organizer tools stay protected. This stage remains `noindex` until `MERCURY_PUBLIC_LAUNCH=true` is deliberately enabled. Saving and booking still require sign-in. A production environment change requires a Vercel redeploy.
+
 ## Code map
 
 - `app/[[...path]]/page.tsx`: server-rendered shell and event/listing metadata.
 - `app/api/[...path]/route.ts`: Vercel API entry point.
 - `app/auth/`, `app/signin/`, `app/signout/`, `lib/supabase/`: Supabase Auth flow.
 - `db/vercel.ts`: PostgreSQL adapter for the existing API query interface.
-- `supabase/migrations/20261102_initial.sql`: current PostgreSQL schema.
+- `supabase/migrations/`: initial PostgreSQL schema and additive aggregate-metrics migration.
 - `server/api.js`, `server/operations.js`: validation, authorization, bookings, support, and owner operations.
 - `public/catalogue-data.js`: external listing source data; external registration stays with organizers.
 - `public/live.js`, `public/service-ui.js`, `public/app.js`: browser experience.
@@ -38,4 +40,4 @@ npm run build
 
 For local signed-in development, configure the Supabase values in an ignored `.env.local`, apply the PostgreSQL schema, add `http://localhost:3000/auth/callback` to Supabase Auth redirect URLs, and run `npm run dev`. Do not commit secrets or production data.
 
-The 2026 pilot and launch notes in `docs/` describe the original Sites/D1 deployment and may contain historical provider instructions. Use [the Vercel guide](docs/vercel-deployment.md) for the current host and database setup.
+Use the [Vercel guide](docs/vercel-deployment.md) for the current host and database setup, and the [private-pilot runbook](docs/pilot-runbook.md) for hosted flow checks. The older launch-readiness and catalogue notes describe the previous Sites/D1 deployment and may contain historical provider instructions.

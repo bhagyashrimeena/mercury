@@ -1,6 +1,6 @@
 # Mercury launch readiness — v0.5
 
-Prepared 2 November 2026. Scope: a directory of independently listed sports events with links to their official registration pages. Mercury accounts support saved listings and corrections; native Mercury bookings remain free-only. Existing site access remains owner-private.
+Prepared 2 November 2026 as a historical release snapshot. For the current Vercel/Supabase setup, staged signed-out browsing, aggregate owner counts, and latest verification results, use [the deployment guide](vercel-deployment.md) and [the design review index](../artifacts/design-review/README.md). Native Mercury bookings remain free-only; the hosted site remains private until its launch settings are deliberately changed.
 
 ## Release checklist
 

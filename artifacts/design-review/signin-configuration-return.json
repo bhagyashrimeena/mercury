@@ -1,0 +1,6 @@
+{
+  "path": "/signin",
+  "returnTo": "/listing/mumbai-flex-nov-2026",
+  "error": "configuration",
+  "message": "Sign-in is temporarily unavailable. Please contact Mercury support."
+}

@@ -1,0 +1,25 @@
+{
+  "page": {
+    "url": "http://localhost:3002/register/review-state",
+    "title": "Book free place — Review fixture: Thursday Badminton — Mercury",
+    "viewport": 390,
+    "content": 390,
+    "height": 1770
+  },
+  "unnamed": [],
+  "missingAlt": [],
+  "invalidLabels": [],
+  "smallTargets": [
+    {
+      "text": "",
+      "width": 17,
+      "height": 17
+    },
+    {
+      "text": "",
+      "width": 17,
+      "height": 17
+    }
+  ],
+  "horizontalOverflow": false
+}

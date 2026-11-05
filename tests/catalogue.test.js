@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { listings, findListing, listingStatus, currentListings } from '../public/catalogue.js';
-import { filterLineup } from '../public/discovery.js';
+import { filterLineup } from '../public/explore.js';
 const at = s => Date.parse(s);
 test('catalogue has unique identities, dated primary provenance and HTTPS-only destinations', () => {
   assert.equal(new Set(listings.map(e => e.id)).size, listings.length);
@@ -38,6 +38,26 @@ test('combined discovery respects sport, source, city area, format and free-entr
   assert.equal(filterLineup(all, { query: 'COOPERAGE' })[0].id, 'mslta-masters-mt400-2026');
   assert.deepEqual(filterLineup(all, { solo: '1' }).map(e => e.id), ['native']);
   assert.equal(filterLineup(all, { query: 'not-a-real-event' }).length, 0);
+});
+
+test('discovery defaults can select actionable weekend entries and separate closed or full games', () => {
+  const now = at('2026-11-05T06:00:00Z');
+  const base = { title: 'Rally', sport: 'Tennis', type: 'Social play', area: 'Powai', venue: 'Test court', host: 'Host', level: 'All levels' };
+  const items = [
+    { ...base, id: 'open', date: '2026-11-07', startsAt: at('2026-11-07T04:00:00Z'), spots: 2, status: 'published', external: false },
+    { ...base, id: 'full', date: '2026-11-08', startsAt: at('2026-11-08T04:00:00Z'), spots: 0, status: 'published', external: false },
+    { ...base, id: 'closed', date: '2026-11-08', external: true, availability: { code: 'closed' } },
+    { ...base, id: 'external', date: '2026-11-08', external: true, availability: { code: 'check' } },
+    { ...base, id: 'stale', date: '2026-11-08', external: true, availability: { code: 'stale' } },
+    { ...base, id: 'later', date: '2026-11-12', external: true, availability: { code: 'check' } },
+    { ...base, id: 'withdrawn', date: '2026-11-09', external: true, availability: { code: 'withdrawn' } },
+    { ...base, id: 'ended', date: '2026-11-01', endDate: '2026-11-01', external: true, availability: { code: 'ended' } },
+  ];
+  assert.deepEqual(filterLineup(items, { availability: 'Entry possible', when: 'This weekend' }, now).map(e => e.id), ['open', 'external']);
+  assert.deepEqual(filterLineup(items, { availability: 'All upcoming' }, now).map(e => e.id), ['open', 'full', 'closed', 'external', 'stale', 'later']);
+  assert.deepEqual(filterLineup(items, { availability: 'Closed or full' }, now).map(e => e.id), ['full', 'closed']);
+  assert.deepEqual(filterLineup(items, { availability: 'Needs source check' }, now).map(e => e.id), ['stale']);
+  assert.deepEqual(filterLineup(items, { availability: 'Entry possible', when: 'Next 7 days' }, now).map(e => e.id), ['open', 'external']);
 });
 
 import { validateCatalogue } from '../server/catalogue-validation.js';
