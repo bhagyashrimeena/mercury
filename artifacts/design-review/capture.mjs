@@ -10,8 +10,8 @@ const fixtureEvent = {
   id: 'review-state', title: 'Review fixture: Thursday Badminton', sport: 'Badminton',
   type: 'Social play', area: 'Powai', venue: 'Sample court, Powai, Mumbai',
   date: fixtureDate, time: '18:00', startsAt: Date.parse(`${fixtureDate}T18:00:00+05:30`),
-  duration: 90, capacity: 12, registered: mode === 'fixture-roster' ? 1 : mode === 'fixture-account' || mode === 'fixture-pass' ? 10 : 12,
-  spots: mode === 'fixture-roster' ? 11 : mode === 'fixture-account' || mode === 'fixture-pass' ? 2 : 0, price: 0,
+  duration: 90, capacity: 12, registered: mode === 'fixture-roster' ? 1 : ['fixture-account', 'fixture-pass', 'fixture-register'].includes(mode) ? 10 : 12,
+  spots: mode === 'fixture-roster' ? 11 : ['fixture-account', 'fixture-pass', 'fixture-register'].includes(mode) ? 2 : 0, price: 0,
   level: 'All levels', host: 'Review fixture organizer', hostBio: 'A test organizer for visual review.',
   hostContact: '', description: 'A sample free doubles session for reviewing full and cancelled game states.',
   included: ['Court time and shuttlecocks'], bring: 'Bring a racket, indoor shoes and water.',
@@ -32,7 +32,7 @@ const pending = new Map();
 const outboundRequests = [];
 const organizerFixture = ['fixture-organizer', 'fixture-preview', 'fixture-roster'].includes(mode);
 const ownerFixture = mode === 'fixture-owner';
-const accountFixture = mode === 'fixture-account' || mode === 'fixture-pass' || organizerFixture || ownerFixture;
+const accountFixture = ['fixture-account', 'fixture-pass', 'fixture-register'].includes(mode) || organizerFixture || ownerFixture;
 const fixtureBooking = {
   id: 'review-pass', event_id: fixtureEvent.id, status: 'confirmed', title: fixtureEvent.title,
   date: fixtureEvent.date, time: fixtureEvent.time, starts_at: fixtureEvent.startsAt,
@@ -129,7 +129,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 250));
   }
   if (accountFixture) {
-    const destination = mode === 'fixture-pass' ? '/booking/review-pass' : mode === 'fixture-roster' ? '/roster/review-state' : organizerFixture ? '/host' : ownerFixture ? '/admin' : '/my-games';
+    const destination = mode === 'fixture-pass' ? '/booking/review-pass' : mode === 'fixture-register' ? '/register/review-state' : mode === 'fixture-roster' ? '/roster/review-state' : organizerFixture ? '/host' : ownerFixture ? '/admin' : '/my-games';
     await send('Runtime.evaluate', { expression: `history.pushState(null, '', '${destination}'); dispatchEvent(new PopStateEvent('popstate'))` });
     await new Promise(resolve => setTimeout(resolve, 1100));
   }
