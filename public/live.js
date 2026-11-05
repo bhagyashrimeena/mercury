@@ -1,7 +1,7 @@
 import { renderAccount, renderSupport, renderAdmin, renderPolicy } from './service-ui.js';
 import { listingCard, renderListing } from './discovery.js';
 import { actionable, renderExplore } from './explore.js';
-import { listingDate } from './catalogue.js';
+import { findListing, listingDate } from './catalogue.js';
 import { events as samples, dateLabel, timeLabel } from './data.js';
 import { newId, validateDraft, indiaDate } from './domain.js';
 import { eventState, eventDetailMarkup } from './event-detail.js';
@@ -265,7 +265,8 @@ export async function liveRoute(path, context) {
         document.querySelector('.header-actions').prepend(a);
     }
     const [, route, id] = path.split('/');
-    document.title = ({ host: 'Organizer studio', roster: 'Attendee roster', account: 'Your account', admin: 'Owner desk', 'my-games': 'My games', booking: 'Your game pass', explore: 'Find a game', privacy: 'Your privacy', terms: 'Terms', support: 'Help & contact', 'how-it-works': 'How Mercury works' }[route] || 'Mercury') + ' — Mercury';
+    const knownListingTitle = route === 'listing' && id ? findListing(id)?.title : null;
+    document.title = (knownListingTitle || { host: 'Organizer studio', roster: 'Attendee roster', account: 'Your account', admin: 'Owner desk', 'my-games': 'My games', booking: 'Your game pass', explore: 'Find a game', listing: 'Listing details', event: 'Game details', register: 'Book free place', privacy: 'Your privacy', terms: 'Terms', support: 'Help & contact', 'how-it-works': 'How Mercury works' }[route] || 'Your next game starts here') + ' — Mercury';
     const sample = samples.some(e => e.id === id);
     const handled = ['explore', 'listing', 'host', 'roster', 'account', 'my-games', 'privacy', 'terms', 'support', 'admin', 'how-it-works'].includes(route) || (['event', 'register'].includes(route) && !sample) || route === 'booking';
     // Demo passes are local and have a separate identity from durable game passes.
