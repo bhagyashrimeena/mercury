@@ -1,6 +1,8 @@
 # Email code sign-in setup
 
-Mercury's sign-in page offers Google, email code and guest browsing. The email form calls Supabase `signInWithOtp` and verifies the six-digit code with `verifyOtp`. Existing accounts sign in; a new email creates an account. Mercury's private-pilot allowlist still applies before a code is sent and after verification. Guests can browse when `MERCURY_PUBLIC_BROWSE=true`; saving and booking require a signed-in account and consent.
+Mercury's sign-in page offers Google, email code and guest browsing. The email form calls Supabase `signInWithOtp` and verifies the six-digit code with `verifyOtp`. Existing email-code accounts sign in; a new email creates an account. Mercury's private-pilot allowlist still applies before a code is sent and after verification. Guests can browse when `MERCURY_PUBLIC_BROWSE=true`; saving and booking require a signed-in account and consent.
+
+An account originally created with Google may not receive an email code when it has no email identity. Supabase can return an obfuscated success response in this case. Those players should continue with Google. Do not promise that both methods work interchangeably for an existing account until this is verified in the project.
 
 ## Supabase project settings
 
@@ -17,4 +19,4 @@ The form does not use an email callback URL: users enter the code on the same Me
 2. Enter the code, then confirm `/api/session` shows the signed-in account and the requested page opens. For a new account, complete Mercury's consent step before saving or booking.
 3. Check an invalid code, an expired pending attempt, an uninvited email, and a resend after Supabase's cooldown. No code should be sent to uninvited emails.
 
-Official guidance: [Supabase passwordless email](https://supabase.com/docs/guides/auth/auth-email-passwordless), [email templates](https://supabase.com/docs/guides/auth/auth-email-templates), [custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp).
+Official guidance: [Supabase passwordless email](https://supabase.com/docs/guides/auth/auth-email-passwordless), [identity linking](https://supabase.com/docs/guides/auth/auth-identity-linking), [email templates](https://supabase.com/docs/guides/auth/auth-email-templates), [custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp).
