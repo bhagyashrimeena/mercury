@@ -87,8 +87,8 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
           </form>
           <div className="signin-divider"><span>or</span></div>
           {pendingEmail ? <>
-            <p>Enter the six-digit code sent to <strong>{pendingEmail}</strong>.</p>
-            <p className="fine">If no code arrives and you previously used Google, continue with Google above.</p>
+            <p>Check <strong>{pendingEmail}</strong> for a six-digit code, then enter it below.</p>
+            <p className="fine">If no code arrives and you previously used Google, continue with Google above. A Google-only account may not receive an email code.</p>
             <form action={verifyEmailCode}>
               <input type="hidden" name="return_to" value={destination} />
               <label htmlFor="signin-code">Email code</label>
