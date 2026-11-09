@@ -1,0 +1,87 @@
+// Optional local browser smoke test. Requires Chrome and MERCURY_PUBLIC_BROWSE=true.
+import { spawn } from 'node:child_process';
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const origin = process.env.MERCURY_SMOKE_ORIGIN || 'http://localhost:3000';
+const chrome = process.env.MERCURY_CHROME_PATH || (process.platform === 'win32'
+  ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+  : 'google-chrome');
+const profile = await mkdtemp(join(tmpdir(), 'mercury-smoke-'));
+const child = spawn(chrome, [
+  '--headless=new', '--no-first-run', '--no-default-browser-check',
+  '--disable-extensions', '--disable-background-networking',
+  `--user-data-dir=${profile}`, '--remote-debugging-port=0',
+  '--window-size=390,844', `${origin}/signin`,
+], { windowsHide: true, stdio: 'ignore' });
+let ws;
+let nextId = 1;
+const pending = new Map();
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+async function until(fn, description, attempts = 100) {
+  for (let i = 0; i < attempts; i++) {
+    let value;
+    try { value = await fn(); } catch { value = null; }
+    if (value) return value;
+    await wait(100);
+  }
+  throw new Error(`Timed out waiting for ${description}`);
+}
+function send(method, params = {}) {
+  const id = nextId++;
+  return new Promise((resolve, reject) => {
+    pending.set(id, { resolve, reject });
+    ws.send(JSON.stringify({ id, method, params }));
+  });
+}
+async function evalInPage(expression) {
+  const result = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+  if (result.exceptionDetails) throw new Error(result.exceptionDetails.text);
+  return result.result.value;
+}
+try {
+  const port = await until(async () => Number((await readFile(join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0]), 'Chrome DevTools port');
+  const target = await until(async () => (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find(item => item.type === 'page' && item.url.startsWith(origin)), 'Mercury tab');
+  ws = new WebSocket(target.webSocketDebuggerUrl);
+  ws.addEventListener('message', event => {
+    const message = JSON.parse(event.data);
+    if (!message.id || !pending.has(message.id)) return;
+    const task = pending.get(message.id);
+    pending.delete(message.id);
+    if (message.error) task.reject(new Error(message.error.message));
+    else task.resolve(message.result || {});
+  });
+  await until(() => ws.readyState === WebSocket.OPEN, 'DevTools connection');
+  await send('Page.enable');
+  await send('Runtime.enable');
+  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await send('Page.navigate', { url: `${origin}/signin` });
+  const signIn = await until(async () => evalInPage(`location.pathname === '/signin' && document.readyState === 'complete' && ({ url: location.href, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, buttons: [...document.querySelectorAll('button,a')].map(e => e.textContent.trim()).filter(Boolean) })`), 'sign-in page');
+  assert.equal(signIn.width, 390);
+  assert.ok(signIn.scrollWidth <= signIn.width, 'Sign-in has horizontal overflow');
+  for (const option of ['Continue with Google', 'Continue with email', 'Continue as guest'])
+    assert.ok(signIn.buttons.some(label => label.includes(option)), `${option} missing`);
+  console.log('Sign-in:', JSON.stringify(signIn));
+  const clicked = await evalInPage(`(() => { const link = [...document.querySelectorAll('a')].find(e => e.textContent.includes('Continue as guest')); if (!link) return false; link.click(); return true; })()`);
+  if (!clicked) throw new Error('Continue as guest link missing');
+  const explore = await until(async () => evalInPage(`location.pathname === '/explore' && ({ url: location.href, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, buttons: [...document.querySelectorAll('button,a')].map(e => e.textContent.trim()).filter(Boolean).slice(0,35) })`), 'guest Explore');
+  assert.ok(explore.scrollWidth <= explore.width, 'Explore has horizontal overflow');
+  console.log('Guest Explore:', JSON.stringify(explore));
+  await send('Page.navigate', { url: `${origin}/listing/mumbai-flex-nov-2026` });
+  await until(async () => evalInPage(`location.pathname.startsWith('/listing/') && !!document.querySelector('#save-listing')`), 'listing save button');
+  await evalInPage(`document.querySelector('#save-listing').click()`);
+  const prompt = await until(async () => evalInPage(`location.pathname === '/account' && [...document.querySelectorAll('a')].some(e => e.textContent.includes('Sign in to continue')) && ({ url: location.href, heading: document.querySelector('h1,h2')?.textContent, signInHref: [...document.querySelectorAll('a')].find(e => e.textContent.includes('Sign in to continue'))?.href })`), 'guest account prompt');
+  if (!prompt.signInHref?.includes('mumbai-flex-nov-2026')) throw new Error('Listing return path lost during account prompt');
+  console.log('Guest account prompt:', JSON.stringify(prompt));
+  await evalInPage(`[...document.querySelectorAll('a')].find(e => e.textContent.includes('Sign in to continue')).click()`);
+  const signInPrompt = await until(async () => evalInPage(`location.pathname === '/signin' && ({ url: location.href, heading: document.querySelector('h1,h2')?.textContent, returnTo: new URL(location.href).searchParams.get('return_to') })`), 'sign-in page after save attempt');
+  if (!signInPrompt.returnTo?.includes('mumbai-flex-nov-2026')) throw new Error('Listing return path lost on sign-in page');
+  console.log('Sign-in after save attempt:', JSON.stringify(signInPrompt));
+} finally {
+  ws?.close();
+  child.kill();
+  await wait(300);
+  await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }).catch(() => {});
+}
