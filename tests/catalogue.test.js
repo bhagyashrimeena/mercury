@@ -20,7 +20,7 @@ test('deadline timestamp closes exactly at cutoff; date-only deadlines do not in
   assert.equal(listingStatus(cup, at('2026-11-27T18:30:00Z')).code, 'closed');
 });
 test('sources go stale, ended listings leave discovery but remain addressable for saved bookmarks', () => {
-  const e = findListing('basch-pickleball-2026');
+  const e = { ...findListing('basch-pickleball-2026'), checkedOn: '2026-11-01' };
   assert.equal(listingStatus(e, at('2026-11-07T18:29:59Z')).code, 'check');
   assert.equal(listingStatus(e, at('2026-11-07T18:30:00Z')).code, 'stale');
   assert.equal(listingStatus(e, at('2026-11-29T18:29:59Z')).code, 'started');
@@ -62,9 +62,10 @@ test('discovery defaults can select actionable weekend entries and separate clos
 
 import { validateCatalogue } from '../server/catalogue-validation.js';
 test('import rejects invented dates, duplicate IDs, unsafe links and missing fee units',()=>{
-  assert.equal(validateCatalogue(listings,'2026-11-02').valid,true);
+  const reviewDay = listings.reduce((latest, e) => e.checkedOn > latest ? e.checkedOn : latest, '0000-01-01');
+  assert.equal(validateCatalogue(listings,reviewDay).valid,true);
   const base=structuredClone(listings[0]);
-  for(const patch of [{date:'2026-02-30'},{checkedOn:'2027-01-01'},{deadline:'2026-11-03T18:00:00'},{deadline:'2026-02-30T18:00:00+05:30'},{deadline:'2026-11-03T24:00:00+05:30'},{registrationUrl:'javascript:alert(1)'},{sourceUrl:'https://user:secret@example.com/'},{registrationUrl:'https://127.0.0.1/'},{priceNote:''}]) assert.equal(validateCatalogue([{...base,...patch}],'2026-11-02').valid,false,JSON.stringify(patch));
-  assert.equal(validateCatalogue([base,base],'2026-11-02').valid,false);
-  assert.equal(validateCatalogue([{...base,sport:'Cricket'}],'2026-11-02').valid,true);
+  for(const patch of [{date:'2026-02-30'},{checkedOn:'9999-01-01'},{deadline:'2026-11-03T18:00:00'},{deadline:'2026-02-30T18:00:00+05:30'},{deadline:'2026-11-03T24:00:00+05:30'},{registrationUrl:'javascript:alert(1)'},{sourceUrl:'https://user:secret@example.com/'},{registrationUrl:'https://127.0.0.1/'},{priceNote:''}]) assert.equal(validateCatalogue([{...base,...patch}],reviewDay).valid,false,JSON.stringify(patch));
+  assert.equal(validateCatalogue([base,base],reviewDay).valid,false);
+  assert.equal(validateCatalogue([{...base,sport:'Cricket'}],reviewDay).valid,true);
 });
