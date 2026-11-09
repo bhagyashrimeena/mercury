@@ -6,6 +6,8 @@ import { events as samples, dateLabel, timeLabel } from './data.js';
 import { newId, validateDraft, indiaDate } from './domain.js';
 import { eventState, eventDetailMarkup } from './event-detail.js';
 import { trackMetric } from './metrics.js';
+import { bookingPassMarkup, bindPassActions, passState } from './game-day.js';
+import { savedGamesLoader } from './my-games.js';
 let ctx, session, turn = 0;
 const policy = 'Cancel your free place from My games any time before the event starts. If the organizer cancels, your registration is cancelled automatically. No payment is collected.';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -25,16 +27,21 @@ const bookingStamp = status => `<span class="state state-${esc(status)}">${esc((
 function page(html) { ctx.main.innerHTML = `<div class="page-width">${html}</div>`; }
 async function api(path, body, method = body ? 'POST' : 'GET') {
     const initialPath = location.pathname + location.search;
+    const initialTurn = turn;
+    const assertCurrent = () => {
+        if (initialTurn !== turn || initialPath !== location.pathname + location.search)
+            throw Object.assign(Error('Navigation changed.'), { name: 'AbortError' });
+    };
     let res;
     try {
         res = await fetch('/api/' + path, { method, credentials: 'same-origin', headers: body ? { 'Content-Type': 'application/json' } : {}, body: body ? JSON.stringify(body) : undefined });
     }
     catch {
+        assertCurrent();
         throw Error('You seem to be offline. Check your connection and try again.');
     }
     const result = await res.json().catch(() => ({ error: { message: 'Mercury could not load this page. Try again.' } }));
-    if (initialPath !== location.pathname + location.search)
-        throw Error('Navigation changed.');
+    assertCurrent();
     if (!res.ok)
         throw Object.assign(Error(result.error?.message || 'Please try again.'), { status: res.status, fields: result.error?.fields });
     return result;
@@ -66,6 +73,7 @@ function formSubmit(selector, work) {
         try {
             await work(Object.fromEntries(new FormData(form)), form);
         } catch (error) {
+            if (error.name === 'AbortError') return;
             alert.textContent = error.message;
             if (error.fields) for (const [name, message] of Object.entries(error.fields)) {
                 const field = form.elements.namedItem(name);
@@ -90,7 +98,7 @@ function action(selector, work) { document.querySelectorAll(selector).forEach(b 
     await work(b);
 }
 catch (e) {
-    ctx.toast(e.message);
+    if (e.name !== 'AbortError') ctx.toast(e.message);
 }
 finally {
     b.disabled = false;
@@ -162,19 +170,17 @@ async function register(id) { if (!requireUser())
 async function myGames(bookingId) {
     if (!requireUser())
         return;
-    const [{ bookings }, { events }, { listings: savedListings }] = await Promise.all([api('bookings'), api('events'), api('saved-listings')]);
+    const sequence = turn;
+    // A pass must not depend on discovery or saved-listing services being available.
+    const { bookings } = await api('bookings');
+    if (sequence !== turn) return;
     if (bookingId) {
         const b = bookings.find(b => b.id === bookingId);
         if (!b)
             throw Error('This pass was not found in your account.');
-        const passStarted = Number(b.starts_at) <= Date.now();
-        const passTitle = b.status === 'confirmed' ? (passStarted ? 'Your game has <em>started.</em>' : 'You’re <em>in.</em>')
-            : b.status === 'checked_in' ? 'You’re checked <em>in.</em>' : 'Your registration';
-        const passIntro = b.status === 'confirmed' ? (passStarted ? 'Your registration stays in My games.' : 'Show this pass to your host when you arrive.')
-            : b.status === 'checked_in' ? 'Your host has marked you as checked in.' : 'See your current registration status below.';
-        page(heading('YOUR GAME PASS', passTitle, passIntro) + `<article class="form-card pass-card">${bookingStamp(b.status)}<h2>${esc(b.title)}</h2><p>${dateLabel(b)} · ${timeLabel(b)} IST</p><p>${esc(b.venue)}</p><hr><p><b>${esc(b.player_name)}</b> · ${esc(b.level)}</p><p class="fine">Pass reference</p><code class="pass-reference">${esc(b.id)}</code><p class="fine">This pass identifies your registration. Your organizer verifies attendance from their private roster.</p><p class="fine">For weak signal at the venue, save a screenshot of this pass before you travel.</p>${btn('View game', '/event/' + b.event_id, 'outline')} ${btn('My games', '/my-games')}</article>`);
-        if (b.status === 'confirmed' && Number(b.starts_at) > Date.now()) {
-            ctx.main.querySelector('.pass-card a[href^="/event/"]').insertAdjacentHTML('beforebegin', '<button class="text-link danger" id="cancel-pass">Cancel my place</button>');
+        page(bookingPassMarkup(b));
+        bindPassActions(ctx.main, b);
+        if (passState(b).canCancel) {
             action('#cancel-pass', () => confirmAction('Cancel your place?', 'Your place will become available to another player. No fee is charged.', 'Cancel my place', async () => {
                 await api('bookings/' + b.id + '/cancel', {});
                 await loadSession();
@@ -182,7 +188,6 @@ async function myGames(bookingId) {
                 ctx.toast('Your place was cancelled.');
             }));
         }
-        ctx.main.querySelector('.pass-card').insertAdjacentHTML('beforeend', '<p class="fine">Check My games for any updates. Mercury does not send email or SMS alerts for event changes.</p>');
         return;
     }
     const now = Date.now();
@@ -191,18 +196,40 @@ async function myGames(bookingId) {
     const completed = bookings.filter(b => ongoing(b) && Number(b.starts_at) <= now);
     const cancelled = bookings.filter(b => !ongoing(b));
     const bookingCard = b => `<article class="manage-card">${bookingStamp(b.status)}<h3>${esc(b.title)}</h3><p>${dateLabel(b)} · ${timeLabel(b)} IST</p><p class="muted">${esc(b.venue)}</p><div class="action-row">${btn('View pass', '/booking/' + b.id, 'outline')}${b.status === 'confirmed' && b.starts_at > Date.now() ? `<button class="text-link danger" data-cancel-booking="${b.id}">Cancel my place</button>` : ''}</div></article>`;
-    page(heading('YOUR TIME TO PLAY', 'My <em>games.</em>', 'Confirmed places, bookmarks and updates in one place.') + `<div class="account-toolbar"><a class="text-link" href="/account">Your account ↗</a></div><h2>Confirmed Mercury registrations</h2><div class="manage-grid">${active.length ? active.map(bookingCard).join('') : completed.length || cancelled.length ? '<p class="muted">No upcoming confirmed games. Your earlier registrations are below.</p>' : empty('Make room for your next game.', 'Find a session and your confirmed place will appear here.', btn('Find a game', '/explore'))}</div>${completed.length ? `<details ${active.length ? '' : 'open'}><summary>Started or past Mercury games (${completed.length})</summary><div class="manage-grid">${completed.map(bookingCard).join('')}</div></details>` : ''}${cancelled.length ? `<details ${active.length || completed.length ? '' : 'open'}><summary>Cancelled registrations (${cancelled.length})</summary><div class="manage-grid">${cancelled.map(bookingCard).join('')}</div></details>` : ''}<h2 class="section-space">Saved Mercury games</h2><div class="event-grid">${events.filter(e => session.saved.includes(e.id)).map(e => gameCard(e, active.find(b => b.event_id === e.id)?.id)).join('') || '<p class="muted">No upcoming saved games. Tap “Save for later” on a game.</p>'}</div><h2 class="section-space">Saved external listings</h2><p class="fine">These are bookmarks, not registrations. Get confirmation and tickets from the organizer.</p><div class="event-grid">${savedListings.map(listingCard).join('') || '<p class="muted">No saved external listings yet.</p>'}</div><div class="section-heading section-space"><h2>Your updates</h2><button class="text-link" id="read-updates">Mark all read ✓</button></div><p class="fine">Updates appear here. Email and SMS notifications are not active.</p><div class="updates">${session.notifications.map(n => `<article class="update ${n.read_at ? '' : 'unread'}"><p>${esc(n.message)}</p><small>${new Date(n.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</small> <a href="/event/${n.event_id}" class="text-link">View game ↗</a></article>`).join('') || '<p class="muted">You’re all caught up.</p>'}</div>`);
+    page(heading('YOUR TIME TO PLAY', 'My <em>games.</em>', 'Confirmed places, bookmarks and updates in one place.') + `<div class="account-toolbar"><a class="text-link" href="/account">Your account ↗</a></div><h2>Confirmed Mercury registrations</h2><div class="manage-grid">${active.length ? active.map(bookingCard).join('') : completed.length || cancelled.length ? '<p class="muted">No upcoming confirmed games. Your earlier registrations are below.</p>' : empty('Make room for your next game.', 'Find a session and your confirmed place will appear here.', btn('Find a game', '/explore'))}</div>${completed.length ? `<details ${active.length ? '' : 'open'}><summary>Started or past Mercury games (${completed.length})</summary><div class="manage-grid">${completed.map(bookingCard).join('')}</div></details>` : ''}${cancelled.length ? `<details ${active.length || completed.length ? '' : 'open'}><summary>Cancelled registrations (${cancelled.length})</summary><div class="manage-grid">${cancelled.map(bookingCard).join('')}</div></details>` : ''}<h2 class="section-space" id="saved-mercury-heading">Saved Mercury games</h2><div class="event-grid" id="saved-mercury-games" role="group" aria-labelledby="saved-mercury-heading" aria-live="polite" tabindex="-1"></div><h2 class="section-space" id="saved-listings-heading">Saved external listings</h2><p class="fine">These are bookmarks, not registrations. Get confirmation and tickets from the organizer.</p><div class="event-grid" id="saved-external-listings" role="group" aria-labelledby="saved-listings-heading" aria-live="polite" tabindex="-1"></div><div class="section-heading section-space"><h2>Your updates</h2><button class="text-link" id="read-updates">Mark all read ✓</button></div><p class="fine">Updates appear here. Email and SMS notifications are not active.</p><div class="updates">${session.notifications.map(n => `<article class="update ${n.read_at ? '' : 'unread'}"><p>${esc(n.message)}</p><small>${new Date(n.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</small> <a href="/event/${n.event_id}" class="text-link">View game ↗</a></article>`).join('') || '<p class="muted">You’re all caught up.</p>'}</div>`);
     action('[data-cancel-booking]', async (b) => { confirmAction('Cancel your place?', 'Your place will become available to another player. No fee is charged.', 'Cancel my place', async () => { await api('bookings/' + b.dataset.cancelBooking + '/cancel', {}); await loadSession(); await myGames(); ctx.toast('Your place was cancelled.'); }); });
     action('#read-updates', async () => { await api('notifications/read', {}); await loadSession(); await myGames(); });
+    // Render registrations and updates first. Each bookmark section loads and
+    // retries independently, so slow or failed discovery cannot hide a pass.
+    const saved = new Set(session.saved);
+    const sections = [
+        { id: '#saved-mercury-games', label: 'Saved Mercury games', load: () => api('events'), render: ({ events }) => events.filter(e => saved.has(e.id)).map(e => gameCard(e, active.find(b => b.event_id === e.id)?.id)).join('') || '<p class="muted">No upcoming saved games. Tap “Save for later” on a game.</p>' },
+        { id: '#saved-external-listings', label: 'Saved external listings', load: () => api('saved-listings'), render: ({ listings }) => listings.map(listingCard).join('') || '<p class="muted">No saved external listings yet.</p>' },
+    ];
+    sections.forEach(section => {
+        const container = ctx.main.querySelector(section.id);
+        const isCurrent = () => sequence === turn && container.isConnected;
+        void savedGamesLoader({ ...section, container, isCurrent })();
+    });
 }
-function confirmAction(title, body, label, work) { const sheet = ctx.openSheet(title, `<p>${body}</p>${err}<div class="action-row"><button class="button primary" id="confirm-action">${label}</button><button class="button outline" data-close-sheet>Keep as it is</button></div>`); const b = sheet.querySelector('#confirm-action'); b.onclick = async () => { b.disabled = true; try {
-    await work();
-    sheet.close();
+function confirmAction(title, body, label, work) {
+    const sheet = ctx.openSheet(title, `<p>${body}</p>${err}<div class="action-row"><button class="button primary" id="confirm-action">${label}</button><button class="button outline" data-close-sheet>Keep as it is</button></div>`);
+    const b = sheet.querySelector('#confirm-action');
+    const sequence = turn;
+    const isCurrent = () => sequence === turn && sheet.open && sheet.contains(b);
+    b.onclick = async () => {
+        if (b.disabled || !isCurrent()) return;
+        b.disabled = true;
+        try {
+            await work();
+            if (isCurrent()) sheet.close();
+        } catch (e) {
+            if (!isCurrent() || e.name === 'AbortError') return;
+            sheet.querySelector('[role=alert]').textContent = e.message;
+            b.disabled = false;
+        }
+    };
 }
-catch (e) {
-    sheet.querySelector('[role=alert]').textContent = e.message;
-    b.disabled = false;
-} }; }
 const input = (name, label, value = '', extra = '') => `<label>${label}<input name="${name}" value="${esc(value)}" ${extra}></label>`;
 const textarea = (name, label, value = '', min = 3, max = 1000) => `<label>${label}<textarea name="${name}" minlength="${min}" maxlength="${max}" required rows="3">${esc(value)}</textarea></label>`;
 const select = (name, label, options, value) => `<label>${label}<select name="${name}">${options.map(o => `<option ${o === value ? 'selected' : ''}>${o}</option>`).join('')}</select></label>`;
@@ -287,7 +314,13 @@ export async function liveRoute(path, context) {
     page('<section class="page-intro"><p class="eyebrow blue">MERCURY</p><h1>Getting your game ready.</h1><p role="status">Just a moment…</p></section>');
     try {
         if (route === 'privacy' || route === 'terms') { renderPolicy(path, ctx); return true; }
-        try { await loadSession(); } catch (error) { if (!['support','explore','listing'].includes(route)) throw error; session = {user:null,saved:[],savedListings:[],notifications:[]}; }
+        try {
+            await loadSession();
+        } catch (error) {
+            if (sequence !== turn) return true;
+            if (!['support','explore','listing'].includes(route)) throw error;
+            session = {user:null,saved:[],savedListings:[],notifications:[]};
+        }
         if (sequence !== turn)
             return true;
         if (route === 'explore')

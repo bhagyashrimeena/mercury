@@ -203,3 +203,16 @@ test('owner backups restore into a new database and refuse overwriting existing 
     assert.throws(()=>restoreBackup({...snapshot.data,tables:{}},joinPath(dir,'bad.sqlite')),/complete/);
   }finally{rmSync(dir,{recursive:true,force:true});h.sqlite.close();}
 });
+
+
+test('game pass includes the event duration without exposing request keys or account identifiers', async () => {
+  const h = harness();
+  try {
+    const id = await h.publish();
+    await h.join(id, 1);
+    const { data } = await h.req('bookings', player(1));
+    assert.equal(data.bookings[0].duration, 90);
+    assert.equal(data.bookings[0].user_id, undefined);
+    assert.equal(data.bookings[0].idempotency_key, undefined);
+  } finally { h.sqlite.close(); }
+});

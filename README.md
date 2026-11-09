@@ -38,6 +38,9 @@ npm run typecheck
 npm run build
 ```
 
-For local signed-in development, configure the Supabase values in an ignored `.env.local`, apply the PostgreSQL schema, add `http://localhost:3000/auth/callback` to Supabase Auth redirect URLs, and run `npm run dev`. Do not commit secrets or production data.
+For local signed-in development, configure the Supabase values in an ignored `.env.local`, set `MERCURY_SITE_ORIGIN=http://localhost:3000`, apply the PostgreSQL schema, add the exact `http://localhost:3000/auth/callback` to Supabase Auth redirect URLs, and run `npm run dev`. Keep the production Site URL unchanged. Use `localhost` consistently rather than switching to `127.0.0.1` midway through sign-in, because PKCE cookies belong to the initiating host. Do not commit secrets or production data.
+
+The app sends a fixed `/auth/callback` redirect URI and stores the post-login path in a ten-minute, HTTP-only, host-only cookie. Supabase allowlist patterns include query strings, so the former `/auth/callback?next=...` did not match an exact local callback entry. If Google returns to the hosted homepage instead of localhost, check the local callback allowlist entry before retrying. A code created on localhost cannot be completed on the hosted domain because its PKCE verifier remains on localhost. See [Supabase Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls) and [the auth verification guide](docs/auth-verification.md).
 
 Use the [Vercel guide](docs/vercel-deployment.md) for the current host and database setup, and the [private-pilot runbook](docs/pilot-runbook.md) for hosted flow checks. The older launch-readiness and catalogue notes describe the previous Sites/D1 deployment and may contain historical provider instructions.
+

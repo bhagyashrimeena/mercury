@@ -1,4 +1,5 @@
 import { dateLabel, timeLabel } from './data.js';
+import { venueMapUrl } from './game-day.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const link = (label, href, kind = 'primary') => `<a class="button ${kind}" href="${esc(href)}">${label} &#8599;</a>`;
@@ -26,7 +27,7 @@ export function eventDetailMarkup(event, { saved = false, preview = false, polic
       <h1 class="detail-title">${esc(event.title)}</h1><p class="host-by">Hosted by ${esc(event.host)}</p>
       <div class="event-facts">
         <div><span aria-hidden="true">&#9677;</span><p><b>${dateLabel(event)}</b><small>${timeLabel(event)} IST &middot; ${esc(event.duration)} minutes</small></p></div>
-        <div><span aria-hidden="true">&#8962;</span><p><b>${esc(event.area)}, Mumbai</b><small>${esc(event.venue)}</small></p></div>
+        <div><span aria-hidden="true">&#8962;</span><p><b>${esc(event.area)}, Mumbai</b><small>${esc(event.venue)}</small>${preview ? '' : `<a class="text-link venue-map-link" href="${esc(venueMapUrl(event))}" target="_blank" rel="noopener noreferrer" aria-label="Open venue in Google Maps (new tab)">Open venue map ↗</a>`}</p></div>
         <div><span aria-hidden="true">&#9678;</span><p><b>${esc(event.level)}</b><small>Adults 18+ &middot; Individual entry</small></p></div>
         <div><span aria-hidden="true">&#8599;</span><p><b>${esc(event.type)}</b><small>${esc(event.capacity)} players</small></p></div>
       </div>

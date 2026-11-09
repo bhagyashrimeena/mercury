@@ -1,10 +1,11 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { createSupabaseServer } from '../../lib/supabase/server';
 import { oauthOrigin, publicBrowse, siteOrigin } from '../../lib/site-config';
 import { safeReturnPath } from '../../lib/return-path';
+import { OAUTH_CALLBACK_PATH, OAUTH_RETURN_COOKIE, oauthReturnCookieOptions } from '../../lib/oauth-redirect';
 import { getDatabase } from '../../db/vercel';
 import { recordMetric } from '../../server/metrics.js';
 
@@ -39,7 +40,7 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
       oauth = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(destination)}`,
+          redirectTo: `${origin}${OAUTH_CALLBACK_PATH}`,
           queryParams: { prompt: 'select_account' },
         },
       });
@@ -48,6 +49,10 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
       try { await recordMetric(getDatabase(), 'signin_error'); } catch { /* Analytics never blocks sign-in. */ }
       redirect('/signin?' + new URLSearchParams({ return_to: destination, error: 'start' }));
     }
+    // Match the exact Supabase allowlist URL. Keep navigation state in a short-lived,
+    // host-only cookie alongside the PKCE verifier instead of in redirectTo.
+    const jar = await cookies();
+    jar.set(OAUTH_RETURN_COOKIE, destination, oauthReturnCookieOptions(origin));
     try { await recordMetric(getDatabase(), 'signin_start'); } catch { /* Analytics never blocks sign-in. */ }
     redirect(oauth.data.url);
   }

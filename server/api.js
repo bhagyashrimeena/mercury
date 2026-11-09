@@ -284,7 +284,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         return { id };
     }
     if (m === 'GET' && route === 'bookings') {
-        const rows = await all(db, 'SELECT b.*,e.title,e.sport,e.area,e.venue,e.date,e.time,e.starts_at,e.status AS event_status,e.cancellation FROM bookings b JOIN events e ON e.id=b.event_id WHERE b.user_id=? ORDER BY e.starts_at DESC LIMIT 200', uid);
+        const rows = await all(db, 'SELECT b.*,e.title,e.sport,e.area,e.venue,e.date,e.time,e.starts_at,e.duration,e.status AS event_status,e.cancellation FROM bookings b JOIN events e ON e.id=b.event_id WHERE b.user_id=? ORDER BY e.starts_at DESC LIMIT 200', uid);
         return { bookings: rows.map(({ user_id, idempotency_key, ...row }) => row) };
     }
     if (m === 'POST' && p[0] === 'bookings' && p[2] === 'cancel') {

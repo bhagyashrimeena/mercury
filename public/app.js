@@ -519,14 +519,18 @@ function notFound() {
   main.innerHTML =
     '<div class="empty page-width"><p class="eyebrow blue">OUT OF BOUNDS</p><h1>This page isn’t in play.</h1><p>The game or booking may no longer exist on this device.</p><a class="button primary" href="/explore">Find another game ↗</a></div>';
 }
+let routeVersion = 0;
 async function route() {
+  const version = ++routeVersion;
+  // A dialog belongs to the page that opened it, including on Back/Forward.
+  document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
   if(location.hash.startsWith('#/'))history.replaceState(null,'',location.hash.slice(1));
   const path = location.pathname;
   const routeUrl = location.pathname + location.search;
   document.title = 'Mercury — Your next game starts here';
   document.body.classList.remove('has-event-cta');
   const handled=await liveRoute(path,{main,esc,toast,openSheet,go});
-  if(location.pathname + location.search !== routeUrl)return;
+  if(version !== routeVersion || location.pathname + location.search !== routeUrl)return;
   const [, page, id] = path.split("/");
   if(handled) {}
   else if (!page) {home();enhanceHome(main);}
