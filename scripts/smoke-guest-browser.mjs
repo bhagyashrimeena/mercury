@@ -99,9 +99,17 @@ try {
   assert.ok(explore.scrollWidth <= explore.width, 'Explore has horizontal overflow');
   console.log('Guest Explore:', JSON.stringify(explore));
   await capture('guest-explore-phone');
+  await send('Page.navigate', { url: `${origin}/my-games` });
+  const protectedPage = await until(async () => evalInPage(`location.pathname === '/signin' && document.querySelector('#signin-title') && ({ returnTo: new URL(location.href).searchParams.get('return_to') })`), 'My games sign-in prompt');
+  assert.equal(protectedPage.returnTo, '/my-games');
+  console.log('Guest My games:', JSON.stringify(protectedPage));
   await send('Page.navigate', { url: `${origin}/listing/mumbai-flex-nov-2026` });
-  const listing = await until(async () => evalInPage(`location.pathname.startsWith('/listing/') && !!document.querySelector('#save-listing') && ({ width: innerWidth, scrollWidth: document.documentElement.scrollWidth })`), 'listing save button');
+  const listing = await until(async () => evalInPage(`location.pathname.startsWith('/listing/') && !!document.querySelector('#save-listing') && ({ width: innerWidth, scrollWidth: document.documentElement.scrollWidth, organizer: (() => { const a = document.querySelector('a[data-outbound]'); return a && { href: a.href, target: a.target, rel: a.rel }; })() })`), 'listing save button');
   assert.ok(listing.scrollWidth <= listing.width, 'Listing has horizontal overflow');
+  assert.equal(new URL(listing.organizer.href).protocol, 'https:');
+  assert.equal(listing.organizer.target, '_blank');
+  assert.ok(listing.organizer.rel.includes('noopener') && listing.organizer.rel.includes('noreferrer'), 'Organizer link is missing new-tab protections');
+  console.log('Guest organizer link:', JSON.stringify(listing.organizer));
   await evalInPage(`document.querySelector('#save-listing').click()`);
   const prompt = await until(async () => evalInPage(`location.pathname === '/account' && [...document.querySelectorAll('a')].some(e => e.textContent.includes('Sign in to continue')) && ({ url: location.href, heading: document.querySelector('h1,h2')?.textContent, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, signInHref: [...document.querySelectorAll('a')].find(e => e.textContent.includes('Sign in to continue'))?.href })`), 'guest account prompt');
   assert.ok(prompt.scrollWidth <= prompt.width, 'Guest account prompt has horizontal overflow');
