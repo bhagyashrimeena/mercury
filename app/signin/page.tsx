@@ -6,17 +6,20 @@ import { createSupabaseServer } from '../../lib/supabase/server';
 import { oauthOrigin, publicBrowse, siteOrigin } from '../../lib/site-config';
 import { safeReturnPath } from '../../lib/return-path';
 import { OAUTH_CALLBACK_PATH, OAUTH_RETURN_COOKIE, oauthReturnCookieOptions } from '../../lib/oauth-redirect';
+import { EMAIL_PENDING_COOKIE } from '../../lib/email-auth';
+import { requestEmailCode, verifyEmailCode } from './email-actions';
 import { getDatabase } from '../../db/vercel';
 import { recordMetric } from '../../server/metrics.js';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Sign in — Mercury', description: 'Sign in to Mercury to save games and manage free bookings.' };
 
-type Search = { return_to?: string; error?: string };
+type Search = { return_to?: string; error?: string; step?: string; email_state?: string };
 
 export default async function SignIn({ searchParams }: { searchParams: Promise<Search> }) {
-  const { return_to, error } = await searchParams;
+  const { return_to, error, step, email_state } = await searchParams;
   const destination = safeReturnPath(return_to, '/account');
+  const pendingEmail = step === 'email' ? (await cookies()).get(EMAIL_PENDING_COOKIE)?.value : null;
   const message = error === 'access'
     ? 'This Google account is not on the private pilot list yet. Ask the Mercury owner to add it, or choose a different Google account.'
     : error === 'callback'
@@ -25,7 +28,13 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
         ? 'Google sign-in could not start. Please try again. If it keeps happening, contact Mercury support.'
       : error === 'configuration'
         ? 'Sign-in is temporarily unavailable. Please contact Mercury support.'
-        : null;
+        : ({
+          'email-invalid': 'Enter a valid email address.',
+          'email-access': 'This email is not on the private pilot list yet. Ask the Mercury owner to add it, or use a different email.',
+          'email-send': 'We could not send a code. Please try again in a minute or contact Mercury support.',
+          'email-code': 'That code did not work. Check the latest email and try again.',
+          'email-expired': 'Start again to get a new email code.',
+        } as Record<string, string>)[email_state || ''] || null;
 
   async function beginSignIn() {
     'use server';
@@ -66,17 +75,41 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
           </Link>
           <p className="eyebrow">MUMBAI, IN PLAY</p>
           <h1>Keep your next game <em>close.</em></h1>
-          <p>Sign in with Google to save events or book free Mercury games. External event entries are confirmed by the organizer.</p>
+          <p>Explore games without an account. Sign in when you want to save a game or book a free Mercury place. External event entries are confirmed by the organizer.</p>
         </section>
         <section className="signin-panel" aria-labelledby="signin-title">
           <p className="eyebrow blue">YOUR MERCURY ACCOUNT</p>
-          <h2 id="signin-title">Continue with Google</h2>
-          <p>Use your own Google account to save games and manage your bookings.</p>
+          <h2 id="signin-title">Sign in or sign up</h2>
+          <p>Use Google or your email to save games and manage your bookings.</p>
           {message && <p className="signin-error" role="alert">{message}</p>}
           <form action={beginSignIn}>
             <button className="button primary" type="submit">Continue with Google <span aria-hidden="true">↗</span></button>
           </form>
-          {publicBrowse() && <Link className="button outline" href="/explore">Continue browsing</Link>}
+          <div className="signin-divider"><span>or</span></div>
+          {pendingEmail ? <>
+            <p>Enter the six-digit code sent to <strong>{pendingEmail}</strong>.</p>
+            <form action={verifyEmailCode}>
+              <input type="hidden" name="return_to" value={destination} />
+              <label htmlFor="signin-code">Email code</label>
+              <input id="signin-code" name="code" type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required />
+              <button className="button primary" type="submit">Verify and continue</button>
+            </form>
+            <form action={requestEmailCode} className="signin-resend">
+              <input type="hidden" name="return_to" value={destination} />
+              <input type="hidden" name="email" value={pendingEmail} />
+              <button className="text-link" type="submit">Send a new code</button>
+            </form>
+            <Link className="text-link" href={'/signin?' + new URLSearchParams({ return_to: destination })}>Use another email</Link>
+          </> : <form action={requestEmailCode}>
+            <input type="hidden" name="return_to" value={destination} />
+            <label htmlFor="signin-email">Email address</label>
+            <input id="signin-email" name="email" type="email" autoComplete="email" maxLength={254} required placeholder="you@example.com" />
+            <button className="button outline" type="submit">Continue with email</button>
+          </form>}
+          {publicBrowse() && <>
+            <Link className="button outline" href="/explore">Continue as guest</Link>
+            <p className="fine">Browse without signing in. We’ll ask you to sign in if you save a game or book a place.</p>
+          </>}
           <p className="fine">Mercury accounts are for adults 18 or older. A parent or guardian can browse junior events and check entry rules with the organizer.</p>
           <div className="signin-links">
             <Link href="/privacy">Privacy</Link>

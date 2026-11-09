@@ -2699,6 +2699,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .signin-panel h2{margin-bottom:12px}
 .signin-panel>p:not(.eyebrow){color:var(--muted)}
 .signin-panel form{margin:30px 0 12px}
+.signin-panel form+form{margin-top:16px}
+.signin-panel form label{display:block;font-size:13px;font-weight:800;margin-bottom:8px}
+.signin-panel form input:not([type=hidden]){width:100%;min-height:48px;border:1px solid var(--border);border-radius:10px;padding:12px;font:inherit;margin-bottom:12px}
+.signin-panel form input:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.signin-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12px;font-weight:800;margin:22px 0}
+.signin-divider::before,.signin-divider::after{content:'';height:1px;background:var(--border);flex:1}
+.signin-panel .signin-divider+form{margin-top:0}
+.signin-panel form.signin-resend{margin:12px 0}
 .signin-panel .button{width:100%;min-height:52px;justify-content:center;text-align:center;display:flex;align-items:center;gap:10px}
 .signin-panel>.button{margin-top:12px}
 .signin-panel .fine{font-size:12px;margin-top:22px}

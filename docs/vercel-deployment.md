@@ -1,6 +1,6 @@
 # Deploy Mercury on Vercel with Supabase
 
-The production build is native Next.js. Mercury's application rules remain in `server/api.js` and `server/operations.js`; the Vercel adapter in `db/vercel.ts` runs their parameterized SQL against Supabase PostgreSQL. Supabase Auth verifies a Google sign-in session. The previous ChatGPT Sites/D1 files in `drizzle/`, `worker/`, and `scripts/vite/` are historical and are not used by `npm run build`.
+The production build is native Next.js. Mercury's application rules remain in `server/api.js` and `server/operations.js`; the Vercel adapter in `db/vercel.ts` runs their parameterized SQL against Supabase PostgreSQL. Supabase Auth verifies Google and email-code sign-in sessions. The previous ChatGPT Sites/D1 files in `drizzle/`, `worker/`, and `scripts/vite/` are historical and are not used by `npm run build`.
 
 ## 1. Use the Mercury Supabase project
 
@@ -17,6 +17,8 @@ Enable **Google** in Supabase Authentication → Providers. Create a Google OAut
 In Supabase Authentication → URL Configuration, set the Site URL to `https://www.playonmercury.com` while the apex domain redirects there. Add `https://www.playonmercury.com/auth/callback` to allowed redirect URLs; add the apex callback only if it is deliberately used. Add exact preview callback URLs separately if preview sign-in is needed. A preview should use its own Supabase project/database if it will perform writes.
 
 Google sign-in creates a new Supabase Auth identity. The old Sites identity and sessions are not reused. Account consent, organizer ownership and other Mercury records continue to use the verified user ID provided by Supabase. No D1 records are imported in this empty start.
+
+For email sign-in, configure the Supabase Email provider, change the Magic Link template to include `{{ .Token }}`, and set up custom SMTP before sending codes to people outside the project team. The app verifies the code on the same origin and keeps the private-pilot email allowlist. Follow [email sign-in setup](email-signin-setup.md) and verify an actual code round trip before treating email as ready. Phone sign-in is deferred until an SMS provider and an email-compatible account model are in place.
 
 ## 3. Fill in Vercel's New Project form
 
@@ -44,7 +46,7 @@ Set these environment variables for **Production** before deploying:
 | `MERCURY_PUBLIC_BROWSE` | Optional `true` after the catalogue is reviewed to open discovery without search indexing; leave unset during the private pilot |
 | `MERCURY_SITE_ORIGIN` | Final HTTPS production origin: `https://www.playonmercury.com` while the apex domain redirects there |
 
-`MERCURY_ALLOWED_EMAILS` is optional: a comma-separated list of additional Google emails allowed into the private pilot. `MERCURY_ADMIN_EMAIL` is always allowed. When `MERCURY_PUBLIC_LAUNCH=false`, the proxy rejects other visitors; that flag also keeps search indexing off. When set to `true`, browsing opens publicly while account and owner API operations still require sign-in and ownership checks.
+`MERCURY_ALLOWED_EMAILS` is optional: a comma-separated list of additional Google or email-code addresses allowed into the private pilot. `MERCURY_ADMIN_EMAIL` is always allowed. When `MERCURY_PUBLIC_LAUNCH=false`, the proxy rejects other visitors; that flag also keeps search indexing off. Set `MERCURY_PUBLIC_BROWSE=true` only when guest discovery is ready for review. When `MERCURY_PUBLIC_LAUNCH=true`, browsing opens publicly while account and owner API operations still require sign-in and ownership checks.
 
 Use separate values and preferably a separate Supabase project for **Preview** and **Development**. Do not point a preview that accepts writes at the production database. `MERCURY_SITE_ORIGIN` should be the canonical URL for that environment when set. Vercel also supplies `VERCEL_URL` as a fallback.
 

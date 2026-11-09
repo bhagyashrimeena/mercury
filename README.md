@@ -6,13 +6,13 @@ Mercury shows source-backed external sports listings and supports accounts for s
 
 ## Current deployment
 
-Mercury runs as a Next.js app on Vercel. Supabase provides PostgreSQL and Google sign-in through Supabase Auth. The application API, ownership rules, validation, and event workflows remain in `server/api.js` and `server/operations.js`.
+Mercury runs as a Next.js app on Vercel. Supabase provides PostgreSQL, Google sign-in and email-code sign-in through Supabase Auth. The application API, ownership rules, validation, and event workflows remain in `server/api.js` and `server/operations.js`.
 
 **Follow [the Vercel deployment guide](docs/vercel-deployment.md)** to create the Supabase project, apply the empty PostgreSQL schema, configure Google OAuth, set Vercel environment variables, and fill in the GitHub import form. The older Cloudflare D1 migrations and Sites build helpers remain only as historical development artifacts. They are not used by the production build.
 
 The default pilot is private: `MERCURY_PUBLIC_LAUNCH=false` admits only `MERCURY_ADMIN_EMAIL` and any emails in `MERCURY_ALLOWED_EMAILS`. The flag also keeps pages out of search indexing. Decide the audience explicitly before changing it to `true`.
 
-For a staged release after the catalogue is reviewed, set `MERCURY_PUBLIC_BROWSE=true` to let signed-out visitors open home, Explore, event and listing details while accounts and organizer tools stay protected. This stage remains `noindex` until `MERCURY_PUBLIC_LAUNCH=true` is deliberately enabled. Saving and booking still require sign-in. A production environment change requires a Vercel redeploy.
+For a staged release after the catalogue is reviewed, set `MERCURY_PUBLIC_BROWSE=true` to offer **Continue as guest** on the sign-in page. Guests can open home, Explore, event and listing details, then are asked to sign in when saving or booking. Accounts and organizer tools stay protected. This stage remains `noindex` until `MERCURY_PUBLIC_LAUNCH=true` is deliberately enabled. A production environment change requires a Vercel redeploy.
 
 ## Code map
 
@@ -41,6 +41,8 @@ npm run build
 For local signed-in development, configure the Supabase values in an ignored `.env.local`, set `MERCURY_SITE_ORIGIN=http://localhost:3000`, apply the PostgreSQL schema, add the exact `http://localhost:3000/auth/callback` to Supabase Auth redirect URLs, and run `npm run dev`. Keep the production Site URL unchanged. Use `localhost` consistently rather than switching to `127.0.0.1` midway through sign-in, because PKCE cookies belong to the initiating host. Do not commit secrets or production data.
 
 The app sends a fixed `/auth/callback` redirect URI and stores the post-login path in a ten-minute, HTTP-only, host-only cookie. Supabase allowlist patterns include query strings, so the former `/auth/callback?next=...` did not match an exact local callback entry. If Google returns to the hosted homepage instead of localhost, check the local callback allowlist entry before retrying. A code created on localhost cannot be completed on the hosted domain because its PKCE verifier remains on localhost. See [Supabase Redirect URLs](https://supabase.com/docs/guides/auth/redirect-urls) and [the auth verification guide](docs/auth-verification.md).
+
+Email sign-in uses a six-digit one-time code and the same private-pilot email allowlist as Google. Configure the Supabase email template and production mail delivery before using it with real players; see [email sign-in setup](docs/email-signin-setup.md). Phone sign-in is not enabled.
 
 Use the [Vercel guide](docs/vercel-deployment.md) for the current host and database setup, and the [private-pilot runbook](docs/pilot-runbook.md) for hosted flow checks. The older launch-readiness and catalogue notes describe the previous Sites/D1 deployment and may contain historical provider instructions.
 
