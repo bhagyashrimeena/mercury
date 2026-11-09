@@ -142,7 +142,7 @@ export const listings = [
     "sourceUrl": "https://www.khelomore.com/events/event-details/racket-riders/racket-riders-badminton-tournament-s2/1940",
     "registrationUrl": "https://www.khelomore.com/events/event-details/racket-riders/racket-riders-badminton-tournament-s2/1940",
     "registrationNote": "Review the event and selected ticket on KheloMore.",
-    "checkedOn": "2026-11-01"
+    "checkedOn": "2026-11-09"
   },
   {
     "id": "mumbai-pickleball-cup-s3",

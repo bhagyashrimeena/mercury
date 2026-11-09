@@ -22,9 +22,9 @@ Research performed 1 November 2026. Public business contacts below were observed
 | 3 | [MSLTA Masters MT400](https://www.world.tennis/en/tournament/mt400-mumbai/ind/2026/s-mt400-ind-2026-010/) | practennis@yahoo.com | Tour Zone eligibility, entry deadline and fees |
 | 3 | [Barcelona Sports Academy camp](https://barcelonasportsacademy.com/en/elevate-your-game-elite-spanish-tennis-training-comes-to-mumbai/) | info@barcelonasportsacademy.com | Remaining capacity, junior requirements, final INR payment and refund terms |
 
-The UTR India directory supplied the flex-league dates, fee range and event link; the event page itself requires client-side access. UCAN and KheloMore facts came from their indexed official listing text, whose crawl timestamps preceded the research date. Source checked means researched, not directly confirmed with the organizer. These limitations are why every CTA asks users to check the organizer and no card claims registration is currently open.
+The UTR India directory supplied the flex-league dates, fee range and event link; the event page itself requires client-side access. At the initial 1 November review, UCAN and KheloMore facts came from indexed official listing text whose crawl timestamps preceded the research date. Source checked means researched, not directly confirmed with the organizer. These limitations are why every CTA asks users to check the organizer and no card claims registration is currently open.
 
-The eight refreshed records were rechecked on 9 November 2026. The evidence and remaining gap are recorded in [the November catalogue review](catalogue-review-2026-11-09.md). Racket Riders remains at its 1 November check date because its current event page does not expose enough details for a fresh fact check.
+All nine records were rechecked on 9 November 2026. The evidence and remaining unknowns are recorded in [the November catalogue review](catalogue-review-2026-11-09.md). Racket Riders needed a rendered browser page because a simple fetch exposed only its client-side shell.
 
 ## Held back
 
