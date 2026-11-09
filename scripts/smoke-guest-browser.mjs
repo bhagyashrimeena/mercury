@@ -11,6 +11,7 @@ const chrome = process.env.MERCURY_CHROME_PATH || (process.platform === 'win32'
   : 'google-chrome');
 const profile = await mkdtemp(join(tmpdir(), 'mercury-smoke-'));
 const captureDir = process.env.MERCURY_SMOKE_CAPTURE_DIR;
+const checkGoogleStart = process.env.MERCURY_SMOKE_GOOGLE_START === 'true';
 const child = spawn(chrome, [
   '--headless=new', '--no-first-run', '--no-default-browser-check',
   '--disable-extensions', '--disable-background-networking',
@@ -18,6 +19,8 @@ const child = spawn(chrome, [
   '--window-size=390,844', `${origin}/signin`,
 ], { windowsHide: true, stdio: 'ignore' });
 let ws;
+let googleAuthorize;
+let googleAccountsSeen = false;
 let nextId = 1;
 const pending = new Map();
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -54,6 +57,18 @@ try {
   ws = new WebSocket(target.webSocketDebuggerUrl);
   ws.addEventListener('message', event => {
     const message = JSON.parse(event.data);
+    if (message.method === 'Network.requestWillBeSent') {
+      try {
+        const requestUrl = new URL(message.params.request.url);
+        if (requestUrl.hostname.endsWith('.supabase.co') && requestUrl.pathname === '/auth/v1/authorize') {
+          googleAuthorize = {
+            provider: requestUrl.searchParams.get('provider'),
+            redirectTo: requestUrl.searchParams.get('redirect_to'),
+          };
+        }
+        if (requestUrl.hostname === 'accounts.google.com') googleAccountsSeen = true;
+      } catch { /* Ignore unrelated browser requests. */ }
+    }
     if (!message.id || !pending.has(message.id)) return;
     const task = pending.get(message.id);
     pending.delete(message.id);
@@ -62,6 +77,7 @@ try {
   });
   await until(() => ws.readyState === WebSocket.OPEN, 'DevTools connection');
   await send('Page.enable');
+  if (checkGoogleStart) await send('Network.enable');
   await send('Runtime.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
   await send('Page.navigate', { url: `${origin}/signin` });
@@ -89,6 +105,14 @@ try {
   const signInPrompt = await until(async () => evalInPage(`location.pathname === '/signin' && ({ url: location.href, heading: document.querySelector('h1,h2')?.textContent, returnTo: new URL(location.href).searchParams.get('return_to') })`), 'sign-in page after save attempt');
   if (!signInPrompt.returnTo?.includes('mumbai-flex-nov-2026')) throw new Error('Listing return path lost on sign-in page');
   console.log('Sign-in after save attempt:', JSON.stringify(signInPrompt));
+  if (checkGoogleStart) {
+    await evalInPage(`(() => { const button = [...document.querySelectorAll('button')].find(e => e.textContent.includes('Continue with Google')); if (!button) return false; button.click(); return true; })()`);
+    const authorize = await until(() => googleAuthorize, 'Supabase Google authorization request', 200);
+    assert.equal(authorize.provider, 'google');
+    assert.equal(authorize.redirectTo, `${origin}/auth/callback`);
+    await until(() => googleAccountsSeen, 'Google account chooser request', 200);
+    console.log('Google OAuth start:', JSON.stringify({ ...authorize, googleReached: true }));
+  }
 } finally {
   ws?.close();
   child.kill();

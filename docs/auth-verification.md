@@ -15,7 +15,11 @@ The current sign-in page offers Google, email code, and Continue as guest when `
 
 With the development server running and guest browsing enabled, run `node scripts/smoke-guest-browser.mjs`. It starts an isolated headless Chrome profile at a 390px viewport, checks all three sign-in choices, waits for Explore cards to load, tries to save a listing, and verifies that the original listing path reaches the sign-in page. Set `MERCURY_CHROME_PATH` if Chrome is not on the script's default path. Set `MERCURY_SMOKE_CAPTURE_DIR` to an output directory to save phone-width screenshots for review. It never uses the owner's browser profile or signs into an account.
 
+Set `MERCURY_SMOKE_GOOGLE_START=true` to additionally click Continue with Google in that isolated profile. The check asserts that Supabase receives `provider=google`, the requested return URI is exactly `http://localhost:3000/auth/callback`, and the browser requests Google's account page. It stops before selecting an account or granting consent and prints no OAuth state, code, or credentials.
+
 On 9 November 2026 this browser check passed locally, as did 89 automated tests, syntax checks, typecheck, lint with no errors, and the production build. The browser check covers the guest handoff but not a real provider round trip.
+
+The optional Google start check also passed locally on 9 November 2026. This proves the configured start and redirect request, not that the callback can exchange a real code or create a usable Mercury session.
 
 A separate signed-out HTTP check on the local staged-browse server returned 200 for Home, Explore, listing details, and the public events/listings APIs; 307 to sign-in for Account, My games, Host, and Admin; and 401 for organizer APIs and listing-save writes. The hosted preview currently has a Vercel access gate, while signed-out requests to the live domain still redirect to sign-in. Local results do not establish hosted guest availability.
 
