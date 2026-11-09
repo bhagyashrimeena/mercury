@@ -6,6 +6,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const origin = process.env.MERCURY_SMOKE_ORIGIN || 'http://localhost:3000';
+const width = Number(process.env.MERCURY_SMOKE_WIDTH || 390);
+const height = Number(process.env.MERCURY_SMOKE_HEIGHT || 844);
+if (!Number.isInteger(width) || width < 320 || width > 2560 || !Number.isInteger(height) || height < 500 || height > 2000)
+  throw new Error('Choose a viewport from 320–2560 pixels wide and 500–2000 pixels tall.');
 const chrome = process.env.MERCURY_CHROME_PATH || (process.platform === 'win32'
   ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
   : 'google-chrome');
@@ -16,7 +20,7 @@ const child = spawn(chrome, [
   '--headless=new', '--no-first-run', '--no-default-browser-check',
   '--disable-extensions', '--disable-background-networking',
   `--user-data-dir=${profile}`, '--remote-debugging-port=0',
-  '--window-size=390,844', `${origin}/signin`,
+  `--window-size=${width},${height}`, `${origin}/signin`,
 ], { windowsHide: true, stdio: 'ignore' });
 let ws;
 let googleAuthorize;
@@ -49,7 +53,7 @@ async function capture(name) {
   if (!captureDir) return;
   await mkdir(captureDir, { recursive: true });
   const { data } = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
-  await writeFile(join(captureDir, `${name}.png`), Buffer.from(data, 'base64'));
+  await writeFile(join(captureDir, `${name}-${width}.png`), Buffer.from(data, 'base64'));
 }
 try {
   const port = await until(async () => Number((await readFile(join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0]), 'Chrome DevTools port');
@@ -79,30 +83,33 @@ try {
   await send('Page.enable');
   if (checkGoogleStart) await send('Network.enable');
   await send('Runtime.enable');
-  await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width <= 760 });
   await send('Page.navigate', { url: `${origin}/signin` });
-  const signIn = await until(async () => evalInPage(`location.pathname === '/signin' && document.readyState === 'complete' && ({ url: location.href, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, buttons: [...document.querySelectorAll('button,a')].map(e => e.textContent.trim()).filter(Boolean) })`), 'sign-in page');
-  assert.equal(signIn.width, 390);
+  const signIn = await until(async () => evalInPage(`location.pathname === '/signin' && document.readyState === 'complete' && ({ url: location.href, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, guestBottom: [...document.querySelectorAll('a')].find(e => e.textContent.includes('Continue as guest'))?.getBoundingClientRect().bottom, buttons: [...document.querySelectorAll('button,a')].map(e => e.textContent.trim()).filter(Boolean) })`), 'sign-in page');
+  assert.equal(signIn.width, width);
   assert.ok(signIn.scrollWidth <= signIn.width, 'Sign-in has horizontal overflow');
   for (const option of ['Continue with Google', 'Continue with email', 'Continue as guest'])
     assert.ok(signIn.buttons.some(label => label.includes(option)), `${option} missing`);
+  if (width <= 420 && height >= 700) assert.ok(signIn.guestBottom <= height, 'Guest choice starts below the first narrow-phone screen');
   console.log('Sign-in:', JSON.stringify(signIn));
   await capture('sign-in-phone');
   const clicked = await evalInPage(`(() => { const link = [...document.querySelectorAll('a')].find(e => e.textContent.includes('Continue as guest')); if (!link) return false; link.click(); return true; })()`);
   if (!clicked) throw new Error('Continue as guest link missing');
-  const explore = await until(async () => evalInPage(`location.pathname === '/explore' && document.querySelectorAll('.directory-card').length > 0 && !document.body.innerText.includes('Getting your game ready') && ({ url: location.href, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, cards: document.querySelectorAll('.directory-card').length, buttons: [...document.querySelectorAll('button,a')].map(e => e.textContent.trim()).filter(Boolean).slice(0,35) })`), 'loaded guest Explore');
+  const explore = await until(async () => evalInPage(`location.pathname === '/explore' && document.querySelectorAll('.directory-card').length > 0 && !document.body.innerText.includes('Getting your game ready') && ({ url: location.href, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, cards: document.querySelectorAll('.directory-card').length })`), 'loaded guest Explore');
   assert.ok(explore.scrollWidth <= explore.width, 'Explore has horizontal overflow');
   console.log('Guest Explore:', JSON.stringify(explore));
   await capture('guest-explore-phone');
   await send('Page.navigate', { url: `${origin}/listing/mumbai-flex-nov-2026` });
-  await until(async () => evalInPage(`location.pathname.startsWith('/listing/') && !!document.querySelector('#save-listing')`), 'listing save button');
+  const listing = await until(async () => evalInPage(`location.pathname.startsWith('/listing/') && !!document.querySelector('#save-listing') && ({ width: innerWidth, scrollWidth: document.documentElement.scrollWidth })`), 'listing save button');
+  assert.ok(listing.scrollWidth <= listing.width, 'Listing has horizontal overflow');
   await evalInPage(`document.querySelector('#save-listing').click()`);
-  const prompt = await until(async () => evalInPage(`location.pathname === '/account' && [...document.querySelectorAll('a')].some(e => e.textContent.includes('Sign in to continue')) && ({ url: location.href, heading: document.querySelector('h1,h2')?.textContent, signInHref: [...document.querySelectorAll('a')].find(e => e.textContent.includes('Sign in to continue'))?.href })`), 'guest account prompt');
+  const prompt = await until(async () => evalInPage(`location.pathname === '/account' && [...document.querySelectorAll('a')].some(e => e.textContent.includes('Sign in to continue')) && ({ url: location.href, heading: document.querySelector('h1,h2')?.textContent, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, signInHref: [...document.querySelectorAll('a')].find(e => e.textContent.includes('Sign in to continue'))?.href })`), 'guest account prompt');
+  assert.ok(prompt.scrollWidth <= prompt.width, 'Guest account prompt has horizontal overflow');
   if (!prompt.signInHref?.includes('mumbai-flex-nov-2026')) throw new Error('Listing return path lost during account prompt');
   console.log('Guest account prompt:', JSON.stringify(prompt));
   await capture('guest-account-prompt-phone');
   await evalInPage(`[...document.querySelectorAll('a')].find(e => e.textContent.includes('Sign in to continue')).click()`);
-  const signInPrompt = await until(async () => evalInPage(`location.pathname === '/signin' && ({ url: location.href, heading: document.querySelector('h1,h2')?.textContent, returnTo: new URL(location.href).searchParams.get('return_to') })`), 'sign-in page after save attempt');
+  const signInPrompt = await until(async () => evalInPage(`location.pathname === '/signin' && document.querySelector('#signin-title') && ({ url: location.href, heading: document.querySelector('#signin-title')?.textContent, returnTo: new URL(location.href).searchParams.get('return_to') })`), 'sign-in page after save attempt');
   if (!signInPrompt.returnTo?.includes('mumbai-flex-nov-2026')) throw new Error('Listing return path lost on sign-in page');
   console.log('Sign-in after save attempt:', JSON.stringify(signInPrompt));
   if (checkGoogleStart) {

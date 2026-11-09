@@ -2714,6 +2714,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .signin-links a{text-decoration:underline;text-underline-offset:3px}
 .signin-error{border-left:4px solid #b33d29;background:#fff0e9;color:#703021!important;padding:14px 16px;font-size:13px;line-height:1.5}
 @media(max-width:760px){.signin-page{padding:0;place-items:stretch}.signin-layout{grid-template-columns:1fr;border:0;border-radius:0;box-shadow:none}.signin-intro{min-height:300px;padding:96px 26px 30px}.signin-brand{top:22px;left:26px}.signin-intro h1{font-size:42px;margin-bottom:12px}.signin-intro>p:last-child{font-size:13px;margin:0}.signin-intro::after{font-size:280px;right:-25px;bottom:-95px}.signin-panel{padding:32px 26px 44px;align-self:start}}
+@media(max-width:420px){.signin-intro{min-height:0;padding:72px 20px 18px;justify-content:flex-start}.signin-brand{top:16px;left:20px;font-size:21px}.signin-brand img{width:34px;height:34px}.signin-intro .eyebrow,.signin-intro>p:last-child{display:none}.signin-intro h1{font-size:30px;line-height:1.05;margin:0}.signin-intro::after{font-size:180px;right:-20px;bottom:-65px}.signin-panel{padding:22px 20px 36px}.signin-panel h2{font-size:28px;margin-bottom:6px}.signin-panel>p:not(.eyebrow){font-size:14px;line-height:1.4}.signin-panel form{margin:18px 0 10px}.signin-divider{margin:14px 0}.signin-panel .button{min-height:48px}.signin-panel .fine{margin-top:14px}}
 
 /* The organizer editor separates decisions and keeps the preview readable. */
 .editor-section{padding:24px 0;border-top:1px solid var(--border)}

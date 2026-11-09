@@ -38,7 +38,7 @@ npm run typecheck
 npm run build
 ```
 
-To check the guest sign-in handoff in an isolated 390px Chrome session, start the local server with `MERCURY_PUBLIC_BROWSE=true` and run `node scripts/smoke-guest-browser.mjs`. This checks the browser path without signing into Google or using an existing Chrome profile.
+To check the guest sign-in handoff in an isolated Chrome session, start the local server with `MERCURY_PUBLIC_BROWSE=true` and run `node scripts/smoke-guest-browser.mjs`. It defaults to a 390px viewport; `MERCURY_SMOKE_WIDTH` and `MERCURY_SMOKE_HEIGHT` can test other sizes. This checks the browser path without signing into Google or using an existing Chrome profile.
 
 For local signed-in development, configure the Supabase values in an ignored `.env.local`, set `MERCURY_SITE_ORIGIN=http://localhost:3000`, apply the PostgreSQL schema, add the exact `http://localhost:3000/auth/callback` to Supabase Auth redirect URLs, and run `npm run dev`. Keep the production Site URL unchanged. Use `localhost` consistently rather than switching to `127.0.0.1` midway through sign-in, because PKCE cookies belong to the initiating host. Do not commit secrets or production data.
 
