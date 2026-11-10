@@ -177,17 +177,19 @@ test('a completed or failed old confirmation cannot close or write into a newer 
   });
 });
 
-test('Explore keeps server-rendered listings visible while session loading is delayed', async () => {
+test('Explore keeps server-rendered listings visible while public inventory is still loading', async () => {
   await fixture(async ({ main, replies, route, session }) => {
-    const pending = Promise.withResolvers();
+    const pendingSession = Promise.withResolvers();
+    const pendingInventory = Promise.withResolvers();
     const serverView = '<div data-server-path="/explore"><h1>Find your next game</h1><article>Visible event</article></div>';
     main.innerHTML = serverView;
-    replies.set('/api/session', () => pending.promise);
-    replies.set('/api/listings', () => ({ listings: [] }));
+    replies.set('/api/session', () => pendingSession.promise);
+    replies.set('/api/listings', () => pendingInventory.promise);
     const navigation = route('/explore');
     await tick();
     assert.equal(main.innerHTML, serverView);
-    pending.resolve(session);
+    pendingInventory.resolve({ listings: [] });
+    pendingSession.resolve(session);
     await navigation;
   });
 });
