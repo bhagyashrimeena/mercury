@@ -101,11 +101,11 @@ export const listings = [
     "title": "Ninjas Championship Powered by Hudle",
     "sport": "Pickleball",
     "type": "Tournament",
-    "area": "Andheri / WTC",
+    "area": "Venue to confirm",
     "date": "2026-11-20",
     "endDate": "2026-11-22",
     "timeNote": "20 November, 4 pm to 22 November, 11 pm IST; confirm category schedule",
-    "venue": "Global Sports venues at Andheri Sports Complex and WTC; confirm your category's court with the organizer",
+    "venue": "Mumbai · exact venue requires confirmation with the organizer",
     "host": "Kick Off Net Ninjas",
     "eligibility": "Category and age requirements must be checked on Hudle.",
     "level": "Check categories",
@@ -117,7 +117,8 @@ export const listings = [
     "sourceName": "Hudle · organizer listing",
     "sourceUrl": "https://hudle.in/events/ninjas-championship/142692",
     "registrationUrl": "https://hudle.in/events/ninjas-championship/142692",
-    "registrationNote": "Choose a category on Hudle and confirm the entry unit and refund policy.",
+    "registrationNote": "Choose your category on Hudle; verify the current venue, entry unit and refund policy with the organizer before paying.",
+    "reviewNote": "The organizer page has shown differing venue details across recent checks (Andheri Sports Complex and Bandra). Mercury cannot confirm which is current. Verify the exact location with the organizer before travelling or paying.",
     "checkedOn": "2026-11-09"
   },
   {
