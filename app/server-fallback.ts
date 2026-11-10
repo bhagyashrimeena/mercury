@@ -64,6 +64,18 @@ export async function discoveryFallback(view: 'home' | 'explore') {
 }
 
 export function listingFallback(listing: Listing, visibility: 'visible' | 'hidden' | 'unavailable') {
+  const rich = listing as Listing & {
+    categories?: { name: string; fee: string; notes: string }[];
+    highlights?: string[];
+  };
+  const categories = Array.isArray(rich.categories) && rich.categories.length
+    ? '<section class="listing-categories"><h2>Choose your category</h2><div class="listing-category-grid">' +
+      rich.categories.map(category => '<article class="listing-category"><b>' + esc(category.name) +
+        '</b><strong>' + esc(category.fee) + '</strong><small>' + esc(category.notes) + '</small></article>').join('') +
+      '</div></section>' : '';
+  const highlights = Array.isArray(rich.highlights) && rich.highlights.length
+    ? '<section class="listing-highlights"><h2>Why take part?</h2><ul>' +
+      rich.highlights.map(item => '<li>' + esc(item) + '</li>').join('') + '</ul></section>' : '';
   const status = visibility === 'hidden' ? { code: 'withdrawn', label: 'Listing withdrawn' }
     : visibility === 'unavailable' ? { code: 'unavailable', label: 'Details temporarily unavailable' }
     : listingStatus(listing);
@@ -80,5 +92,5 @@ export function listingFallback(listing: Listing, visibility: 'visible' | 'hidde
       'Organizer-supplied image') + '</figcaption></figure>';
   const reviewMessage = 'reason' in status && status.reason
     ? `<p class="inline-notice">${esc(status.reason)}</p>` : '';
-  return `<article class="page-width prose"><p class="eyebrow blue">${esc(listing.sport)} · ${esc(listing.type)} · External listing</p><h1>${esc(listing.title)}</h1>${cover}<p class="listing-status ${esc(status.code)}">${esc(status.label)}</p>${reviewMessage}<p><b>Date:</b> <time datetime="${esc(listing.date)}">${esc(listingDate(listing))}</time> · Times in IST where published</p><p><b>Venue:</b> ${esc(listing.venue)}, ${esc(listing.area)}</p><p><b>Who can enter:</b> ${esc(listing.eligibility)}</p><p><b>Fee:</b> ${esc(listing.priceLabel)} · ${esc(listing.priceNote)}</p><p><b>Entry deadline:</b> ${esc(listing.deadlineLabel)}</p><p>${esc(listing.description)}</p><p>Source checked <time datetime="${esc(listing.checkedOn)}">${esc(listing.checkedOn)}</time>. Details may have changed. Mercury has not onboarded this organizer; only the organizer confirms entry.</p>${action}<p><a href="/support?category=Listing%20correction&amp;listing=${esc(listing.id)}">Suggest a correction</a></p></article>`;
+  return `<article class="page-width prose"><p class="eyebrow blue">${esc(listing.sport)} · ${esc(listing.type)} · External listing</p><h1>${esc(listing.title)}</h1>${cover}<p class="listing-status ${esc(status.code)}">${esc(status.label)}</p>${reviewMessage}<p><b>Date:</b> <time datetime="${esc(listing.date)}">${esc(listingDate(listing))}</time> · Times in IST where published</p><p><b>Venue:</b> ${esc(listing.venue)}, ${esc(listing.area)}</p><p><b>Who can enter:</b> ${esc(listing.eligibility)}</p><p><b>Fee:</b> ${esc(listing.priceLabel)} · ${esc(listing.priceNote)}</p><p><b>Entry deadline:</b> ${esc(listing.deadlineLabel)}</p><p>${esc(listing.description)}</p>${categories}${highlights}<p>Source checked <time datetime="${esc(listing.checkedOn)}">${esc(listing.checkedOn)}</time>. Details may have changed. Mercury has not onboarded this organizer; only the organizer confirms entry.</p>${action}<p><a href="/support?category=Listing%20correction&amp;listing=${esc(listing.id)}">Suggest a correction</a></p><p>Organizing this event? <a href="/list-event?claim=${esc(listing.id)}">Request to claim or update it</a>. Ownership is checked manually.</p></article>`;
 }

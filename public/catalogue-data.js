@@ -357,8 +357,21 @@ export const listings = [
     "deadlineLabel": "India Running city calendar lists 12 December; entry might close sooner",
     "sourceName": "India Running · Rotary Queen City registration listing",
     "sourceUrl": "https://www.indiarunning.com/events/rotaryqueencityhalfmarathon2026-38601",
-    "registrationUrl": "https://www.indiarunning.com/events/rotaryqueencityhalfmarathon2026-38601",
-    "registrationNote": "Register through India Running for the chosen distance. Race fees are non-refundable and non-transferable according to the published event rules.",
-    "checkedOn": "2026-11-10"
+    "registrationUrl": "https://registrations.indiarunning.com/rotaryqueencityhalfmarathon2026-38601",
+    "registrationNote": "This direct registration URL is linked from the India Running event listing. Choose your distance and confirm the checkout is currently accepting entries. Race fees are non-refundable and non-transferable according to the published rules.",
+    "checkedOn": "2026-11-11",
+    "categories": [
+      {"name":"2.5K Fun Run","fee":"₹700","notes":"Untimed · no minimum age stated"},
+      {"name":"5K Timed","fee":"₹900","notes":"Age 12+"},
+      {"name":"10K Timed","fee":"₹1,100","notes":"Age 18+"},
+      {"name":"21K Half Marathon","fee":"₹1,300","notes":"Age 18+"}
+    ],
+    "highlights": [
+      "Supports education, development and empowerment of children with disabilities",
+      "Event T-shirt, bib, finisher medal and e-certificate",
+      "Timing chips for timed race categories",
+      "Hydration stations and medical support on the route",
+      "Bib/kit collection before race day; bring a valid photo ID"
+    ]
   }
 ];

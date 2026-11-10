@@ -1,5 +1,6 @@
 import { renderAccount, renderSupport, renderAdmin, renderPolicy } from './service-ui.js';
 import { listingCard, renderListing } from './discovery.js';
+import { organizerLandingMarkup, eventSubmissionMarkup, howItWorksMarkup, mountEventSubmission } from './organizer-public.js';
 import { sportPhoto } from './sport-media.js';
 import { actionable, renderExplore } from './explore.js';
 import { findListing, listingDate } from './catalogue.js';
@@ -442,14 +443,14 @@ export async function liveRoute(path, context) {
     }
     const [, route, id] = path.split('/');
     const knownListingTitle = route === 'listing' && id ? findListing(id)?.title : null;
-    document.title = (knownListingTitle || { host: 'Organizer studio', roster: 'Attendee roster', account: 'Your account', admin: 'Owner desk', 'my-games': 'My games', booking: 'Your game pass', explore: 'Find a game', listing: 'Listing details', event: 'Game details', register: 'Book free place', privacy: 'Your privacy', terms: 'Terms', support: 'Help & contact', 'how-it-works': 'How Mercury works' }[route] || 'Your next game starts here') + ' — Mercury';
+    document.title = (knownListingTitle || { host: 'Organizer studio', roster: 'Attendee roster', account: 'Your account', admin: 'Owner desk', 'my-games': 'My games', booking: 'Your game pass', explore: 'Find a game', listing: 'Listing details', event: 'Game details', register: 'Book free place', privacy: 'Your privacy', terms: 'Terms', support: 'Help & contact', 'how-it-works': 'How Mercury works', 'for-organizers': 'For organizers', 'list-event': 'Submit a sports event' }[route] || 'Your next game starts here') + ' — Mercury';
     const sample = samples.some(e => e.id === id);
-    const handled = ['explore', 'listing', 'host', 'roster', 'account', 'my-games', 'privacy', 'terms', 'support', 'admin', 'how-it-works'].includes(route) || (['event', 'register'].includes(route) && !sample) || route === 'booking';
+    const handled = ['explore', 'listing', 'host', 'roster', 'account', 'my-games', 'privacy', 'terms', 'support', 'admin', 'how-it-works', 'for-organizers', 'list-event'].includes(route) || (['event', 'register'].includes(route) && !sample) || route === 'booking';
     // Demo passes are local and have a separate identity from durable game passes.
     if (!handled)
         return false;
-    const initialFallback = ['explore', 'listing', 'event'].includes(route)
-        && ctx.main.querySelector('[data-server-path]')?.getAttribute('data-server-path') === path
+    const initialFallback = ['explore', 'listing', 'event', 'how-it-works', 'for-organizers', 'list-event'].includes(route)
+        && ctx.main.querySelector('[data-server-path]')?.getAttribute?.('data-server-path') === path
         ? ctx.main.innerHTML : null;
     // Keep useful server-rendered public content visible while session/API data loads.
     // Never trade a real event card for an empty loading screen on first paint.
@@ -457,6 +458,9 @@ export async function liveRoute(path, context) {
         page('<section class="page-intro"><p class="eyebrow blue">MERCURY</p><h1>Getting your game ready.</h1><p role="status">Just a moment…</p></section>');
     try {
         if (route === 'privacy' || route === 'terms') { renderPolicy(path, ctx); return true; }
+        if (route === 'how-it-works') { ctx.main.innerHTML = howItWorksMarkup(); return true; }
+        if (route === 'for-organizers') { ctx.main.innerHTML = organizerLandingMarkup(); return true; }
+        if (route === 'list-event') { ctx.main.innerHTML = eventSubmissionMarkup(); mountEventSubmission(ctx.main); return true; }
         try {
             await loadSession();
         } catch (error) {

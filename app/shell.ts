@@ -5,7 +5,7 @@ export const shell = `
     <nav aria-label="Main navigation">
       <a href="/explore" data-nav="explore">Explore</a>
       <a href="/how-it-works" data-nav="how-it-works">How it works</a>
-      <a href="/host" data-nav="host">Host a game</a>
+      <a href="/for-organizers" data-nav="for-organizers">For organizers</a>
     </nav>
     <div class="header-actions">
       <button class="location" id="location-button" aria-label="Choose location"><span>⌖</span> Mumbai <span>⌄</span></button>
@@ -16,7 +16,7 @@ export const shell = `
     <a href="/" data-nav="home"><span aria-hidden="true">⌂</span>Home</a>
     <a href="/explore" data-nav="explore"><span aria-hidden="true">⌕</span>Explore</a>
     <a href="/my-games" data-nav="my-games"><span aria-hidden="true">♡</span>My games</a>
-    <a href="/host" data-nav="host"><span aria-hidden="true">⊕</span>Host</a>
+    <a href="/for-organizers" data-nav="for-organizers"><span aria-hidden="true">⊕</span>Organizers</a>
   </nav>
   <dialog id="action-sheet" aria-labelledby="sheet-title"></dialog>
   <main id="main" tabindex="-1">__SERVER_CONTENT__</main>

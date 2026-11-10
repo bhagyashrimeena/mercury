@@ -135,7 +135,7 @@ test('curated Mumbai race and chess sources retain exact fee units and sports ta
   assert.ok(added.every(Boolean));
   assert.equal(added.filter(e => e.type === 'Race' && e.sport === 'Running').length, 5);
   assert.equal(added.filter(e => e.type === 'Tournament' && e.sport === 'Chess').length, 1);
-  assert.ok(added.every(e => e.checkedOn === '2026-11-10'));
+  assert.ok(added.every(e => e.checkedOn >= '2026-11-10' && e.checkedOn <= '2026-11-11'));
   assert.ok(added.every(e => /\b(per|entry)\b/i.test(e.priceNote)));
   const idSet = new Set(added.map(e => e.id));
   assert.equal(idSet.size, added.length);
