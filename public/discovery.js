@@ -17,6 +17,9 @@ export async function renderListing(id, { main, api, session, go, toast, openShe
   const statusMessage = main.querySelector('.detail-layout article > .listing-status');
   const facts = main.querySelector('.detail-layout .event-facts');
   facts.before(statusMessage);
+  if (status.code === 'stale' && status.reason) {
+    statusMessage.insertAdjacentHTML('afterend', '<p class="inline-notice" role="status">' + esc(status.reason) + '</p>');
+  }
   if (status.code !== 'withdrawn') {
     const destination = e.sourceName.length > 22 ? new URL(e.registrationUrl).hostname.replace(/^www\./, '') : e.sourceName;
     const label = ['closed', 'ended', 'started', 'stale'].includes(status.code) ? 'Review organizer page' : 'Register on ' + esc(destination);

@@ -12,9 +12,10 @@
     "start": "next start",
     "db:migrate": "node scripts/migrate-postgres.mjs",
     "links:check": "node scripts/check-listing-links.mjs",
+    "catalogue:review": "node scripts/catalogue-review.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "test": "node --test tests/*.test.js",
-    "check": "node --check public/app.js && node --check public/domain.js && node --check public/live.js && node --check public/event-detail.js && node --check public/game-day.js && node --check public/my-games.js && node --check public/explore.js && node --check public/metrics.js && node --check server/api.js && node --check server/metrics.js && node --check public/catalogue.js && node --check public/discovery.js && node --check public/service-ui.js && node --check server/operations.js && node --check server/catalogue-validation.js && node --check scripts/import-listings.mjs && node --check scripts/check-listing-links.mjs && node --check server/backup.js && node --check scripts/restore-backup.mjs",
+    "check": "node --check public/app.js && node --check public/domain.js && node --check public/live.js && node --check public/event-detail.js && node --check public/game-day.js && node --check public/my-games.js && node --check public/explore.js && node --check public/metrics.js && node --check server/api.js && node --check server/metrics.js && node --check public/catalogue.js && node --check public/discovery.js && node --check public/service-ui.js && node --check server/operations.js && node --check server/catalogue-validation.js && node --check scripts/import-listings.mjs && node --check scripts/check-listing-links.mjs && node --check scripts/catalogue-review.mjs && node --check server/backup.js && node --check scripts/restore-backup.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

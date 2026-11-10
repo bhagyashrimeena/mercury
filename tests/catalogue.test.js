@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { listings, findListing, listingStatus, currentListings } from '../public/catalogue.js';
-import { filterLineup } from '../public/explore.js';
+import { filterLineup, rankForDiscovery } from '../public/explore.js';
+import { listingCard } from '../public/discovery.js';
 const at = s => Date.parse(s);
 test('catalogue has unique identities, dated primary provenance and HTTPS-only destinations', () => {
   assert.equal(new Set(listings.map(e => e.id)).size, listings.length);
@@ -68,4 +69,53 @@ test('import rejects invented dates, duplicate IDs, unsafe links and missing fee
   for(const patch of [{date:'2026-02-30'},{checkedOn:'9999-01-01'},{deadline:'2026-11-03T18:00:00'},{deadline:'2026-02-30T18:00:00+05:30'},{deadline:'2026-11-03T24:00:00+05:30'},{registrationUrl:'javascript:alert(1)'},{sourceUrl:'https://user:secret@example.com/'},{registrationUrl:'https://127.0.0.1/'},{priceNote:''}]) assert.equal(validateCatalogue([{...base,...patch}],reviewDay).valid,false,JSON.stringify(patch));
   assert.equal(validateCatalogue([base,base],reviewDay).valid,false);
   assert.equal(validateCatalogue([{...base,sport:'Cricket'}],reviewDay).valid,true);
+});
+
+test('upcoming Browse remains populated after source freshness expires without implying an open entry', () => {
+  const now = at('2026-11-17T05:00:00Z');
+  const base = {
+    title: 'Community tournament', sport: 'Tennis', type: 'Tournament',
+    area: 'Powai', venue: 'Practice court', host: 'Local organizer',
+    date: '2026-12-10', endDate: '2026-12-10', checkedOn: '2026-11-09', deadline: null
+  };
+  const stale = { ...base, id: 'stale', external: true };
+  const closed = { ...base, id: 'closed', external: true, availability: { code: 'closed', label: 'Entry closed' } };
+  const native = {
+    ...base, id: 'free', external: false, type: 'Social play', status: 'published',
+    startsAt: at('2026-12-10T05:00:00Z'), spots: 3
+  };
+  const items = [closed, stale, native];
+  assert.equal(listingStatus(stale, now).code, 'stale');
+  const upcoming = filterLineup(items, { availability: 'All upcoming' }, now);
+  assert.deepEqual(upcoming.map(event => event.id), ['closed', 'stale', 'free']);
+  assert.deepEqual(rankForDiscovery(upcoming, { availability: 'All upcoming' }, now).map(event => event.id),
+    ['free', 'stale', 'closed']);
+  assert.deepEqual(filterLineup(items, { availability: 'Entry possible' }, now).map(event => event.id),
+    ['free']);
+  assert.deepEqual(filterLineup(items, { availability: 'Needs source check' }, now).map(event => event.id),
+    ['stale']);
+});
+test('source freshness never creates fake confirmed availability for external organizer listings', () => {
+  const e = { ...findListing('mumbai-pickleball-cup-s3'), availability: { code: 'stale', label: 'Recheck details with organizer' } };
+  const markup = listingCard(e);
+  // A stale card remains discoverable but cannot claim a direct active-registration handoff.
+  assert.match(markup, /View entry details/);
+  assert.match(markup, /Recheck details with organizer/);
+  assert.doesNotMatch(markup, /data-outbound=/);
+  assert.match(markup, /href="\/listing\/mumbai-pickleball-cup-s3"/);
+});
+
+test('venue conflicts remain discoverable but require organizer verification before entry', () => {
+  const e = findListing('ninjas-championship-2026');
+  const now = at('2026-11-10T05:00:00Z');
+  assert.ok(e.reviewNote.includes('Andheri'));
+  assert.equal(e.area, 'Venue to confirm');
+  const status = listingStatus(e, now);
+  assert.equal(status.code, 'stale');
+  assert.match(status.reason, /confirm.*location/i);
+  const item = { ...e, external: true, availability: status };
+  assert.equal(filterLineup([item], { availability: 'Entry possible' }, now).length, 0);
+  assert.equal(filterLineup([item], { availability: 'All upcoming' }, now).length, 1);
+  assert.doesNotMatch(listingCard(item), /data-outbound=/);
+  assert.equal(listingStatus(e, at('2026-11-23T18:30:00Z')).code, 'ended');
 });

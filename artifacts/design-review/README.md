@@ -2,6 +2,10 @@
 
 Captured from a local production build at `http://localhost:3002` with `MERCURY_PUBLIC_BROWSE=true` and the private-pilot launch flag unchanged. The capture script uses repository catalogue data and explicitly synthetic native events/accounts when the local database is unavailable. These images show UI states, not proof of live registration or Google sign-in.
 
+## Explore Playboard review
+
+The compact Explore redesign was captured at [1440 px desktop](explore-playboard-desktop.png) and [390 px phone](explore-playboard-phone.png). The local catalogue fixture showed nine organizer listings. Both captures were taken from the production build, with no horizontal overflow. Browser checks at 320, 390, 768, and 1440 px covered sport, date, area, search, reset, advanced filters, a native free booking route, URL history, keyboard use, and organizer handoff tracking. The accessibility scan found no definite violations; 40 checks remained inconclusive and still need human review.
+
 ## Iteration 1: discovery and sign-in
 
 Changed code: `public/app.js`, `public/discovery.js`, `public/assets/mercury-motion.svg`, `app/signin/page.tsx`, `app/auth/callback/route.ts`, `app/[[...path]]/page.tsx`, `app/server-fallback.ts`, `app/layout.tsx`, `app/shell.ts`, `lib/site-config.ts`, `proxy.ts`, `tests/site-config.test.js`, and shared `public/styles.css`. The staged browse flag allows signed-out discovery in a review environment while the public launch flag remains false.

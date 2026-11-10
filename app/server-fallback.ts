@@ -22,10 +22,42 @@ function discoveryCard(listing: Listing) {
   return `<article class="manage-card"><p class="eyebrow blue">${esc(listing.sport)} · ${esc(listing.type)}</p><h3><a href="/listing/${esc(listing.id)}">${esc(listing.title)}</a></h3><p><time datetime="${esc(listing.date)}">${esc(listingDate(listing))}</time> · ${esc(listing.area)}, Mumbai</p><p>${esc(listing.eligibility)}</p><p><b>${esc(listing.priceLabel)}</b> · ${esc(listing.priceNote)}</p><p class="listing-status ${esc(status.code)}">${esc(status.label)}</p><a class="text-link" href="/listing/${esc(listing.id)}">View entry details ↗</a></article>`;
 }
 
+function compactDiscoveryCard(listing: Listing) {
+  const status = listingStatus(listing);
+  const sportClass = listing.sport.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const href = '/listing/' + esc(listing.id);
+  return '<article class="event-card directory-card">' +
+    '<a class="listing-art ' + sportClass + '" href="' + href + '" aria-label="View ' + esc(listing.title) + ' details">' +
+    '<span>' + esc(listing.sport) + ' · ' + esc(listing.type) + '</span>' +
+    '<span class="listing-art-symbol" aria-hidden="true">◎</span></a>' +
+    '<div class="card-content"><a class="card-main" href="' + href + '">' +
+    '<p class="card-date"><time datetime="' + esc(listing.date) + '">' + esc(listingDate(listing)) + '</time></p>' +
+    '<h3>' + esc(listing.title) + '</h3><p class="muted">⌖ ' + esc(listing.area) + '</p></a>' +
+    '<div class="card-price"><b>' + esc(listing.priceLabel) + '</b></div>' +
+    '<p class="listing-status ' + esc(status.code) + '">' + esc(status.label) + '</p>' +
+    '<a class="card-outbound" href="' + href + '">View details ↗</a></div></article>';
+}
+
 export async function discoveryFallback(view: 'home' | 'explore') {
   const visible = await visibleListings();
   const current = visible.filter(listing => entryPossible(listingStatus(listing).code));
   const display = view === 'home' ? current.slice(0, 3) : current;
+  if (view === 'explore') {
+    return '<section class="page-width explore-page">' +
+      '<header class="explore-intro"><p class="eyebrow blue">MUMBAI, IN PLAY ↗</p>' +
+      '<h1>Find your next <em>game.</em></h1>' +
+      '<p>Tournaments, leagues and sessions. Less looking, more playing.</p></header>' +
+      '<div class="results-heading"><div><h2>On the calendar<span class="results-spark" aria-hidden="true">✳</span></h2>' +
+      '<p>' + display.length + ' opportunities · Soonest first</p></div></div>' +
+      '<div class="event-grid">' +
+      (display.length
+        ? display.map(compactDiscoveryCard).join('')
+        : '<div class="empty explore-empty"><h3>Entry-ready games are being checked.</h3>' +
+          '<p>Explore all upcoming events or return when organizers have confirmed details.</p>' +
+          '<a class="button outline" href="/explore?availability=All%20upcoming">See all upcoming ↗</a></div>') +
+      '</div><p class="fine explore-fine">Organizer listings are source-backed, not live inventory. Confirm final fees and eligibility before entering.</p>' +
+      '<noscript><p class="fine">Listing details remain available without JavaScript. Interactive search and filters require JavaScript.</p></noscript></section>';
+  }
   return `<section class="page-width"><div class="page-intro"><p class="eyebrow blue">MUMBAI, IN PLAY</p><h1>${view === 'home' ? 'Find your next game in Mumbai.' : 'Explore upcoming games in Mumbai.'}</h1><p>Compare dates, area, eligibility, fee units and entry status. External events are registered with their organizers; selected free sessions can be booked on Mercury.</p></div><div class="manage-grid">${display.length ? display.map(discoveryCard).join('') : '<p>Upcoming games could not be loaded. Please try again shortly.</p>'}</div><a class="button primary" href="/explore">Explore games ↗</a><noscript><p>You can open listing details and organizer links without JavaScript.</p></noscript></section>`;
 }
 
@@ -39,5 +71,7 @@ export function listingFallback(listing: Listing, visibility: 'visible' | 'hidde
     ? `<a class="button primary" href="${esc(listing.registrationUrl)}" target="_blank" rel="noopener noreferrer">Continue to ${esc(listing.sourceName)} to register ↗</a>`
     : visibility === 'hidden' ? ''
     : `<a class="button outline" href="${esc(listing.sourceUrl)}" target="_blank" rel="noopener noreferrer">Review organizer source ↗</a>`;
-  return `<article class="page-width prose"><p class="eyebrow blue">${esc(listing.sport)} · ${esc(listing.type)} · External listing</p><h1>${esc(listing.title)}</h1><p class="listing-status ${esc(status.code)}">${esc(status.label)}</p><p><b>Date:</b> <time datetime="${esc(listing.date)}">${esc(listingDate(listing))}</time> · Times in IST where published</p><p><b>Venue:</b> ${esc(listing.venue)}, ${esc(listing.area)}</p><p><b>Who can enter:</b> ${esc(listing.eligibility)}</p><p><b>Fee:</b> ${esc(listing.priceLabel)} · ${esc(listing.priceNote)}</p><p><b>Entry deadline:</b> ${esc(listing.deadlineLabel)}</p><p>${esc(listing.description)}</p><p>Source checked <time datetime="${esc(listing.checkedOn)}">${esc(listing.checkedOn)}</time>. Details may have changed. Mercury has not onboarded this organizer; only the organizer confirms entry.</p>${action}<p><a href="/support?category=Listing%20correction&amp;listing=${esc(listing.id)}">Suggest a correction</a></p></article>`;
+  const reviewMessage = 'reason' in status && status.reason
+    ? `<p class="inline-notice">${esc(status.reason)}</p>` : '';
+  return `<article class="page-width prose"><p class="eyebrow blue">${esc(listing.sport)} · ${esc(listing.type)} · External listing</p><h1>${esc(listing.title)}</h1><p class="listing-status ${esc(status.code)}">${esc(status.label)}</p>${reviewMessage}<p><b>Date:</b> <time datetime="${esc(listing.date)}">${esc(listingDate(listing))}</time> · Times in IST where published</p><p><b>Venue:</b> ${esc(listing.venue)}, ${esc(listing.area)}</p><p><b>Who can enter:</b> ${esc(listing.eligibility)}</p><p><b>Fee:</b> ${esc(listing.priceLabel)} · ${esc(listing.priceNote)}</p><p><b>Entry deadline:</b> ${esc(listing.deadlineLabel)}</p><p>${esc(listing.description)}</p><p>Source checked <time datetime="${esc(listing.checkedOn)}">${esc(listing.checkedOn)}</time>. Details may have changed. Mercury has not onboarded this organizer; only the organizer confirms entry.</p>${action}<p><a href="/support?category=Listing%20correction&amp;listing=${esc(listing.id)}">Suggest a correction</a></p></article>`;
 }
