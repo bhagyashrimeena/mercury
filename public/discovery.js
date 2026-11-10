@@ -42,12 +42,8 @@ export function listingCard(e) {
     '<span class="photo-cta">View event <span aria-hidden="true">↗</span></span></div>' +
     '</div></a></article>';
 }
-export async function renderListing(id, { main, api, session, go, toast, openSheet }) {
-  const { listing: e } = await api('listings/' + id);
-  trackMetric('external_detail_view');
-  const status = e.availability;
+export function listingHero(e) {
   const media = sportPhoto(e);
-  const statusText = status.code === 'check' ? 'Entry availability is not live' : status.label;
   const heroSport = String(e.sport || 'sport').toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const imageDisclosure = media.source === 'stock'
     ? 'Illustrative photo — not this event. <a href="' + esc(media.page) + '" target="_blank" rel="noopener noreferrer">' + esc(media.credit) + '</a>'
@@ -67,6 +63,15 @@ export async function renderListing(id, { main, api, session, go, toast, openShe
     '<path d="M -80 310 C 180 -90 440 -20 570 170 S 970 470 1180 90" fill="none" stroke="#10131A" stroke-width="2" stroke-dasharray="12 18"/>',
     '</svg></section>'
   ].join('');
+  return stage;
+}
+
+export async function renderListing(id, { main, api, session, go, toast, openSheet }) {
+  const { listing: e } = await api('listings/' + id);
+  trackMetric('external_detail_view');
+  const status = e.availability;
+  const statusText = status.code === 'check' ? 'Entry availability is not live' : status.label;
+  const stage = listingHero(e);
   const categoryMarkup = Array.isArray(e.categories) && e.categories.length
     ? '<section class="listing-categories" aria-labelledby="listing-categories-heading"><h2 id="listing-categories-heading">Choose your category</h2><div class="listing-category-grid">' +
       e.categories.map(item => '<article class="listing-category"><b>' + esc(item.name) + '</b><strong>' + esc(item.fee) + '</strong><small>' + esc(item.notes) + '</small></article>').join('') + '</div></section>' : '';
