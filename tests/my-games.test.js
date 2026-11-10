@@ -145,7 +145,7 @@ test('late optional failures cannot overwrite a newer Mercury route', async () =
     await tick();
     await route('/how-it-works');
     const newerPage = main.innerHTML;
-    assert.match(newerPage, /Discover your next game/);
+    assert.match(newerPage, /Find your kind of event/);
     response.reject(Error('Late service failure'));
     await pending;
     await tick();
