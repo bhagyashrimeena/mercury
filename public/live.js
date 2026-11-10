@@ -8,6 +8,7 @@ import { eventState, eventDetailMarkup } from './event-detail.js';
 import { trackMetric } from './metrics.js';
 import { bookingPassMarkup, bindPassActions, passState } from './game-day.js';
 import { savedGamesLoader } from './my-games.js';
+import { mountOrganizerJourney, mountRosterSearch } from './organizer-journey.js';
 let ctx, session, turn = 0;
 const policy = 'Cancel your free place from My games any time before the event starts. If the organizer cancels, your registration is cancelled automatically. No payment is collected.';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -238,6 +239,46 @@ const hostState = event => event.status === 'cancelled' ? 'cancelled'
     : Number(event.startsAt) <= Date.now() ? 'past'
     : Number(event.registered) >= Number(event.capacity) ? 'full'
     : 'published';
+
+function organizerCard(event) {
+    const id = esc(event.id);
+    const state = hostState(event);
+    const published = event.status === 'published';
+    const draft = event.status === 'draft';
+    const future = Number(event.startsAt) > Date.now();
+    const free = Number(event.price) === 0;
+    const primary = draft && free && future
+        ? '<button type="button" class="button primary" data-event-action="publish" data-id="' + id + '">Publish free game ↗</button>'
+        : published
+            ? '<a class="button primary" href="/roster/' + id + '">Manage players ↗</a>'
+            : draft
+                ? '<a class="button primary" href="/host/' + id + '">Continue editing ↗</a>'
+                : '<a class="button outline" href="/roster/' + id + '">View roster ↗</a>';
+    const share = published
+        ? '<button type="button" class="text-link" data-copy-event="' + id + '">Copy game link ↗</button>' +
+            '<a class="text-link" href="/event/' + id + '">View player page ↗</a>'
+        : '';
+    const manage = event.status === 'cancelled' ? '' :
+        '<details class="organizer-manage-more"><summary>More actions</summary><div class="organizer-secondary-actions">' +
+        '<a class="text-link" href="/host/' + id + '">' + (published ? 'View or edit details' : 'Edit draft') + '</a>' +
+        (published && !Number(event.registered)
+            ? '<button type="button" class="text-link" data-event-action="unpublish" data-id="' + id + '">Return to draft</button>' : '') +
+        '<button type="button" class="text-link danger" data-event-action="cancel" data-id="' + id + '">Cancel event</button>' +
+        '</div></details>';
+    const hint = draft && !free ? 'Paid publishing is not enabled. Your draft remains private.'
+        : draft && !future ? 'Choose a future date before publishing.'
+        : published ? 'Share the game link with players who can access Mercury.' : '';
+    return '<article class="manage-card organizer-event-card">' + stamp(state) +
+        '<h3>' + esc(event.title) + '</h3>' +
+        '<p class="organizer-event-meta">' + esc(dateLabel(event)) + ' · ' + esc(timeLabel(event)) + ' IST</p>' +
+        '<p class="organizer-event-meta">' + esc(event.registered) + ' / ' + esc(event.capacity) +
+        ' players · ' + (free ? 'Free' : '₹' + esc(event.price) + ' per player') + '</p>' +
+        (hint ? '<p class="organizer-event-hint">' + esc(hint) + '</p>' : '') +
+        '<div class="organizer-primary-action">' + primary + '</div>' +
+        (share ? '<div class="organizer-share-actions">' + share + '</div>' : '') + manage +
+        '</article>';
+}
+
 async function host(editId) {
     if (!requireUser())
         return;
@@ -247,10 +288,14 @@ async function host(editId) {
         throw Error('This draft is not available in your organizer account.');
     const org = session.organizer;
     const d = edit?.draft || { sport: 'Badminton', area: 'Powai', level: 'All levels', format: 'Social play', capacity: 12, price: 0, cancellation: policy };
-    page(heading('FOR THE GAME-MAKERS', 'Bring people<br>into <em>play.</em>', 'Your organizer studio. Draft a session, publish it, welcome your players.') + notice('Private pilot · Publish free events now. Paid events can be saved as drafts, but paid registration is not enabled.') + `<div class="studio-layout"><section><details class="profile-details" ${org ? '' : 'open'}><summary>${org ? 'Organizer profile · ' + esc(org.name) : '01 / Set up your organizer profile'}</summary><form class="form-card" id="organizer-profile">${input('name', 'Club or organizer name', org?.name || '', 'minlength="3" maxlength="80" required')}${textarea('bio', 'About your community', org?.bio || '', 0, 500)}${input('contact', 'Public contact email (optional)', org?.contact || '', 'type="email" maxlength="150"')}<p class="fine">Your name, bio and contact email appear on your events. Your account email stays private.</p>${err}<button class="button primary" type="submit">Save organizer profile ↗</button></form></details>${org ? `<form class="form-card" id="event-form"><div class="section-heading"><h2>${edit ? 'Edit your event' : 'Create your next game'}</h2>${edit ? '<a class="text-link" href="/host">New event ↗</a>' : ''}</div>${edit && edit.registered ? notice('Players have registered. Event details are locked to protect their confirmed plans. If the time or venue changes, cancel the event and contact players directly; Mercury updates are in-app only.') : ''}<fieldset ${edit && (edit.registered || edit.status === 'cancelled') ? 'disabled' : ''}><section class="editor-section"><h3>1. Basics</h3><div class="form-grid">${input('title', 'Event name', d.title || '', 'required minlength="4" maxlength="100"')}${select('sport', 'Sport', ['Badminton', 'Tennis', 'Pickleball'], d.sport)}${select('format', 'Format', ['Social play', 'Tournament'], d.format)}</div></section><section class="editor-section"><h3>2. Time and place</h3><div class="form-grid">${select('area', 'Neighbourhood', ['Powai', 'Chandivali', 'Andheri'], d.area)}${input('date', 'Date', d.date || '', `type="date" min="${indiaDate()}" required`)}${input('time', 'Start time (IST)', d.time || '', 'type="time" required')}</div>${input('venue', 'Venue name and full address', d.venue || '', 'minlength="4" maxlength="150" required')}<p class="fine">Confirm the venue, address and court permission before publishing.</p></section><section class="editor-section"><h3>3. Eligibility and capacity</h3><div class="form-grid">${select('level', 'Playing level', ['All levels', 'Beginner friendly', 'Intermediate'], d.level)}${input('capacity', 'Player capacity', d.capacity, 'type="number" min="2" max="500" required')}${input('price', 'Price per player (₹)', d.price, 'type="number" min="0" max="100000" required')}</div><p class="fine">Players must be 18 or older to book on Mercury. Paid events remain drafts until payment is enabled.</p></section><section class="editor-section"><h3>4. Player instructions</h3>${textarea('description', 'What will the session be like? Include any eligibility rules.', d.description || '', 20, 1500)}${textarea('included', 'What’s included (one item per line)', d.included || '', 5, 500)}${textarea('bring', 'What should players bring?', d.bring || '', 3, 300)}${textarea('cancellation', 'Cancellation and organizer notes', d.cancellation || policy, 15, 1000)}</section><section class="editor-section editor-review"><h3>5. Review and publish</h3><p class="fine">Sessions last 90 minutes. Free places can be cancelled before start time. Preview the public page, then save a draft. Publishing happens from Your events.</p><label class="checkbox"><input type="checkbox" required><span>I have checked the event details and can host this session.</span></label>${err}<div class="action-row"><button class="button primary" type="submit">Save ${edit ? 'changes' : 'draft'} ↗</button><button class="button outline" type="button" id="preview-event">Preview public page</button></div><p class="fine">A saved draft stays private until you publish it.</p></section></fieldset></form>` : notice('Save your organizer profile to create your first event.')}</section><aside><h2>Your events</h2><div class="host-event-list">${events.map(e => `<article class="manage-card">${stamp(hostState(e))}<h3>${esc(e.title)}</h3><p>${dateLabel(e)} · ${timeLabel(e)} IST</p><p>${e.registered} / ${e.capacity} players · ${e.price ? '₹' + e.price : 'Free'}</p><div class="action-row">${e.status !== 'cancelled' ? btn('Edit', '/host/' + e.id, 'outline') : ''}${e.status === 'published' ? btn('View', '/event/' + e.id, 'outline') : ''}${btn('Roster', '/roster/' + e.id, 'outline')}${e.status === 'draft' ? `<button class="button primary" data-event-action="publish" data-id="${e.id}" ${e.price || Number(e.startsAt) <= Date.now() ? 'disabled' : ''}>${e.price ? 'Paid publishing unavailable' : Number(e.startsAt) <= Date.now() ? 'Choose a future date to publish' : 'Publish free game ↗'}</button>` : ''}${e.status === 'published' && !e.registered ? `<button class="text-link" data-event-action="unpublish" data-id="${e.id}">Return to draft</button>` : ''}${e.status !== 'cancelled' ? `<button class="text-link danger" data-event-action="cancel" data-id="${e.id}">Cancel event</button>` : ''}</div></article>`).join('') || '<p class="muted">Your first game belongs here.</p>'}</div><p class="fine">Only your account can manage these events and their attendees.</p></aside></div>`);
+    page(heading('FOR THE GAME-MAKERS', 'Bring people<br>into <em>play.</em>', 'Your organizer studio. Draft a session, publish it, welcome your players.') + notice('Private pilot · Publish free events now. Paid events can be saved as drafts, but paid registration is not enabled.') + `<div class="studio-layout"><section><details class="profile-details" ${org ? '' : 'open'}><summary>${org ? 'Organizer profile · ' + esc(org.name) : '01 / Set up your organizer profile'}</summary><form class="form-card" id="organizer-profile">${input('name', 'Club or organizer name', org?.name || '', 'minlength="3" maxlength="80" required')}${textarea('bio', 'About your community', org?.bio || '', 0, 500)}${input('contact', 'Public contact email (optional)', org?.contact || '', 'type="email" maxlength="150"')}<p class="fine">Your name, bio and contact email appear on your events. Your account email stays private.</p>${err}<button class="button primary" type="submit">Save organizer profile ↗</button></form></details>${org ? `<form class="form-card" id="event-form"><div class="section-heading"><h2>${edit ? 'Edit your event' : 'Create your next game'}</h2>${edit ? '<a class="text-link" href="/host">New event ↗</a>' : ''}</div>${edit && edit.registered ? notice('Players have registered. Event details are locked to protect their confirmed plans. If the time or venue changes, cancel the event and contact players directly; Mercury updates are in-app only.') : ''}<fieldset ${edit && (edit.registered || edit.status === 'cancelled') ? 'disabled' : ''}><section class="editor-section"><h3>1. Basics</h3><div class="form-grid">${input('title', 'Event name', d.title || '', 'required minlength="4" maxlength="100"')}${select('sport', 'Sport', ['Badminton', 'Tennis', 'Pickleball'], d.sport)}${select('format', 'Format', ['Social play', 'Tournament'], d.format)}</div></section><section class="editor-section"><h3>2. Time and place</h3><div class="form-grid">${select('area', 'Neighbourhood', ['Powai', 'Chandivali', 'Andheri', 'Bandra', 'BKC', 'Borivali', 'Malad', 'Ghatkopar', 'Vile Parle', 'South Mumbai', 'Nerul, Navi Mumbai', 'Thane'], d.area)}${input('date', 'Date', d.date || '', `type="date" min="${indiaDate()}" required`)}${input('time', 'Start time (IST)', d.time || '', 'type="time" required')}</div>${input('venue', 'Venue name and full address', d.venue || '', 'minlength="4" maxlength="150" required')}<p class="fine">Confirm the venue, address and court permission before publishing.</p></section><section class="editor-section"><h3>3. Eligibility and capacity</h3><div class="form-grid">${select('level', 'Playing level', ['All levels', 'Beginner friendly', 'Intermediate', 'Advanced', 'Competitive'], d.level)}${input('capacity', 'Player capacity', d.capacity, 'type="number" min="2" max="500" required')}${input('price', 'Price per player (₹) · ₹0 to publish', d.price, 'type="number" min="0" max="100000" required')}</div><p class="fine">Players must be 18 or older to book on Mercury. Paid events remain drafts until payment is enabled.</p></section><section class="editor-section"><h3>4. Player instructions</h3>${textarea('description', 'What will the session be like? Include any eligibility rules.', d.description || '', 20, 1500)}${textarea('included', 'What’s included (one item per line)', d.included || '', 5, 500)}${textarea('bring', 'What should players bring?', d.bring || '', 3, 300)}${textarea('cancellation', 'Cancellation and organizer notes', d.cancellation || policy, 15, 1000)}</section><section class="editor-section editor-review"><h3>5. Review and publish</h3><p class="fine">Sessions last 90 minutes. Free places can be cancelled before start time. Preview the public page, then save a draft. Publishing happens from Your events.</p><label class="checkbox"><input type="checkbox"><span>I have checked the event details and can host this session.</span></label>${err}<div class="action-row"><button class="button primary" type="submit">Save ${edit ? 'changes' : 'draft'} ↗</button><button class="button outline" type="button" id="preview-event">Preview public page</button></div><p class="fine">A saved draft stays private until you publish it.</p></section></fieldset></form>` : notice('Save your organizer profile to create your first event.')}</section><aside><h2>Your events</h2><div class="host-event-list">${events.map(organizerCard).join('') || '<p class="muted">Your first game belongs here.</p>'}</div><p class="fine">Only your account can manage these events and their attendees.</p></aside></div>`);
     formSubmit('#organizer-profile', async (data) => { await api('organizer/profile', data); await loadSession(); ctx.toast('Organizer profile saved.'); await host(editId); });
     if (org) {
         const eventForm = document.querySelector('#event-form');
+        const journey = mountOrganizerJourney(eventForm, {
+            editId: edit?.id || null, revision: edit?.revision ?? null,
+            locked: Boolean(edit && (edit.registered || edit.status === 'cancelled'))
+        });
         eventForm.querySelector('#preview-event').onclick = () => {
             const raw = Object.fromEntries(new FormData(eventForm));
             const reviewed = eventForm.querySelector('input[type="checkbox"]').checked;
@@ -277,17 +322,83 @@ async function host(editId) {
                     if (field) field.value = value;
                 }
                 restored.querySelector('input[type="checkbox"]').checked = reviewed;
+                restored.__mercuryWizard?.goTo(2);
                 restored.scrollIntoView({ block: 'start' });
             };
             window.scrollTo(0, 0);
         };
         formSubmit('#event-form', async (data) => { const checked = validateDraft(data); if (!checked.valid)
-            throw Object.assign(Error('Check the highlighted event details.'), { fields: checked.errors }); await api('organizer/events' + (edit ? '/' + edit.id : ''), { ...checked.value, revision: edit?.revision }, edit ? 'PATCH' : 'POST'); ctx.toast('Draft saved to your account.'); ctx.go('/host'); });
+            throw Object.assign(Error('Check the highlighted event details.'), { fields: checked.errors }); await api('organizer/events' + (edit ? '/' + edit.id : ''), { ...checked.value, revision: edit?.revision }, edit ? 'PATCH' : 'POST'); journey.clear(); ctx.toast('Draft saved to your account.'); ctx.go('/host'); });
     }
+    action('[data-copy-event]', async b => {
+        const url = location.origin + '/event/' + encodeURIComponent(b.dataset.copyEvent);
+        try {
+            if (!navigator.clipboard?.writeText) throw Error('Clipboard unavailable');
+            await navigator.clipboard.writeText(url);
+            ctx.toast('Game link copied.');
+        } catch {
+            ctx.openSheet('Share your game', '<label class="share-label">Game link<input readonly value="' + esc(url) +
+                '" onclick="this.select()"></label><p class="fine">If access is restricted to the private pilot, only approved accounts can open this link.</p>');
+        }
+    });
     action('[data-event-action]', async (b) => { const act = b.dataset.eventAction; const title = act === 'publish' ? 'Publish this game?' : act === 'cancel' ? 'Cancel this event?' : 'Return to draft?'; const body = act === 'publish' ? 'People with access to Mercury will be able to reserve a free place. Confirm your venue is ready.' : act === 'cancel' ? 'All active registrations will be cancelled. Players will see an update in My games. This cannot be undone.' : 'This event will no longer appear in discovery.'; confirmAction(title, body, act === 'publish' ? 'Publish game' : act === 'cancel' ? 'Cancel event' : 'Return to draft', async () => { await api('organizer/events/' + b.dataset.id + '/' + act, {}); await host(); ctx.toast(act === 'publish' ? 'Your game is published.' : 'Event updated.'); }); });
 }
-async function roster(id) { if (!requireUser())
-    return; const { event: e, attendees } = await api('organizer/events/' + id + '/attendees'); page(`<a class="back" href="/host">← Organizer studio</a>${heading('WELCOME YOUR PLAYERS', esc(e.title), 'Check attendance against the player name and pass reference.')}<div class="roster-summary">${stamp(e.status)}<b>${attendees.filter(b => b.status === 'checked_in').length} checked in</b><span>${e.registered} active registrations / ${e.capacity} places</span><button class="button outline" id="refresh-roster">Refresh roster ↻</button><button class="button outline" id="export-roster">Download CSV ↓</button></div><div class="roster-list">${attendees.map(b => `<article class="roster-row"><div><h3>${esc(b.player_name)}</h3><p>${esc(b.level)} · <code>${esc(b.id)}</code></p></div><div class="action-row">${stamp(b.status)}${b.status === 'confirmed' && e.status === 'published' ? `<button class="button primary" data-check-in="${b.id}">Check in ✓</button>` : ''}</div></article>`).join('') || empty('Your crew is on its way.', 'Registrations will appear here as players join.')}</div><p class="fine">This roster contains personal information. Keep exports private and use them only to run this session.</p>`); action('[data-check-in]', async (b) => { await api('organizer/events/' + id + '/check-in', { bookingId: b.dataset.checkIn }); await roster(id); ctx.toast('Player checked in.'); }); action('#refresh-roster', () => roster(id)); action('#export-roster', async () => { const cell = v => '"' + String(v ?? '').replace(/^[=+@-]/, "'$&").replaceAll('"', '""') + '"'; const csv = [['Pass reference', 'Player name', 'Level', 'Status'], ...attendees.map(b => [b.id, b.player_name, b.level, b.status])].map(row => row.map(cell).join(',')).join('\r\n'); const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })); const a = document.createElement('a'); a.href = url; a.download = 'mercury-attendees.csv'; a.click(); URL.revokeObjectURL(url); }); }
+async function roster(id, filters = {}) {
+    if (!requireUser()) return;
+    const { event: e, attendees } = await api('organizer/events/' + id + '/attendees');
+    const rows = [...attendees].sort((a, b) => {
+        const order = { confirmed: 0, checked_in: 1 };
+        return (order[a.status] ?? 2) - (order[b.status] ?? 2) ||
+            String(a.player_name).localeCompare(String(b.player_name));
+    });
+    const checked = attendees.filter(b => b.status === 'checked_in').length;
+    const row = b => '<article class="roster-row" data-status="' + esc(b.status) + '">' +
+        '<div><h3>' + esc(b.player_name) + '</h3><p>' + esc(b.level) +
+        ' · <code>' + esc(b.id) + '</code></p></div>' +
+        '<div class="action-row">' + stamp(b.status) +
+        (b.status === 'confirmed' && e.status === 'published'
+            ? '<button class="button primary" data-check-in="' + esc(b.id) + '">Check in ✓</button>' : '') +
+        '</div></article>';
+    page('<a class="back" href="/host">← Organizer studio</a>' +
+        heading('GAME DAY CONTROL', esc(e.title), 'Find a player by name or pass reference, then check them in.') +
+        '<div class="roster-summary">' + stamp(e.status) +
+        '<b>' + checked + ' checked in</b><span>' + e.registered + ' active registrations / ' +
+        e.capacity + ' places</span>' +
+        '<button class="button outline" id="refresh-roster" type="button">Refresh roster ↻</button>' +
+        '<button class="button outline" id="export-roster" type="button">Download CSV ↓</button></div>' +
+        '<div class="roster-tools">' +
+        '<label for="roster-search">Find a player <input id="roster-search" type="search" autocomplete="off" placeholder="Name or pass reference"></label>' +
+        '<label class="roster-pending-label"><input id="roster-unchecked" type="checkbox"> Not checked in</label>' +
+        '<p id="roster-result-count" role="status" aria-live="polite"></p>' +
+        '</div><div class="roster-list">' +
+        (rows.map(row).join('') || empty('Your crew is on its way.', 'Registrations appear here as players join.')) +
+        '</div><p class="fine">The roster contains personal information. Keep downloads private and use them only to run this session.</p>');
+    mountRosterSearch(ctx.main, filters);
+    const currentFilters = () => ({
+        query: ctx.main.querySelector('#roster-search')?.value || '',
+        uncheckedOnly: !!ctx.main.querySelector('#roster-unchecked')?.checked
+    });
+    action('[data-check-in]', async b => {
+        const retained = currentFilters();
+        await api('organizer/events/' + id + '/check-in', { bookingId: b.dataset.checkIn });
+        await roster(id, retained);
+        ctx.toast('Player checked in.');
+    });
+    action('#refresh-roster', () => roster(id, currentFilters()));
+    action('#export-roster', async () => {
+        const cell = value => '"' + String(value ?? '').replace(/^[=+@-]/, "'$&").replaceAll('"', '""') + '"';
+        const csv = [['Pass reference', 'Player name', 'Level', 'Status'],
+            ...attendees.map(b => [b.id, b.player_name, b.level, b.status])]
+            .map(items => items.map(cell).join(',')).join('\r\n');
+        const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'mercury-attendees.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+    });
+}
+
 function info() { page(`<div class="prose">${heading('LESS PLANNING. MORE PLAY.','Find it. Check it.<br><em>Play it.</em>')}<h2>Discover your next game.</h2><p>Browse real events by sport, neighbourhood and format. Source links, entry units and eligibility notes help you choose.</p><h2>Register with the organizer.</h2><p>External listings open the organizer or booking provider’s website. Check current dates, category rules, fees and cancellation terms before entering. Mercury has not onboarded these organizers and does not issue their tickets. Saving a listing is a bookmark, not a booking.</p><h2>Keep your shortlist.</h2><p>Create an account to save events across devices. Mercury accounts are for people aged 18 or older; a parent or guardian should manage junior entries with the organizer.</p><h2>For free sessions booked on Mercury</h2><p>Where an event is labelled Book on Mercury, your confirmed place appears in My games. Free places can be cancelled before the start, unless already checked in. Organizer cancellations appear in My games. Email and SMS are not active; paid native registration is disabled.</p><p>Found something wrong? Use Suggest a correction or <a href="/support">contact Mercury</a>.</p>${btn('Find your game','/explore')}</div>`); }
 export async function liveRoute(path, context) {
     ctx = context;
@@ -311,7 +422,10 @@ export async function liveRoute(path, context) {
     const initialFallback = ['explore', 'listing', 'event'].includes(route)
         && ctx.main.querySelector('[data-server-path]')?.getAttribute('data-server-path') === path
         ? ctx.main.innerHTML : null;
-    page('<section class="page-intro"><p class="eyebrow blue">MERCURY</p><h1>Getting your game ready.</h1><p role="status">Just a moment…</p></section>');
+    // Keep useful server-rendered public content visible while session/API data loads.
+    // Never trade a real event card for an empty loading screen on first paint.
+    if (!initialFallback)
+        page('<section class="page-intro"><p class="eyebrow blue">MERCURY</p><h1>Getting your game ready.</h1><p role="status">Just a moment…</p></section>');
     try {
         if (route === 'privacy' || route === 'terms') { renderPolicy(path, ctx); return true; }
         try {

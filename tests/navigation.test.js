@@ -15,6 +15,8 @@ async function fixture(run) {
   const sections = new Map();
   const main = { ...simple(), get innerHTML() { return html; }, set innerHTML(value) { for (const section of sections.values()) section.isConnected = false; sections.clear(); html = value; }, insertAdjacentHTML(_position, value) { html += value; },
     querySelector(selector) {
+      if (selector === '[data-server-path]' && html.includes('data-server-path="/explore"'))
+        return { getAttribute: name => name === 'data-server-path' ? '/explore' : null };
       if (!['#saved-mercury-games', '#saved-external-listings'].includes(selector)) return null;
       if (!sections.has(selector)) sections.set(selector, { ...simple(), isConnected: true, innerHTML: '', setAttribute() {}, querySelector: () => null });
       return sections.get(selector);
@@ -172,5 +174,20 @@ test('a completed or failed old confirmation cannot close or write into a newer 
     assert.equal(actionSheet.open, true);
     assert.equal(actionSheet.querySelector('#confirm-action'), newConfirm);
     assert.equal(actionSheet.querySelector('[role=alert]').textContent, '');
+  });
+});
+
+test('Explore keeps server-rendered listings visible while session loading is delayed', async () => {
+  await fixture(async ({ main, replies, route, session }) => {
+    const pending = Promise.withResolvers();
+    const serverView = '<div data-server-path="/explore"><h1>Find your next game</h1><article>Visible event</article></div>';
+    main.innerHTML = serverView;
+    replies.set('/api/session', () => pending.promise);
+    replies.set('/api/listings', () => ({ listings: [] }));
+    const navigation = route('/explore');
+    await tick();
+    assert.equal(main.innerHTML, serverView);
+    pending.resolve(session);
+    await navigation;
   });
 });

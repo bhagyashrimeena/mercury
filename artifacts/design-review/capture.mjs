@@ -233,6 +233,75 @@ try {
     const report = { ...clicked.result.value, countRequests: outboundRequests.length, countPath: new URL(outboundRequests[0]).pathname };
     await writeFile(output, JSON.stringify(report, null, 2));
     process.stdout.write(`${output} one organizer click count; external navigation remained independent\n`);
+  } else if (scope === 'ux-home') {
+    const reading = await send('Runtime.evaluate', {
+      expression: '(() => { const root=document.querySelector(".home-journey");' +
+        'const positions=[".quickline","#hero-search",".discovery-section",".hero",".host-banner"].map(s=>[...root.children].indexOf(root.querySelector(s)));' +
+        'return JSON.stringify({positions,featured:document.querySelectorAll("#featured-grid .directory-card").length,overflow:document.documentElement.scrollWidth>innerWidth,location:location.pathname});})()',
+      returnByValue: true
+    });
+    const state = JSON.parse(reading.result.value);
+    if(state.location!=='/'||state.positions.some((index,i)=>index<0||(i>0&&index<=state.positions[i-1]))||
+       state.featured<1||state.overflow) throw Error('Home UX failed: '+reading.result.value);
+    await writeFile(output,JSON.stringify(state,null,2));
+    process.stdout.write(output+' player-first Home passed\n');
+  } else if (scope === 'ux-organizer') {
+    const initial = await send('Runtime.evaluate', {
+      expression: 'JSON.stringify({steps:document.querySelectorAll(".organizer-progress-item").length,'+
+        'active:document.querySelector(".organizer-step:not([hidden])")?.dataset.step,'+
+        'primary:document.querySelector(".organizer-event-card .organizer-primary-action")?.textContent,'+
+        'overflow:document.documentElement.scrollWidth>innerWidth})',
+      returnByValue: true
+    });
+    const state=JSON.parse(initial.result.value);
+    if(state.steps!==3||state.active!=='0'||!state.primary?.includes('Manage players')||state.overflow)
+      throw Error('Organizer editor first-screen failed: '+initial.result.value);
+    const values={
+      title:'Review fixture: Thursday Badminton',sport:'Badminton',format:'Social play',
+      area:'Powai',date:fixtureDate,time:'18:00',venue:'Sample court, Powai, Mumbai',
+      level:'All levels',capacity:'12',price:'0',
+      description:'An approachable community session with enough details to make a plan.',
+      included:'Court and shuttlecocks',bring:'Racket and court shoes',
+      cancellation:'Cancel free before this session begins.'
+    };
+    const fillExpression='(() => { const form=document.querySelector("#event-form"); const values='+
+      JSON.stringify(values)+'; for(const [name,value] of Object.entries(values)) form.elements.namedItem(name).value=value;'+
+      'form.dispatchEvent(new Event("input",{bubbles:true}));const next=form.querySelector(".organizer-step-actions .button.primary");'+
+      'next.click();const second=form.querySelector(".organizer-step:not([hidden])")?.dataset.step;'+
+      'next.click();const review=form.querySelector(".organizer-step:not([hidden])")?.dataset.step;'+
+      'return JSON.stringify({second,review,summary:form.querySelector(".organizer-review-facts")?.textContent,'+
+      'error:form.querySelector(".organizer-step-alert")?.textContent});})()';
+    const filled=await send('Runtime.evaluate',{expression:fillExpression,returnByValue:true});
+    const details=JSON.parse(filled.result.value);
+    if(details.second!=='1'||details.review!=='2'||!details.summary?.includes(values.title)||details.error)
+      throw Error('Organizer steps failed: '+filled.result.value);
+    const preview=await send('Runtime.evaluate',{expression:'(() => { document.querySelector("#preview-event").click();return JSON.stringify({detail:!!document.querySelector(".detail-layout")}); })()',returnByValue:true});
+    if(!JSON.parse(preview.result.value).detail)throw Error('Organizer preview failed: '+preview.result.value);
+    await send('Runtime.evaluate',{expression:'document.querySelector(".back").click()'});
+    await new Promise(resolve=>setTimeout(resolve,900));
+    const restored=await send('Runtime.evaluate',{
+      expression:'JSON.stringify({active:document.querySelector(".organizer-step:not([hidden])")?.dataset.step,'+
+        'title:document.querySelector("#event-form [name=title]")?.value,overflow:document.documentElement.scrollWidth>innerWidth})',
+      returnByValue:true
+    });
+    const back=JSON.parse(restored.result.value);
+    if(back.active!=='2'||back.title!==values.title||back.overflow)
+      throw Error('Organizer preview return lost edits: '+restored.result.value);
+    await writeFile(output,JSON.stringify({initial:state,details,back},null,2));
+    process.stdout.write(output+' organizer editor, review and preview return passed\n');
+  } else if (scope === 'ux-roster') {
+    const expression='(() => { const input=document.querySelector("#roster-search"),checkbox=document.querySelector("#roster-unchecked");'+
+      'if(!input||!checkbox)return JSON.stringify({present:false});input.value="not-a-player";input.dispatchEvent(new Event("input",{bubbles:true}));'+
+      'const hidden=document.querySelectorAll(".roster-row:not([hidden])").length;input.value="review-pass";'+
+      'input.dispatchEvent(new Event("input",{bubbles:true}));checkbox.checked=true;checkbox.dispatchEvent(new Event("change",{bubbles:true}));'+
+      'return JSON.stringify({present:true,hidden,matches:document.querySelectorAll(".roster-row:not([hidden])").length,'+
+      'status:document.querySelector("#roster-result-count")?.textContent,overflow:document.documentElement.scrollWidth>innerWidth});})()';
+    const result=await send('Runtime.evaluate',{expression,returnByValue:true});
+    const state=JSON.parse(result.result.value);
+    if(!state.present||state.hidden!==0||state.matches!==1||state.overflow)
+      throw Error('Rostering search failed: '+result.result.value);
+    await writeFile(output,JSON.stringify(state,null,2));
+    process.stdout.write(output+' organizer search and unchecked-only view passed\n');
   } else if (scope === 'explore') {
     const evaluate = async expression => {
       const reading = await send('Runtime.evaluate', { expression, returnByValue: true });

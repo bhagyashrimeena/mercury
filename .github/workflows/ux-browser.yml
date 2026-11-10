@@ -1,0 +1,50 @@
+name: Mercury UX browser checks
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: corepack pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - name: Start isolated Mercury and Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec next start -p 3002 >/tmp/mercury-next.log 2>&1 &
+          for i in $(seq 1 50); do
+            if curl --silent --fail http://localhost:3002/ >/dev/null; then break; fi
+            if [ "$i" -eq 50 ]; then cat /tmp/mercury-next.log; exit 1; fi
+            sleep 1
+          done
+          CHROME="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          "$CHROME" --headless --no-sandbox --disable-gpu --disable-dev-shm-usage --remote-allow-origins='*' --remote-debugging-port=9223 --user-data-dir=/tmp/mercury-ux-browser about:blank >/tmp/mercury-chrome.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:9223/json >/dev/null; then break; fi
+            if [ "$i" -eq 30 ]; then cat /tmp/mercury-chrome.log; exit 1; fi
+            sleep 1
+          done
+      - name: Real-browser Home and organizer paths
+        run: |
+          mkdir -p /tmp/mercury-ux-captures
+          node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/home-desktop.json fixture-home ux-home
+          node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/home-phone.json fixture-home ux-home
+          node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/organizer-desktop.json fixture-organizer ux-organizer
+          node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/organizer-phone.json fixture-organizer ux-organizer
+          node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/roster-phone.json fixture-roster ux-roster
+      - name: Upload fixture reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mercury-ux-browser-reports
+          path: /tmp/mercury-ux-captures/*.json
+          if-no-files-found: ignore
