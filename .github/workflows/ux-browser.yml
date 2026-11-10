@@ -37,6 +37,10 @@ jobs:
         run: |
           mkdir -p /tmp/mercury-ux-captures
           node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/home-desktop.json fixture-home ux-home
+          node artifacts/design-review/capture.mjs http://localhost:3002/for-organizers 1440 900 /tmp/mercury-ux-captures/organizer-landing-desktop.json fixture-home public-organizer
+          node artifacts/design-review/capture.mjs http://localhost:3002/for-organizers 390 844 /tmp/mercury-ux-captures/organizer-landing-phone.json fixture-home public-organizer
+          node artifacts/design-review/capture.mjs http://localhost:3002/how-it-works 390 844 /tmp/mercury-ux-captures/how-it-works-phone.json fixture-home public-how
+          node artifacts/design-review/capture.mjs http://localhost:3002/list-event 390 844 /tmp/mercury-ux-captures/list-event-phone.json fixture-event-submission public-submission
           node artifacts/design-review/capture.mjs http://localhost:3002/explore 1440 900 /tmp/mercury-ux-captures/explore-desktop.json fixture-explore explore
           node artifacts/design-review/capture.mjs http://localhost:3002/explore 390 844 /tmp/mercury-ux-captures/explore-phone.json fixture-native-explore explore
           node artifacts/design-review/capture.mjs http://localhost:3002/explore 320 740 /tmp/mercury-ux-captures/explore-small-phone.json fixture-explore explore
