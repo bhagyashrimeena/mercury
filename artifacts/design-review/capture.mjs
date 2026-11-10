@@ -46,6 +46,7 @@ socket.addEventListener('message', event => {
   if (message.method === 'Runtime.exceptionThrown') process.stderr.write(`Browser exception: ${message.params.exceptionDetails.text} ${message.params.exceptionDetails.exception?.description || ''}\n`);
   if (message.method === 'Fetch.requestPaused') {
     if (mode === 'loading') return;
+    if (mode === 'fixture-slow-session' && new URL(message.params.request.url).pathname === '/api/session') return;
     const request = new URL(message.params.request.url);
     const parts = request.pathname.split('/').filter(Boolean);
     let payload = { error: { message: 'No design fixture for this API route.' } };
@@ -238,6 +239,41 @@ try {
     const report = { ...clicked.result.value, countRequests: outboundRequests.length, countPath: new URL(outboundRequests[0]).pathname };
     await writeFile(output, JSON.stringify(report, null, 2));
     process.stdout.write(`${output} one organizer click count; external navigation remained independent\n`);
+  } else if (scope === 'explore-fast') {
+    // Deliberately leave /api/session pending in the fixture, to guarantee public
+    // Explore does not wait for account/session setup before displaying inventory.
+    const warm = new URL(url).pathname === '/';
+    await send('Runtime.evaluate', {
+      expression: 'history.pushState(null,"","/explore");window.dispatchEvent(new PopStateEvent("popstate"))'
+    });
+    const initial = await send('Runtime.evaluate', {
+      expression: 'JSON.stringify({path:location.pathname,loading:!!document.querySelector(".explore-pending"),' +
+        'generic:document.querySelector("#main")?.textContent.includes("Getting your game ready"),' +
+        'cards:document.querySelectorAll("#directory-results .photo-card").length})',
+      returnByValue: true
+    });
+    const immediate = JSON.parse(initial.result.value);
+    if (immediate.path !== '/explore' || immediate.generic ||
+        (warm && (immediate.loading || immediate.cards < 8)) ||
+        (!warm && !immediate.loading && !immediate.cards))
+      throw Error('Explore first paint still blocked: ' + initial.result.value);
+    await new Promise(resolve => setTimeout(resolve, 900));
+    const loaded = await send('Runtime.evaluate', {
+      expression: 'JSON.stringify({path:location.pathname,loading:!!document.querySelector(".explore-pending"),' +
+        'generic:document.querySelector("#main")?.textContent.includes("Getting your game ready"),' +
+        'cards:document.querySelectorAll("#directory-results .photo-card").length,' +
+        'count:document.querySelector("#directory-count")?.textContent,' +
+        'overflow:document.documentElement.scrollWidth > innerWidth})',
+      returnByValue: true
+    });
+    const result = JSON.parse(loaded.result.value);
+    if (result.path !== '/explore' || result.generic || result.loading ||
+        result.cards < 8 || !result.count || result.overflow)
+      throw Error('Explore waited for session or layout failed: ' + loaded.result.value);
+    await writeFile(output, JSON.stringify({ warm, immediate, result }, null, 2));
+    process.stdout.write(output + (warm
+      ? ' warm Home-to-Explore navigation rendered immediately\n'
+      : ' cold navigation rendered public Explore before session reply\n'));
   } else if (scope === 'public-organizer') {
     const reading = await send('Runtime.evaluate', {
       expression: 'JSON.stringify({path:location.pathname,head:document.querySelector(".organizer-public-hero h1")?.textContent,' +
