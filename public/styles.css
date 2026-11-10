@@ -2871,12 +2871,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   .explore-page .explore-search{margin-top:13px}
   .explore-page .explore-sports{margin-right:-18px;padding-right:18px;gap:7px}
   .explore-page .sport-pill{font-size:11px;min-height:37px;padding:7px 12px}
-  .explore-page #directory-filters{grid-template-columns:repeat(2,minmax(0,1fr)) 99px;gap:7px;padding:8px}
-  .explore-page #directory-filters .directory-query{grid-column:1/3;grid-row:1}
-  .explore-page #directory-filters #filter-toggle{grid-column:3;grid-row:1;min-height:43px;font-size:11px;gap:3px;padding:7px}
+  .explore-page #directory-filters{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding:8px}
+  .explore-page #directory-filters .directory-query{grid-column:1/4;grid-row:1}
+  .explore-page #directory-filters #filter-toggle{grid-column:4;grid-row:1;min-height:43px;font-size:11px;gap:3px;padding:6px}
   .explore-page #directory-filters .quick-filter{grid-row:2}
   .explore-page #directory-filters .quick-filter:nth-of-type(2){grid-column:1/3}
-  .explore-page #directory-filters .quick-filter:nth-of-type(3){grid-column:3}
+  .explore-page #directory-filters .quick-filter:nth-of-type(3){grid-column:3/5}
   .explore-page #directory-filters .directory-extra{grid-column:1/-1;grid-row:3}
   .explore-page #directory-filters .directory-more-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
   .explore-page .event-grid{grid-template-columns:1fr;gap:11px}
@@ -2890,7 +2890,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   .explore-page #directory-filters .filter-apply{align-self:flex-end}
 }
 @media(max-width:440px){
-  .explore-page #directory-filters{grid-template-columns:repeat(2,minmax(0,1fr)) 88px}
+  .explore-page #directory-filters{grid-template-columns:repeat(4,minmax(0,1fr))}
   .explore-page #directory-filters .quick-filter:nth-of-type(2){grid-column:1/3}
   .explore-page .directory-card{grid-template-columns:94px minmax(0,1fr)}
   .explore-page .directory-card .card-content{grid-template-columns:minmax(0,1fr);grid-template-rows:1fr auto auto auto;gap:3px;padding:12px 12px 10px}
@@ -2907,3 +2907,5 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   .explore-page .sport-pill{transition:none}
   .explore-page .directory-card{transition:none}
 }
+
+@media(max-width:360px){.explore-page #filter-toggle span{display:none}}
