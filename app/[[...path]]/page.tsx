@@ -1,6 +1,7 @@
 import { siteOrigin, publicLaunch } from '../../lib/site-config';
 import { findListing, listingDate, listingStatus } from '../../public/catalogue.js';
 import { discoveryFallback, listingFallback } from '../server-fallback';
+import { organizerLandingMarkup, eventSubmissionMarkup, howItWorksMarkup } from '../../public/organizer-public.js';
 import { getDatabase } from '../../db/vercel';
 import { shell } from '../shell';
 import Script from 'next/script';
@@ -18,7 +19,7 @@ const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => 
 const publicPageTitles: Record<string, string> = {
   explore: 'Explore games', about: 'About Mercury', 'how-it-works': 'How Mercury works',
   support: 'Help & contact', terms: 'Terms', privacy: 'Privacy',
-  host: 'Organizer studio', account: 'Your account', admin: 'Owner desk'
+  host: 'Organizer studio', 'for-organizers': 'For organizers', 'list-event': 'List your sports event', account: 'Your account', admin: 'Owner desk'
 };
 
 async function listingVisibility(id: string): Promise<'visible' | 'hidden' | 'unavailable'> {
@@ -73,8 +74,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = (publicPageTitles[segment] || 'Your next game starts here') + ' — Mercury';
   const description = segment === 'explore'
     ? 'Explore upcoming tournaments, leagues and free sessions in Mumbai. Compare dates, area, eligibility and registration routes.'
+    : segment === 'for-organizers'
+    ? 'Bring your sports tournament, run or academy event to Mercury and keep your existing registration system. Request a reviewed listing.'
+    : segment === 'list-event'
+    ? 'Submit your sports event link to Mercury for manual review without creating an account first.'
     : 'Find sports tournaments, leagues and free sessions around Mumbai. Check the details and choose where to register.';
-  const index = publicLaunch() && ['', 'explore', 'about', 'how-it-works'].includes(segment);
+  const index = publicLaunch() && ['', 'explore', 'about', 'how-it-works', 'for-organizers'].includes(segment);
   return {
     title, description, robots: { index, follow: index },
     alternates: { canonical: siteOrigin() + '/' + path.join('/') },
@@ -90,8 +95,14 @@ export default async function Page({ params }: Props) {
     ? listingFallback(listing, await listingVisibility(listing.id))
     : event
       ? `<article class="page-width prose"><p class="eyebrow blue">${esc(event.sport)} · ${esc(event.status)} · Mercury booking</p><h1>${esc(event.title)}</h1><p>${esc(event.description)}</p><p><b>Date:</b> ${esc(event.date)} · ${esc(event.time)} IST</p><p><b>Venue:</b> ${esc(event.venue)}, ${esc(event.area)}, Mumbai</p><p><b>Fee:</b> Free per player. A confirmed place appears in My games.</p></article>`
-      : path.length === 0 || path[0] === 'explore'
-        ? await discoveryFallback(path[0] === 'explore' ? 'explore' : 'home')
+      : path[0] === 'for-organizers'
+        ? organizerLandingMarkup()
+        : path[0] === 'list-event'
+          ? eventSubmissionMarkup()
+          : path[0] === 'how-it-works'
+            ? howItWorksMarkup()
+            : path.length === 0 || path[0] === 'explore'
+              ? await discoveryFallback(path[0] === 'explore' ? 'explore' : 'home')
         : '<section class="page-width page-intro"><p class="eyebrow blue">MERCURY</p><h1>Your next game starts here.</h1><p role="status">Loading your page…</p><noscript>JavaScript is needed to manage your account and bookings.</noscript></section>';
   const routePath = '/' + path.join('/');
   const markedFallback = `<div data-server-path="${esc(routePath)}">${fallback}</div>`;
