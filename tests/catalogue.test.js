@@ -104,3 +104,18 @@ test('source freshness never creates fake confirmed availability for external or
   assert.doesNotMatch(markup, /data-outbound=/);
   assert.match(markup, /href="\/listing\/mumbai-pickleball-cup-s3"/);
 });
+
+test('venue conflicts remain discoverable but require organizer verification before entry', () => {
+  const e = findListing('ninjas-championship-2026');
+  const now = at('2026-11-10T05:00:00Z');
+  assert.ok(e.reviewNote.includes('Andheri'));
+  assert.equal(e.area, 'Venue to confirm');
+  const status = listingStatus(e, now);
+  assert.equal(status.code, 'stale');
+  assert.match(status.reason, /confirm.*location/i);
+  const item = { ...e, external: true, availability: status };
+  assert.equal(filterLineup([item], { availability: 'Entry possible' }, now).length, 0);
+  assert.equal(filterLineup([item], { availability: 'All upcoming' }, now).length, 1);
+  assert.doesNotMatch(listingCard(item), /data-outbound=/);
+  assert.equal(listingStatus(e, at('2026-11-23T18:30:00Z')).code, 'ended');
+});
