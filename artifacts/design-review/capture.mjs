@@ -333,7 +333,7 @@ try {
     if(sorted.sort!=='Price: low to high'||!sorted.url.includes('sort=Price')||sorted.cards!==initial.cards)
       throw new Error('Price sort failed: '+JSON.stringify(sorted));
     await evaluate('document.querySelector("#clear-filters").click()');
-    await evaluate('document.querySelector("[data-quick-name=fee][data-quick-value=\"Under ₹1,000\"]").click()');
+    await evaluate('document.querySelectorAll("[data-quick-name=fee]")[0].click()');
     const budget=JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length})'));
     if(!budget.url.includes('fee=Under')||budget.cards>=initial.cards||!budget.cards)throw new Error('Quick fee filter failed: '+JSON.stringify(budget));
     await evaluate('document.querySelector("#clear-filters").click()');
