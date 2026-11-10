@@ -3301,3 +3301,334 @@ body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top
   .explore-pending .explore-skeleton-lines{padding:16px 12px}
 }
 @media(max-width:400px){.explore-pending .explore-skeleton-card{grid-template-columns:100px minmax(0,1fr)}}
+
+
+/* MERCURY / KINETIC COURT — original CSS + vector graphics, no AI imagery.
+   Movement reinforces sport and discovery without changing booking semantics. */
+@keyframes mercury-wave-draw{from{stroke-dashoffset:1400}to{stroke-dashoffset:0}}
+@keyframes mercury-trail-drift{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(14px,-10px,0)}}
+@keyframes mercury-ball-bounce{0%,100%{transform:translate3d(0,0,0) scale(1)}45%{transform:translate3d(12px,-22px,0) scale(.91)}65%{transform:translate3d(-5px,4px,0) scale(1.08)}}
+@keyframes mercury-ticker-roll{to{transform:translate3d(-50%,0,0)}}
+@keyframes mercury-pop-in{from{opacity:.25;transform:translate3d(0,14px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes mercury-pulse{0%,100%{box-shadow:0 0 0 0 #d9ff3861}50%{box-shadow:0 0 0 7px #d9ff3800}}
+@keyframes mercury-swoosh-wiggle{0%,100%{transform:rotate(-5deg) translateY(0)}50%{transform:rotate(4deg) translateY(-8px)}}
+
+/* A compact but genuinely energetic dark arena above useful discovery controls. */
+.explore-page .explore-intro.mercury-arena{
+  position:relative;display:block;isolation:isolate;overflow:hidden;min-height:216px;
+  padding:22px 32px 36px;margin:7px 0 0;border-radius:19px 19px 33px 12px;
+  background:linear-gradient(114deg,#10131a 0%,#18204d 60%,#3156f5 157%);
+  color:#fff;box-shadow:0 12px 32px #10131a17
+}
+.explore-page .mercury-arena:before{
+  content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(circle at 71% 35%,#3156f52e,transparent 45%),
+    repeating-linear-gradient(116deg,transparent 0 45px,#fff1 46px,transparent 47px);
+}
+.explore-page .mercury-arena .arena-copy{position:relative;z-index:2;max-width:min(61%,680px)}
+.explore-page .mercury-arena .arena-eyebrow{
+  display:flex;align-items:center;gap:9px;font-size:9px;font-weight:900;
+  color:#f7f8f2;line-height:1.3;letter-spacing:.18em;margin:0 0 11px
+}
+.explore-page .mercury-arena .arena-live-dot{
+  display:inline-block;width:8px;height:8px;flex:0 0 8px;border-radius:50%;
+  background:var(--lime);animation:mercury-pulse 2.1s ease-in-out infinite
+}
+.explore-page .mercury-arena .arena-sup{
+  font-size:9px;border:1px solid #ffffff42;border-radius:20px;padding:4px 8px;
+  letter-spacing:.05em;margin-left:3px
+}
+.explore-page .mercury-arena h1{
+  font-family:Archivo,Arial,sans-serif;font-size:clamp(38px,4.3vw,60px);
+  font-weight:900;letter-spacing:-.077em;line-height:.91;margin:0 0 12px;
+  text-transform:uppercase;text-wrap:balance;color:#fff
+}
+.explore-page .mercury-arena h1 em{display:inline-block;color:var(--lime);font-style:italic}
+.explore-page .mercury-arena .arena-stop{color:#fff;display:inline-block;animation:mercury-ball-bounce 4s ease-in-out infinite}
+.explore-page .mercury-arena .arena-description{font-size:12px;line-height:1.4;color:#e3e6f3;max-width:445px;margin:0}
+.explore-page .mercury-arena .arena-art{
+  position:absolute;right:-45px;top:-18px;bottom:16px;width:66%;pointer-events:none;z-index:1
+}
+.explore-page .mercury-arena .arena-wave-svg{width:100%;height:100%;overflow:visible}
+.explore-page .mercury-arena .arena-line-one{stroke-dasharray:1400;stroke-dashoffset:0;animation:mercury-wave-draw 1.1s cubic-bezier(.2,.75,.2,1) both}
+.explore-page .mercury-arena .arena-line-two{animation:mercury-trail-drift 6s ease-in-out infinite}
+.explore-page .mercury-arena .arena-line-three{animation:mercury-trail-drift 8s ease-in-out infinite reverse}
+.explore-page .mercury-arena .arena-orbit-ring{transform-origin:591px 110px;animation:mercury-swoosh-wiggle 7s ease-in-out infinite}
+.explore-page .mercury-arena .arena-ball{transform-origin:591px 110px;animation:mercury-ball-bounce 5s ease-in-out infinite}
+.explore-page .arena-side-label{
+  position:absolute;top:27px;right:14%;display:flex;gap:7px;
+  align-items:center;color:#f7f8f2c9;letter-spacing:.17em;font-weight:900;
+  font-size:9px;transform:rotate(8deg)
+}
+.explore-page .arena-side-label span{color:var(--lime);font-size:18px}
+.explore-page .arena-ticker{
+  position:absolute;bottom:0;left:0;right:0;height:24px;overflow:hidden;
+  display:flex;align-items:center;background:var(--lime);color:var(--ink);
+  transform:skewY(-.5deg);transform-origin:left bottom;z-index:3
+}
+.explore-page .arena-ticker-track{
+  display:flex;align-items:center;width:max-content;white-space:nowrap;
+  animation:mercury-ticker-roll 22s linear infinite;will-change:transform
+}
+.explore-page .arena-ticker-track span{
+  display:block;flex:0 0 auto;padding-right:20px;
+  font-weight:900;letter-spacing:.14em;font-size:9px;line-height:24px
+}
+.explore-page .arena-ticker:hover .arena-ticker-track{animation-play-state:paused}
+.explore-page .explore-search{position:relative;z-index:4;margin-top:-13px;padding:0 13px}
+.explore-page #directory-filters{
+  background:#fff;border:1px solid #222739;padding:7px;
+  box-shadow:0 7px 0 #10131a16,0 12px 22px #10131a10;
+  border-radius:12px;transition:box-shadow .22s ease,transform .22s ease
+}
+.explore-page #directory-filters:focus-within{box-shadow:0 7px 0 #d9ff38,0 12px 22px #10131a14}
+.explore-page #directory-filters input,.explore-page #directory-filters select{border-radius:8px;background:#f4f5f1}
+.explore-page #filter-toggle{background:var(--blue);border-color:var(--blue);border-radius:8px;transition:transform .18s ease,background .18s ease}
+.explore-page #filter-toggle:hover{transform:translateY(-2px);background:var(--ink)}
+.explore-page .explore-sports{padding:13px 0 6px;gap:8px}
+.explore-page .sport-pill{
+  background:#fff;border:1px solid #d4d8d2;border-radius:10px 22px 22px 10px;
+  box-shadow:2px 3px 0 #10131a0c;transition:transform .18s cubic-bezier(.2,.9,.3,1.2),box-shadow .18s,border-color .18s
+}
+.explore-page .sport-pill:hover{transform:translateY(-3px) rotate(-1.5deg);box-shadow:3px 5px 0 #d9ff38}
+.explore-page .sport-pill.selected{background:var(--lime);border-color:var(--lime);box-shadow:3px 4px 0 #10131a}
+.explore-page .sport-pill .sport-symbol{color:var(--blue);transition:transform .2s}
+.explore-page .sport-pill.selected .sport-symbol{color:var(--ink)}
+.explore-page .sport-pill:hover .sport-symbol{transform:rotate(-16deg) scale(1.15)}
+.explore-page .quick-discovery{margin-top:5px}
+.explore-page .quick-discovery button{
+  border-radius:8px 18px 18px 8px;transition:transform .18s,background .18s,border-color .18s
+}
+.explore-page .quick-discovery button:hover{transform:translateY(-2px);border-color:var(--blue)}
+.explore-page .quick-discovery button[aria-pressed=true]{background:var(--blue);color:#fff;border-color:var(--blue)}
+.explore-page .results-heading h2{font-family:Archivo,Arial,sans-serif;font-style:italic;font-size:clamp(24px,3vw,33px);letter-spacing:-.05em}
+.explore-page .results-heading h2:after{
+  content:'';display:block;width:105px;height:6px;margin-top:3px;
+  background:var(--lime);border-radius:50% 30% 55% 45%;transform:rotate(-2deg)
+}
+.explore-page .results-tools select{border-radius:8px}
+.explore-page .event-grid{gap:15px}
+.directory-card.photo-card,.explore-page .directory-card.photo-card{
+  position:relative;isolation:isolate;border-radius:16px 16px 24px 11px;
+  border:1px solid #dce0dc;box-shadow:0 5px 0 #10131a0c,0 7px 18px #10131a0b;
+  transition:transform .25s cubic-bezier(.2,.9,.24,1),box-shadow .24s,border-color .24s;
+  animation:mercury-pop-in .5s cubic-bezier(.16,.79,.2,1) both
+}
+.explore-page .directory-card.photo-card:nth-child(3n+2){animation-delay:.04s}
+.explore-page .directory-card.photo-card:nth-child(3n+3){animation-delay:.09s}
+.directory-card.photo-card:hover,.explore-page .directory-card.photo-card:hover{
+  transform:translate3d(0,-5px,0) rotate(-.35deg);
+  border-color:#8ba0f6;box-shadow:3px 8px 0 #d9ff38,0 16px 26px #10131a18
+}
+.photo-card .listing-photo{isolation:isolate}
+.photo-card .listing-photo:after{
+  content:'';position:absolute;z-index:1;right:-20px;top:-21px;width:115px;height:115px;
+  border:5px solid #d9ff38bb;border-radius:50%;pointer-events:none;transform:rotate(-15deg);
+  transition:transform .4s ease,border-color .4s ease
+}
+.photo-card .listing-photo:before{
+  content:'';position:absolute;z-index:1;bottom:-35px;right:-22px;
+  width:115px;height:66px;border:3px solid #ffffff9e;border-radius:50%;
+  transform:rotate(-32deg);pointer-events:none
+}
+.photo-card .listing-photo img{transition:transform .6s cubic-bezier(.17,.75,.15,1),filter .5s}
+.photo-card:hover .listing-photo img{transform:scale(1.09) translateX(-2px);filter:saturate(1.12) contrast(1.02)}
+.photo-card:hover .listing-photo:after{transform:translate(-13px,23px) rotate(15deg);border-color:var(--lime)}
+.photo-card .photo-card-copy{position:relative}
+.photo-card .photo-sport{font-size:10px;letter-spacing:.09em;text-transform:uppercase}
+.photo-card h3,.explore-page .directory-card.photo-card h3{font-size:17px;line-height:1.18;font-weight:900;letter-spacing:-.035em}
+.photo-card .photo-price strong{font-size:16px;letter-spacing:-.025em}
+.photo-card .photo-cta{
+  border-radius:7px 14px 14px 7px;transition:background .2s,color .2s,transform .2s;
+  background:var(--ink);color:#fff
+}
+.photo-card .photo-card-link:hover .photo-cta{background:var(--lime);color:var(--ink);transform:translateX(2px)}
+.photo-card .photo-card-link:active .photo-cta{transform:scale(.96)}
+.photo-card .photo-disclosure{backdrop-filter:blur(5px)}
+.mercury-wave-ribbon{
+  position:relative;isolation:isolate;overflow:hidden;margin:20px 0 0;height:39px;
+  border-radius:8px 22px 8px 20px;background:var(--blue);color:#fff;transform:rotate(-.35deg)
+}
+.mercury-wave-ribbon-track{
+  display:flex;align-items:center;width:max-content;height:100%;
+  white-space:nowrap;animation:mercury-ticker-roll 24s linear infinite;will-change:transform
+}
+.mercury-wave-ribbon-track span{
+  display:inline-block;flex:0 0 auto;padding-right:23px;
+  font:italic 850 13px Archivo,Arial,sans-serif;letter-spacing:.045em
+}
+.mercury-wave-ribbon-track b{color:var(--lime);margin:0 12px;font-size:20px;vertical-align:middle}
+.mercury-wave-ribbon:hover .mercury-wave-ribbon-track{animation-play-state:paused}
+
+/* More movement in the existing Home, without pushing discovery below the fold. */
+.home-journey .hero{isolation:isolate;background:#171b45;border-radius:22px 22px 49px 13px;box-shadow:0 9px 0 #3156f527}
+.home-journey .hero:after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:10px;
+  background:var(--lime);clip-path:polygon(0 80%,12% 30%,30% 75%,48% 18%,68% 76%,86% 26%,100% 76%,100% 100%,0 100%)
+}
+.home-journey .hero-shade{background:linear-gradient(105deg,#10131ae8 0%,#10131a8e 52%,#192e6b42 100%)}
+.home-journey .home-speedlines{position:absolute;z-index:1;right:-4%;top:0;width:76%;height:100%;pointer-events:none;opacity:.91}
+.home-journey .home-speedlines path:first-child{stroke-dasharray:1250;stroke-dashoffset:0;animation:mercury-wave-draw 1.2s cubic-bezier(.18,.7,.23,1) both}
+.home-journey .home-speedlines circle{transform-origin:748px 156px;animation:mercury-swoosh-wiggle 7s ease-in-out infinite}
+.home-journey .hero-copy{z-index:2}
+.home-journey .hero h1{font-size:clamp(40px,4.8vw,64px);line-height:.94}
+.home-journey .hero .button.lime{
+  border-radius:9px 23px 23px 9px;box-shadow:4px 5px 0 #fff3;
+  transition:transform .18s,box-shadow .18s
+}
+.home-journey .hero .button.lime:hover{transform:translateY(-3px) rotate(-1deg);box-shadow:5px 7px 0 #fff5}
+.home-journey .discovery-section .section-heading h2{font-family:Archivo,Arial,sans-serif;font-style:italic;letter-spacing:-.045em}
+.home-journey .discovery-section .section-heading h2 em{color:var(--blue)}
+.home-journey .quickline{border-radius:11px 23px 12px 20px;box-shadow:3px 4px 0 #3156f51e}
+.home-journey .quickline-item{border-radius:10px 18px 10px 12px;transition:transform .18s ease,background .18s}
+.home-journey .quickline-item:hover{transform:translateY(-2px);background:#e7ebff}
+.home-journey .host-banner{border-radius:19px 19px 39px 10px}
+.home-journey .host-banner:after{
+  content:'';position:absolute;right:6%;top:-60px;width:220px;height:220px;
+  border:13px solid #d9ff3848;border-radius:50%;pointer-events:none;
+  animation:mercury-swoosh-wiggle 7s ease-in-out infinite
+}
+
+/* Listing details: spirited editorial facts rather than a long, flat document. */
+.listing-page .listing-flow-stripe{
+  height:45px;margin:13px 0 20px;overflow:hidden;padding:0 21px;display:flex;
+  align-items:center;justify-content:space-between;gap:12px;background:var(--ink);
+  color:var(--lime);border-radius:8px 22px 9px 19px;transform:rotate(-.35deg)
+}
+.listing-flow-stripe span{font-size:10px;font-weight:900;letter-spacing:.11em;white-space:nowrap}
+.listing-flow-stripe svg{flex:1;max-width:520px;height:35px;min-width:0}
+.listing-flow-stripe svg path{stroke-dasharray:850;animation:mercury-wave-draw 1.1s ease-out both}
+.listing-page .detail-layout{gap:27px;margin-top:10px;grid-template-columns:minmax(0,1fr) minmax(275px,340px)}
+.listing-page .detail-layout>article{
+  min-width:0;border:1px solid #e2e5dd;border-radius:15px 28px 16px 16px;
+  background:linear-gradient(145deg,#fff 0%,#fff 74%,#f7f8f2 100%);padding:27px 29px;
+  box-shadow:3px 5px 0 #10131a09
+}
+.listing-page .detail-title{font:italic 900 clamp(30px,3.5vw,48px)/1.05 Archivo,Arial,sans-serif;letter-spacing:-.055em;margin:15px 0 9px;text-wrap:balance}
+.listing-page .detail-layout article>.tags .blue-tag{background:var(--lime);color:var(--ink);border-color:var(--lime)}
+.listing-page .host-by{margin:9px 0 15px}
+.listing-page .event-facts{
+  gap:8px;padding:0;margin:13px 0 22px;border:0;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr))
+}
+.listing-page .event-facts>div{
+  display:flex;align-items:start;min-width:0;gap:10px;
+  background:#edf0ff;border:1px solid #dfe4f6;border-radius:10px 13px 8px 13px;
+  padding:14px 13px;transition:transform .18s
+}
+.listing-page .event-facts>div:nth-child(2),
+.listing-page .event-facts>div:nth-child(3){background:#f4f5ef;border-color:#eaebe4}
+.listing-page .event-facts>div:hover{transform:translateY(-2px)}
+.listing-page .event-facts>div>span{font-size:18px;line-height:1;color:var(--blue)}
+.listing-page .event-facts p{min-width:0;overflow-wrap:anywhere}
+.listing-page .event-facts b{font-size:12px}
+.listing-page .event-facts small{font-size:11px;line-height:1.5}
+.listing-page .detail-layout article h2{font-size:clamp(22px,2.5vw,29px);letter-spacing:-.035em;margin-top:27px}
+.listing-page .listing-categories .listing-category{
+  border-radius:10px 21px 10px 14px;transition:transform .18s,box-shadow .18s
+}
+.listing-page .listing-categories .listing-category:hover{transform:translateY(-3px);box-shadow:3px 5px 0 #d9ff38}
+.listing-page .booking-panel{
+  background:#fff;border:1px solid #d9dfda;border-radius:14px 14px 30px 12px;
+  box-shadow:4px 6px 0 #3156f51a;padding:20px;top:15px
+}
+.listing-page .listing-detail-image{height:143px;border-radius:12px 12px 22px 9px}
+.listing-page .booking-panel .eyebrow.blue{margin:8px 0 2px}
+.listing-page .booking-panel .price{font-size:clamp(27px,2.6vw,35px)}
+.listing-page .booking-panel a.button.primary{
+  border-radius:9px 22px 22px 9px;background:var(--lime);border-color:var(--lime);
+  color:var(--ink);font-weight:900;box-shadow:3px 4px 0 #10131a20;
+  transition:transform .2s ease,box-shadow .2s ease
+}
+.listing-page .booking-panel a.button.primary:hover{
+  transform:translateY(-2px);box-shadow:4px 7px 0 #10131a26
+}
+.listing-page .booking-panel .button.outline{border-radius:9px 17px 17px 9px}
+.listing-page .listing-claim{background:#edf0ff;padding:17px;border:1px solid #e0e5f6;border-radius:13px}
+
+/* Inviting, active organizer pages without fake sports footage. */
+.organizer-public-hero{position:relative;isolation:isolate;overflow:hidden;padding:35px 24px 40px;
+  background:linear-gradient(120deg,#f7f8f2,#e9edff 80%);
+  border-radius:20px 20px 49px 13px}
+.organizer-public-hero:before{
+  content:'';pointer-events:none;position:absolute;z-index:-1;right:18%;top:-75px;
+  width:285px;height:285px;border:24px solid #d9ff388a;border-radius:50%;
+  animation:mercury-swoosh-wiggle 7s ease-in-out infinite
+}
+.organizer-public-hero h1 em{display:inline-block;transform:rotate(-2deg);text-decoration:underline;text-decoration-color:var(--lime);text-decoration-thickness:7px;text-underline-offset:7px}
+.organizer-public-example{border-radius:16px 21px 39px 12px;box-shadow:6px 8px 0 #3156f539;transform:rotate(1.3deg);transition:transform .24s}
+.organizer-public-example:hover{transform:rotate(-1deg) translateY(-5px)}
+.organizer-benefits article,.public-how-grid article{
+  border-radius:14px 22px 13px 22px;transition:transform .22s ease,box-shadow .22s
+}
+.organizer-benefits article:hover,.public-how-grid article:hover{transform:translateY(-4px);box-shadow:4px 6px 0 #d9ff38}
+.organizer-funnel-steps article>b{display:inline-grid;place-items:center;border-radius:50%;width:43px;height:43px;background:var(--lime);color:var(--ink);transform:rotate(-8deg)}
+.organizer-public-bottom,.public-how-note{border-radius:14px 26px 15px 33px;box-shadow:4px 5px 0 #3156f525}
+.organizer-submission-preview{border-radius:20px 22px 39px 14px;box-shadow:5px 7px 0 #d9ff38;overflow:hidden}
+.organizer-submission-preview:before{content:'';pointer-events:none;position:absolute;right:-80px;top:-78px;width:230px;height:230px;border:16px solid #3156f56e;border-radius:50%;animation:mercury-swoosh-wiggle 6s ease-in-out infinite}
+
+/* Mobile pace: the first playable cards remain within the initial viewport. */
+@media(max-width:1000px){
+  .explore-page .explore-intro.mercury-arena{min-height:197px;padding:23px 26px 35px}
+  .explore-page .mercury-arena .arena-art{width:66%;right:-80px}
+  .explore-page .mercury-arena h1{font-size:clamp(36px,5.5vw,49px)}
+  .listing-page .detail-layout{grid-template-columns:minmax(0,1fr) 300px;gap:18px}
+  .listing-page .detail-layout>article{padding:22px}
+}
+@media(max-width:750px){
+  .explore-page .explore-intro.mercury-arena{min-height:193px}
+  .explore-page .mercury-arena .arena-art{width:79%;right:-110px;opacity:.63}
+  .explore-page .mercury-arena .arena-copy{max-width:72%}
+  .listing-page .detail-layout{grid-template-columns:1fr}
+  .listing-page .booking-panel{position:static}
+}
+@media(max-width:700px){
+  .explore-page .explore-intro.mercury-arena{margin-top:5px;min-height:186px;padding:18px 17px 33px;border-radius:14px 17px 29px 9px}
+  .explore-page .mercury-arena .arena-copy{max-width:90%}
+  .explore-page .mercury-arena .arena-eyebrow{font-size:8px;margin-bottom:11px}
+  .explore-page .mercury-arena h1{font-size:clamp(34px,9vw,45px);line-height:.92}
+  .explore-page .mercury-arena .arena-description{font-size:11px;max-width:250px}
+  .explore-page .mercury-arena .arena-art{width:120%;right:-67%;top:4px;bottom:18px;opacity:.55}
+  .explore-page .arena-side-label{display:none}
+  .explore-page .arena-ticker{height:20px}
+  .explore-page .arena-ticker-track span{font-size:8px;line-height:20px}
+  .explore-page .explore-search{margin-top:-9px;padding:0 5px}
+  .explore-page .sport-pill{border-radius:9px 19px 19px 9px}
+  .explore-page .results-heading h2{font-size:23px}
+  .explore-page .event-grid{gap:11px}
+  .directory-card.photo-card,.explore-page .directory-card.photo-card{border-radius:14px 14px 21px 10px}
+  .photo-card h3,.explore-page .directory-card.photo-card h3{font-size:15px}
+  .photo-card .photo-card-link,.explore-page .photo-card .photo-card-link{min-height:166px}
+  .home-journey .hero{border-radius:16px 16px 36px 10px}
+  .home-journey .home-speedlines{width:115%;right:-44%;opacity:.61}
+  .listing-page .listing-flow-stripe{height:40px;margin:11px 0 12px;padding:0 12px}
+  .listing-flow-stripe span{font-size:8px}
+  .listing-flow-stripe svg{width:38%;height:32px}
+  .listing-page .detail-layout>article{padding:17px 15px}
+  .listing-page .detail-title{font-size:clamp(30px,8vw,38px)}
+  .listing-page .event-facts{gap:7px}
+  .listing-page .event-facts>div{padding:11px 9px;gap:7px}
+  .listing-page .event-facts>div>span{font-size:15px}
+  .listing-page .event-facts b{font-size:11px}
+  .listing-page .event-facts small{font-size:10px}
+  .organizer-public-hero{padding:23px 16px 26px}
+  .organizer-public-example{transform:none}
+}
+@media(max-width:380px){
+  .explore-page .mercury-arena h1{font-size:32px}
+  .listing-page .event-facts{grid-template-columns:1fr}
+}
+@media(hover:none){
+  .directory-card.photo-card:hover,.explore-page .directory-card.photo-card:hover{transform:none}
+  .photo-card:hover .listing-photo img{transform:none}
+  .organizer-benefits article:hover,.public-how-grid article:hover{transform:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .arena-line,.arena-ball,.arena-orbit-ring,.arena-stop,.arena-live-dot,
+  .arena-ticker-track,.mercury-wave-ribbon-track,.home-speedlines path,
+  .home-speedlines circle,.listing-flow-stripe svg path,
+  .directory-card.photo-card,.organizer-public-hero:before,
+  .organizer-public-example,.organizer-submission-preview:before,
+  .photo-card .listing-photo img{animation:none!important;transition:none!important;transform:none!important}
+  .explore-page .arena-ticker-track,.mercury-wave-ribbon-track{width:100%;overflow:hidden}
+}
