@@ -111,7 +111,7 @@ export const listings = [
     "level": "Check categories",
     "priceLabel": "From ₹1,200",
     "priceNote": "Entry unit is not stated in the accessible listing; check the ticket category.",
-    "description": "A three-day pickleball championship at the organizer's ASC and WTC venues. Confirm your category's court, rules and ticket details before registering.",
+    "description": "A three-day pickleball championship listed on Hudle. Venue details have varied between versions of the organizer page; confirm the final court location, rules and ticket before making plans.",
     "deadline": null,
     "deadlineLabel": "Not published in the accessible listing",
     "sourceName": "Hudle · organizer listing",
