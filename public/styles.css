@@ -2938,9 +2938,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .home-journey .quickline-item{padding:10px 12px}
 .home-journey .search-bar{margin:0 0 14px;padding:13px 17px;gap:12px;border-radius:9px;transform:none;box-shadow:none}
 .home-journey .search-bar .button{min-height:45px;padding:11px 16px}
-.home-journey .hero{height:440px;border-radius:11px}
-.home-journey .hero-copy{padding:40px 44px}
-.home-journey .hero h1{font-size:clamp(40px,5.4vw,66px);margin:13px 0 16px}
+.home-journey .hero{height:365px;border-radius:11px;margin:28px 0 0}
+.home-journey .hero-copy{padding:32px 40px}
+.home-journey .hero h1{font-size:clamp(38px,4.4vw,54px);margin:10px 0 12px}
 .home-journey .hero-note{margin-top:10px}
 .home-journey .discovery-section{padding-top:32px}
 .home-journey .discovery-section .section-heading{margin-bottom:16px}
@@ -2948,7 +2948,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   .home-journey .quickline{grid-template-columns:1fr;gap:10px}
   .home-journey .quickline-results{grid-template-columns:repeat(3,minmax(0,1fr))}
   .home-journey .quickline>.text-link{justify-self:start}
-  .home-journey .hero{height:450px}
+  .home-journey .hero{height:390px}
 }
 @media(max-width:650px){
   .home-journey .quickline{grid-template-columns:1fr;padding:13px 14px;gap:11px;margin:9px 0 11px}
@@ -2960,10 +2960,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   .home-journey .search-bar label{padding:0 8px}
   .home-journey .search-bar .search-input{grid-column:1/-1}
   .home-journey .search-bar .button{grid-column:1/-1;width:100%;justify-content:center;min-height:43px}
-  .home-journey .hero{height:465px}
+  .home-journey .hero{height:395px;margin-top:22px}
   .home-journey .hero-copy{padding:27px 22px}
-  .home-journey .hero h1{font-size:clamp(42px,10vw,55px);margin:18px 0 12px}
-  .home-journey .hero-stamp{width:110px;right:15px;bottom:25px}
+  .home-journey .hero h1{font-size:clamp(38px,9vw,47px);margin:13px 0 9px}
+  .home-journey .hero-stamp{display:none}
   .home-journey .hero-stamp b{font-size:15px}
   .home-journey .discovery-section{padding-top:23px}
 }
