@@ -83,7 +83,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
   ];
   const select = ([name, label, values], extraClass = '') =>
     '<label class="directory-filter ' + extraClass + '"><span>' + esc(label) + '</span><select name="' + esc(name) + '">' +
-    values.map(value => '<option value="' + esc(value) + '">' +
+    values.map(value => '<option value="' + esc(value) + '"' + (value === defaults[name] ? ' selected' : '') + '>' +
       esc(name === 'availability' && value === 'Entry possible' ? 'May accept entries · verify' : value) +
       '</option>').join('') +
     '</select></label>';

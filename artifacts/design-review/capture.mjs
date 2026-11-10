@@ -115,7 +115,8 @@ function send(method, params = {}) {
 try {
   await send('Page.enable');
   await send('Runtime.enable');
-  if (scope === 'handoff') await send('Network.enable');
+  await send('Network.enable');
+  await send('Network.setCacheDisabled', { cacheDisabled: true });
   if (scope === 'contrast' || scope === 'axe') await send('Page.addScriptToEvaluateOnNewDocument', { source: await readFile('node_modules/.pnpm/axe-core@4.11.4/node_modules/axe-core/axe.min.js', 'utf8') });
   if (mode?.startsWith('fixture') || mode === 'loading') await send('Fetch.enable', { patterns: [{ urlPattern: '*://localhost:3002/api/*' }] });
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width < 600, screenWidth: width, screenHeight: height });
@@ -181,6 +182,7 @@ try {
     process.stdout.write(`Cancelled booking state: ${reading.result.value}\n`);
   }
   if (mode === 'fixture-history') {
+    const before = (await send('Runtime.evaluate', { expression: 'document.querySelector("#directory-count")?.textContent', returnByValue: true })).result.value;
     const changed = await send('Runtime.evaluate', {
       expression: '(() => { const field = document.querySelector("#directory-filters [name=sport]"); field.value = "Tennis"; field.dispatchEvent(new Event("change", { bubbles: true })); return JSON.stringify({ url: location.search, count: document.querySelector("#directory-count")?.textContent }); })()',
       returnByValue: true,
@@ -193,7 +195,7 @@ try {
       returnByValue: true,
     });
     const state = JSON.parse(restored.result.value);
-    if (state.url || state.sport !== 'All sports' || !state.count?.startsWith('8 opportunities')) throw new Error(`Back navigation did not restore filters: ${restored.result.value}`);
+    if (state.url || state.sport !== 'All sports' || state.count !== before) throw new Error(`Back navigation did not restore filters: ${restored.result.value}`);
     process.stdout.write(`Filter history: ${changed.result.value} -> ${restored.result.value}\n`);
   }
   const metrics = await send('Runtime.evaluate', { expression: 'JSON.stringify({url:location.href,title:document.title,viewport:innerWidth,content:document.documentElement.scrollWidth,height:document.documentElement.scrollHeight,linksBottom:document.querySelector(".signin-links")?.getBoundingClientRect().bottom})', returnByValue: true });
@@ -237,12 +239,14 @@ try {
       if (reading.exceptionDetails) throw new Error(reading.exceptionDetails.text);
       return reading.result.value;
     };
-    const initial = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,firstTop:document.querySelector("#directory-results .directory-card")?.getBoundingClientRect().top,overflow:document.documentElement.scrollWidth>innerWidth})'));
-    if (initial.cards < 8 || initial.firstTop >= height || initial.overflow) throw new Error(`Explore initial layout failed: ${JSON.stringify(initial)}`);
+    const initial = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,firstTop:document.querySelector("#directory-results .directory-card")?.getBoundingClientRect().top,overflow:document.documentElement.scrollWidth>innerWidth,availability:document.querySelector("#directory-filters [name=availability]")?.value,clearHidden:document.querySelector("#clear-filters")?.hidden,url:location.search})'));
+    if (initial.cards < 8 || initial.firstTop >= height || initial.overflow || initial.availability !== 'All upcoming' || !initial.clearHidden || initial.url) throw new Error(`Explore initial layout failed: ${JSON.stringify(initial)}`);
     await evaluate('document.querySelector("[data-sport=Tennis]").click()');
     const sport = JSON.parse(await evaluate('JSON.stringify({url:location.search,pressed:document.querySelector("[data-sport=Tennis]").getAttribute("aria-pressed"),cards:document.querySelectorAll("#directory-results .directory-card").length})'));
     if (!sport.url.includes('sport=Tennis') || sport.pressed !== 'true' || sport.cards < 1 || sport.cards >= initial.cards) throw new Error(`Sport filter failed: ${JSON.stringify(sport)}`);
     await evaluate('document.querySelector("#clear-filters").click()');
+    const reset = JSON.parse(await evaluate('JSON.stringify({url:location.search,availability:document.querySelector("#directory-filters [name=availability]").value,clearHidden:document.querySelector("#clear-filters").hidden})'));
+    if (reset.url || reset.availability !== 'All upcoming' || !reset.clearHidden) throw new Error(`Filter reset failed: ${JSON.stringify(reset)}`);
     await evaluate('document.querySelector("#directory-filters [name=area]").value="Andheri";document.querySelector("#directory-filters [name=area]").dispatchEvent(new Event("change",{bubbles:true}));document.querySelector("#directory-filters [name=when]").value="Next 7 days";document.querySelector("#directory-filters [name=when]").dispatchEvent(new Event("change",{bubbles:true}))');
     const timeAndArea = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,areas:[...document.querySelectorAll("#directory-results .directory-card .muted")].map(element=>element.textContent)})'));
     if (!timeAndArea.url.includes('area=Andheri') || !timeAndArea.url.includes('when=Next+7+days') || !timeAndArea.cards || timeAndArea.cards >= initial.cards || timeAndArea.areas.some(area=>!area.includes('Andheri'))) throw new Error(`Date and area filters failed: ${JSON.stringify(timeAndArea)}`);
@@ -259,7 +263,7 @@ try {
       native = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,route:document.querySelector(".mercury-card .card-outbound")?.getAttribute("href"),action:document.querySelector(".mercury-card .card-outbound")?.textContent})'));
       if (!native.url.includes('source=Book+on+Mercury') || native.cards !== 1 || native.route !== '/register/review-state' || !native.action.includes('Book free place')) throw new Error(`Native booking route failed: ${JSON.stringify(native)}`);
     }
-    const report = { page, initial, sport, timeAndArea, empty, advanced, native };
+    const report = { page, initial, sport, reset, timeAndArea, empty, advanced, native };
     await writeFile(output, JSON.stringify(report, null, 2));
     process.stdout.write(`${output} Explore interaction checks passed\n`);
   } else if (scope === 'perf') {

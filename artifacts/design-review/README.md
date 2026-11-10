@@ -4,7 +4,7 @@ Captured from a local production build at `http://localhost:3002` with `MERCURY_
 
 ## Explore Playboard review
 
-The compact Explore redesign was captured at [1440 px desktop](explore-playboard-desktop.png) and [390 px phone](explore-playboard-phone.png). The local catalogue fixture showed eight organizer listings. Both captures were taken from the production build, with no horizontal overflow. Browser checks at 320, 390, 768, and 1440 px covered sport, date, area, search, reset, advanced filters, a native free booking route, URL history, keyboard use, and organizer handoff tracking. The accessibility scan found no definite violations; 36 checks remained inconclusive and still need human review.
+The compact Explore redesign was captured at [1440 px desktop](explore-playboard-desktop.png) and [390 px phone](explore-playboard-phone.png). The local catalogue fixture showed nine organizer listings. Both captures were taken from the production build, with no horizontal overflow. Browser checks at 320, 390, 768, and 1440 px covered sport, date, area, search, reset, advanced filters, a native free booking route, URL history, keyboard use, and organizer handoff tracking. The accessibility scan found no definite violations; 40 checks remained inconclusive and still need human review.
 
 ## Iteration 1: discovery and sign-in
 
