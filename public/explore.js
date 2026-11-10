@@ -1,6 +1,7 @@
 import { indiaDay, listingStatus } from './catalogue.js';
 import { listingCard } from './discovery.js';
 import { trackMetric } from './metrics.js';
+import { arenaIntroMarkup, waveRibbonMarkup } from './kinetic-art.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const defaults = { query: '', sport: 'All sports', when: 'Any date', area: 'All Mumbai', type: 'All formats', source: 'All listings', level: 'Any level', availability: 'All upcoming', fee: 'Any fee', sort: 'Soonest first', from: '', to: '' };
@@ -93,9 +94,7 @@ export function sortForDiscovery(items, mode = 'Soonest first', now = Date.now()
 // preserved by the router and never overwritten with these placeholders.
 export function renderExploreLoading(main) {
   main.innerHTML = '<div class="page-width explore-page explore-pending" aria-busy="true">' +
-    '<header class="explore-intro"><p class="eyebrow blue">MUMBAI, IN PLAY ↗</p>' +
-    '<h1>Find your next <em>game.</em></h1>' +
-    '<p>Tournaments, leagues and sessions. Less looking, more playing.</p></header>' +
+    arenaIntroMarkup() +
     '<section class="explore-skeleton-search" aria-label="Loading search and filters">' +
     '<div class="explore-skeleton-searchbar" aria-hidden="true"></div>' +
     '<div class="explore-skeleton-pills" aria-hidden="true">' +
@@ -141,11 +140,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
 
   main.innerHTML = [
     '<div class="page-width explore-page">',
-    '<header class="explore-intro" aria-labelledby="explore-title">',
-    '<p class="eyebrow blue">MUMBAI, IN PLAY <span aria-hidden="true">↗</span></p>',
-    '<h1 id="explore-title">Find your next <em>game.</em></h1>',
-    '<p>Tournaments, leagues and sessions. Less looking, more playing.</p>',
-    '</header>',
+    arenaIntroMarkup(),
     '<section class="explore-search" aria-label="Find something to play">',
     '<div class="explore-sports" role="group" aria-label="Filter by sport">',
     ['All sports', ...sports].map(sportButton).join(''),
@@ -184,6 +179,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
     '<div id="active-filters" class="active-filters" role="group" aria-label="Active filters"></div>',
     '<p class="explore-freshness" id="explore-freshness" hidden></p>',
     '<div class="event-grid" id="directory-results" aria-label="Upcoming sporting opportunities"></div>',
+    waveRibbonMarkup(),
     '<details class="explore-how"><summary>How joining a game works on Mercury</summary>',
     '<p>Some events send you to the organizer to register. For free sessions booked directly on Mercury, your confirmed place appears in <a href="/my-games">My games</a>. Saving a listing is not a booking.</p>',
     '</details>',
