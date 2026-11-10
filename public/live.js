@@ -343,8 +343,62 @@ async function host(editId) {
     });
     action('[data-event-action]', async (b) => { const act = b.dataset.eventAction; const title = act === 'publish' ? 'Publish this game?' : act === 'cancel' ? 'Cancel this event?' : 'Return to draft?'; const body = act === 'publish' ? 'People with access to Mercury will be able to reserve a free place. Confirm your venue is ready.' : act === 'cancel' ? 'All active registrations will be cancelled. Players will see an update in My games. This cannot be undone.' : 'This event will no longer appear in discovery.'; confirmAction(title, body, act === 'publish' ? 'Publish game' : act === 'cancel' ? 'Cancel event' : 'Return to draft', async () => { await api('organizer/events/' + b.dataset.id + '/' + act, {}); await host(); ctx.toast(act === 'publish' ? 'Your game is published.' : 'Event updated.'); }); });
 }
-async function roster(id) { if (!requireUser())
-    return; const { event: e, attendees } = await api('organizer/events/' + id + '/attendees'); page(`<a class="back" href="/host">← Organizer studio</a>${heading('WELCOME YOUR PLAYERS', esc(e.title), 'Check attendance against the player name and pass reference.')}<div class="roster-summary">${stamp(e.status)}<b>${attendees.filter(b => b.status === 'checked_in').length} checked in</b><span>${e.registered} active registrations / ${e.capacity} places</span><button class="button outline" id="refresh-roster">Refresh roster ↻</button><button class="button outline" id="export-roster">Download CSV ↓</button></div><div class="roster-list">${attendees.map(b => `<article class="roster-row"><div><h3>${esc(b.player_name)}</h3><p>${esc(b.level)} · <code>${esc(b.id)}</code></p></div><div class="action-row">${stamp(b.status)}${b.status === 'confirmed' && e.status === 'published' ? `<button class="button primary" data-check-in="${b.id}">Check in ✓</button>` : ''}</div></article>`).join('') || empty('Your crew is on its way.', 'Registrations will appear here as players join.')}</div><p class="fine">This roster contains personal information. Keep exports private and use them only to run this session.</p>`); action('[data-check-in]', async (b) => { await api('organizer/events/' + id + '/check-in', { bookingId: b.dataset.checkIn }); await roster(id); ctx.toast('Player checked in.'); }); action('#refresh-roster', () => roster(id)); action('#export-roster', async () => { const cell = v => '"' + String(v ?? '').replace(/^[=+@-]/, "'$&").replaceAll('"', '""') + '"'; const csv = [['Pass reference', 'Player name', 'Level', 'Status'], ...attendees.map(b => [b.id, b.player_name, b.level, b.status])].map(row => row.map(cell).join(',')).join('\r\n'); const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })); const a = document.createElement('a'); a.href = url; a.download = 'mercury-attendees.csv'; a.click(); URL.revokeObjectURL(url); }); }
+async function roster(id, filters = {}) {
+    if (!requireUser()) return;
+    const { event: e, attendees } = await api('organizer/events/' + id + '/attendees');
+    const rows = [...attendees].sort((a, b) => {
+        const order = { confirmed: 0, checked_in: 1 };
+        return (order[a.status] ?? 2) - (order[b.status] ?? 2) ||
+            String(a.player_name).localeCompare(String(b.player_name));
+    });
+    const checked = attendees.filter(b => b.status === 'checked_in').length;
+    const row = b => '<article class="roster-row" data-status="' + esc(b.status) + '">' +
+        '<div><h3>' + esc(b.player_name) + '</h3><p>' + esc(b.level) +
+        ' · <code>' + esc(b.id) + '</code></p></div>' +
+        '<div class="action-row">' + stamp(b.status) +
+        (b.status === 'confirmed' && e.status === 'published'
+            ? '<button class="button primary" data-check-in="' + esc(b.id) + '">Check in ✓</button>' : '') +
+        '</div></article>';
+    page('<a class="back" href="/host">← Organizer studio</a>' +
+        heading('GAME DAY CONTROL', esc(e.title), 'Find a player by name or pass reference, then check them in.') +
+        '<div class="roster-summary">' + stamp(e.status) +
+        '<b>' + checked + ' checked in</b><span>' + e.registered + ' active registrations / ' +
+        e.capacity + ' places</span>' +
+        '<button class="button outline" id="refresh-roster" type="button">Refresh roster ↻</button>' +
+        '<button class="button outline" id="export-roster" type="button">Download CSV ↓</button></div>' +
+        '<div class="roster-tools">' +
+        '<label for="roster-search">Find a player <input id="roster-search" type="search" autocomplete="off" placeholder="Name or pass reference"></label>' +
+        '<label class="roster-pending-label"><input id="roster-unchecked" type="checkbox"> Not checked in</label>' +
+        '<p id="roster-result-count" role="status" aria-live="polite"></p>' +
+        '</div><div class="roster-list">' +
+        (rows.map(row).join('') || empty('Your crew is on its way.', 'Registrations appear here as players join.')) +
+        '</div><p class="fine">The roster contains personal information. Keep downloads private and use them only to run this session.</p>');
+    mountRosterSearch(ctx.main, filters);
+    const currentFilters = () => ({
+        query: ctx.main.querySelector('#roster-search')?.value || '',
+        uncheckedOnly: !!ctx.main.querySelector('#roster-unchecked')?.checked
+    });
+    action('[data-check-in]', async b => {
+        const retained = currentFilters();
+        await api('organizer/events/' + id + '/check-in', { bookingId: b.dataset.checkIn });
+        await roster(id, retained);
+        ctx.toast('Player checked in.');
+    });
+    action('#refresh-roster', () => roster(id, currentFilters()));
+    action('#export-roster', async () => {
+        const cell = value => '"' + String(value ?? '').replace(/^[=+@-]/, "'$&").replaceAll('"', '""') + '"';
+        const csv = [['Pass reference', 'Player name', 'Level', 'Status'],
+            ...attendees.map(b => [b.id, b.player_name, b.level, b.status])]
+            .map(items => items.map(cell).join(',')).join('\r\n');
+        const url = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'mercury-attendees.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+    });
+}
+
 function info() { page(`<div class="prose">${heading('LESS PLANNING. MORE PLAY.','Find it. Check it.<br><em>Play it.</em>')}<h2>Discover your next game.</h2><p>Browse real events by sport, neighbourhood and format. Source links, entry units and eligibility notes help you choose.</p><h2>Register with the organizer.</h2><p>External listings open the organizer or booking provider’s website. Check current dates, category rules, fees and cancellation terms before entering. Mercury has not onboarded these organizers and does not issue their tickets. Saving a listing is a bookmark, not a booking.</p><h2>Keep your shortlist.</h2><p>Create an account to save events across devices. Mercury accounts are for people aged 18 or older; a parent or guardian should manage junior entries with the organizer.</p><h2>For free sessions booked on Mercury</h2><p>Where an event is labelled Book on Mercury, your confirmed place appears in My games. Free places can be cancelled before the start, unless already checked in. Organizer cancellations appear in My games. Email and SMS are not active; paid native registration is disabled.</p><p>Found something wrong? Use Suggest a correction or <a href="/support">contact Mercury</a>.</p>${btn('Find your game','/explore')}</div>`); }
 export async function liveRoute(path, context) {
     ctx = context;
