@@ -1,5 +1,6 @@
 import { renderAccount, renderSupport, renderAdmin, renderPolicy } from './service-ui.js';
 import { listingCard, renderListing } from './discovery.js';
+import { sportPhoto } from './sport-media.js';
 import { actionable, renderExplore } from './explore.js';
 import { findListing, listingDate } from './catalogue.js';
 import { events as samples, dateLabel, timeLabel } from './data.js';
@@ -12,6 +13,14 @@ import { mountOrganizerJourney, mountRosterSearch } from './organizer-journey.js
 let ctx, session, turn = 0;
 const policy = 'Cancel your free place from My games any time before the event starts. If the organizer cancels, your registration is cancelled automatically. No payment is collected.';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// If a stock CDN is unavailable, show the branded sport placeholder instead of a broken image.
+document.addEventListener('error', event => {
+    const image = event.target;
+    if (image?.matches?.('img.sport-stock-img')) {
+        image.hidden = true;
+        image.parentElement?.classList.add('media-unavailable');
+    }
+}, true);
 document.addEventListener('click', event => {
     const link = event.target.closest?.('a[data-outbound]');
     if (!link) return;
@@ -107,11 +116,31 @@ finally {
 const err = '<p class="error" role="alert" tabindex="-1"></p>';
 function gameCard(e, bookingId = '') {
     const state = eventState(e);
-    const open = state.canBook;
-    const destination = bookingId ? '/booking/' + bookingId : (open ? '/register/' : '/event/') + e.id;
-    const actionText = bookingId ? 'View confirmed pass' : open ? 'Book free place on Mercury' : 'View details';
-    const cardStatus = ({ cancelled: 'Cancelled by organizer', past: 'Game started · entry closed', full: 'Full · no places left' })[state.code] || `${e.spots} free places left`;
-    return `<article class="event-card directory-card mercury-card"><a class="card-image" href="/event/${esc(e.id)}" aria-label="View ${esc(e.title)} details"><img src="/assets/mercury-motion.svg" alt="" aria-hidden="true" width="640" height="400" loading="lazy"><span class="image-label">${esc(e.sport)} · ${esc(e.type)}</span><small class="card-art-note">ILLUSTRATIVE ARTWORK</small></a><div class="card-content"><a class="card-main" href="/event/${esc(e.id)}"><p class="event-time">${esc(e.sport)} · ${esc(e.type)}</p><p class="card-date">${dateLabel(e)} · ${timeLabel(e)} IST</p><h3>${esc(e.title)}</h3><p class="muted">⌖ ${esc(e.area)}, Mumbai</p><p class="card-eligibility">Adults 18+ · ${esc(e.level)} · Individual entry</p></a><div class="card-price"><b>Free</b><small>Per player · no payment</small></div><p class="listing-status ${bookingId ? 'confirmed' : esc(state.code)}">${bookingId ? 'Your place is confirmed' : esc(cardStatus)}</p><p class="card-route">Booking on Mercury · confirmation in My games</p><a class="card-outbound" href="${esc(destination)}">${esc(actionText)} ↗</a></div></article>`;
+    const media = sportPhoto(e);
+    const view = bookingId ? '/booking/' + esc(bookingId) : '/event/' + esc(e.id);
+    const status = bookingId ? 'Your place is confirmed'
+        : state.code === 'full' ? 'Game full'
+        : state.code === 'past' ? 'Game started'
+        : state.code === 'cancelled' ? 'Cancelled'
+        : state.canBook ? e.spots + ' places left' : '';
+    const sportClass = String(e.sport || 'sport').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    return '<article class="event-card directory-card photo-card mercury-card ' + sportClass + '">' +
+        '<a class="photo-card-link" href="' + view + '" aria-label="' +
+        (bookingId ? 'View confirmed pass for ' : 'View event details for ') + esc(e.title) + '">' +
+        '<div class="listing-photo ' + sportClass + '" aria-hidden="true">' +
+        '<div class="photo-fallback">' + esc(e.sport) + '</div>' +
+        '<img class="sport-stock-img" src="' + esc(media.src) + '" alt="" loading="lazy" decoding="async" width="560" height="440">' +
+        '<span class="photo-disclosure">' + (media.source === 'stock' ? 'Illustrative photo' : 'Organizer image') + '</span></div>' +
+        '<div class="photo-card-copy"><div class="photo-card-top"><span class="photo-sport">' + esc(e.sport) +
+        ' · ' + esc(e.type) + '</span>' +
+        (status ? '<span class="photo-status ' + esc(state.code) + '">' + esc(status) + '</span>' : '') +
+        '</div><h3>' + esc(e.title) + '</h3><div class="photo-card-facts">' +
+        '<span class="photo-date">' + esc(dateLabel(e)) + ' · ' + esc(timeLabel(e)) + ' IST</span>' +
+        '<span class="photo-area">' + esc(e.area) + '</span></div>' +
+        '<div class="photo-card-foot"><div class="photo-price"><strong>' +
+        (Number(e.price) ? '₹' + esc(e.price) : 'Free') + '</strong><small>Booked on Mercury</small></div>' +
+        '<span class="photo-cta">' + (bookingId ? 'View pass' : 'View event') + ' ↗</span>' +
+        '</div></div></a></article>';
 }
 export async function enhanceHome(main) {
     const section = main.querySelector('.discovery-section');
