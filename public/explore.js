@@ -92,7 +92,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
     '<input type="search" name="query" placeholder="Search games, clubs or areas" autocomplete="off"></label>',
     select(options[1], 'quick-filter'),
     select(options[2], 'quick-filter'),
-    '<button class="filter-toggle" id="filter-toggle" type="button" aria-controls="directory-more-panel" aria-expanded="false">More filters <span aria-hidden="true">＋</span></button>',
+    '<button class="filter-toggle" id="filter-toggle" type="button" aria-controls="directory-more-panel" aria-expanded="false">Filters <span aria-hidden="true">＋</span></button>',
     '<div class="directory-extra" id="directory-more-panel" hidden>',
     '<div class="directory-more-grid">',
     [options[0], ...options.slice(3)].map(option => select(option)).join(''),
