@@ -1,3 +1,4 @@
+import './motion.js';
 import {liveRoute, enhanceHome} from './live.js';
 import { trackMetric } from './metrics.js';
 import {
