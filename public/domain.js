@@ -10,8 +10,8 @@ export const defaultFilters = Object.freeze({
 });
 const choices = {
   sport: ["All sports", "Badminton", "Tennis", "Pickleball"],
-  area: ["All Mumbai", "Powai", "Chandivali", "Andheri"],
-  level: ["All levels", "Beginner friendly", "Intermediate"],
+  area: ["All Mumbai", "Powai", "Chandivali", "Andheri", "Bandra", "BKC", "Borivali", "Malad", "Ghatkopar", "Vile Parle", "South Mumbai", "Nerul, Navi Mumbai", "Thane"],
+  level: ["All levels", "Beginner friendly", "Intermediate", "Advanced", "Competitive"],
   type: ["All formats", "Social play", "Tournament"],
   sort: ["soonest", "price-low", "price-high"],
 };
