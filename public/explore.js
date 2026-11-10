@@ -75,7 +75,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
   const options = [
     ['sport', 'Sport', ['All sports', ...sports]],
     ['when', 'When', ['Any date', 'This weekend', 'Next 7 days']],
-    ['area', 'Area', ['All Mumbai', ...new Set(items.map(event => event.area).filter(Boolean).sort())]],
+    ['area', 'Area', ['All Mumbai', ...new Set(items.map(event => event.area).filter(area => area && !/confirm/i.test(area)).sort())]],
     ['type', 'Format', ['All formats', 'Tournament', 'League', 'Training camp', 'Social play']],
     ['source', 'Booking route', ['All listings', 'External listings', 'Book on Mercury']],
     ['level', 'Playing level', ['Any level', ...new Set(items.map(event => event.level).filter(Boolean).sort())]],
