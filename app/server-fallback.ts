@@ -2,6 +2,7 @@ import { getDatabase } from '../db/vercel';
 import { currentListings, indiaDay, listingDate, listingStatus } from '../public/catalogue.js';
 import { listingCard } from '../public/discovery.js';
 import { sportPhoto } from '../public/sport-media.js';
+import { arenaIntroMarkup, waveRibbonMarkup } from '../public/kinetic-art.js';
 
 type Listing = ReturnType<typeof currentListings>[number];
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
@@ -43,9 +44,7 @@ export async function discoveryFallback(view: 'home' | 'explore') {
     display.some(listing => listingStatus(listing).code === 'stale');
   if (view === 'explore') {
     return '<section class="page-width explore-page">' +
-      '<header class="explore-intro"><p class="eyebrow blue">MUMBAI, IN PLAY ↗</p>' +
-      '<h1>Find your next <em>game.</em></h1>' +
-      '<p>Tournaments, leagues and sessions. Less looking, more playing.</p></header>' +
+      arenaIntroMarkup() +
       '<div class="results-heading"><div><h2>Explore events</h2>' +
       '<p>' + display.length + ' events · Soonest first</p></div></div>' +
       (needsRecheck
@@ -57,7 +56,7 @@ export async function discoveryFallback(view: 'home' | 'explore') {
         : '<div class="empty explore-empty"><h3>Upcoming event details are being checked.</h3>' +
           '<p>Explore all upcoming events or return when organizers have confirmed details.</p>' +
           '<a class="button outline" href="/explore?availability=All%20upcoming">See all upcoming ↗</a></div>') +
-      '</div><p class="fine explore-fine">Organizer listings are source-backed, not live inventory. Confirm final fees and eligibility before entering.</p>' +
+      '</div>' + waveRibbonMarkup() + '<p class="fine explore-fine">Organizer listings are source-backed, not live inventory. Confirm final fees and eligibility before entering.</p>' +
       '<noscript><p class="fine">Listing details remain available without JavaScript. Interactive search and filters require JavaScript.</p></noscript></section>';
   }
   return `<section class="page-width"><div class="page-intro"><p class="eyebrow blue">MUMBAI, IN PLAY</p><h1>${view === 'home' ? 'Find your next game in Mumbai.' : 'Explore upcoming games in Mumbai.'}</h1><p>Compare dates, area, eligibility, fee units and entry status. External events are registered with their organizers; selected free sessions can be booked on Mercury.</p></div><div class="manage-grid">${display.length ? display.map(discoveryCard).join('') : '<p>Upcoming games could not be loaded. Please try again shortly.</p>'}</div><a class="button primary" href="/explore">Explore games ↗</a><noscript><p>You can open listing details and organizer links without JavaScript.</p></noscript></section>`;
