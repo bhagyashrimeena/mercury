@@ -39,6 +39,10 @@ jobs:
           node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/home-desktop.json fixture-home ux-home
           node artifacts/design-review/capture.mjs http://localhost:3002/explore 1440 900 /tmp/mercury-ux-captures/explore-desktop.json fixture-explore explore
           node artifacts/design-review/capture.mjs http://localhost:3002/explore 390 844 /tmp/mercury-ux-captures/explore-phone.json fixture-native-explore explore
+          node artifacts/design-review/capture.mjs http://localhost:3002/explore 320 740 /tmp/mercury-ux-captures/explore-small-phone.json fixture-explore explore
+          node artifacts/design-review/capture.mjs http://localhost:3002/explore 768 900 /tmp/mercury-ux-captures/explore-tablet.json fixture-explore explore
+          node artifacts/design-review/capture.mjs http://localhost:3002/explore 1440 900 /tmp/mercury-ux-captures/explore-desktop.png fixture-explore
+          node artifacts/design-review/capture.mjs http://localhost:3002/explore 390 844 /tmp/mercury-ux-captures/explore-phone.png fixture-explore
           node artifacts/design-review/capture.mjs http://localhost:3002/explore 390 844 /tmp/mercury-ux-captures/explore-handoff.json fixture-explore handoff
           node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/home-phone.json fixture-home ux-home
           node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/organizer-desktop.json fixture-organizer ux-organizer
@@ -49,5 +53,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mercury-ux-browser-reports
-          path: /tmp/mercury-ux-captures/*.json
+          path: /tmp/mercury-ux-captures/
           if-no-files-found: ignore
