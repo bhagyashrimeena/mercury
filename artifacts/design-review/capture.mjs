@@ -332,6 +332,52 @@ try {
       throw Error('Review intake did not finish: '+result.result.value);
     await writeFile(output,JSON.stringify({initial,preview:state,completed},null,2));
     process.stdout.write(output+' no-login organizer event submission passed\n');
+  } else if (scope === 'kinetic-explore') {
+    const reading=await send('Runtime.evaluate',{
+      expression:'JSON.stringify({arena:!!document.querySelector(".mercury-arena"),paths:document.querySelectorAll(".arena-wave-svg .arena-line").length,'+
+        'ticker:document.querySelector(".arena-ticker-track")?getComputedStyle(document.querySelector(".arena-ticker-track")).animationName:null,'+
+        'photoCards:document.querySelectorAll("#directory-results .photo-card").length,'+
+        'firstTop:document.querySelector("#directory-results .photo-card")?.getBoundingClientRect().top,'+
+        'cardHeight:document.querySelector("#directory-results .photo-card")?.getBoundingClientRect().height,'+
+        'waveRibbon:!!document.querySelector(".mercury-wave-ribbon"),'+
+        'overflow:document.documentElement.scrollWidth>innerWidth})',
+      returnByValue:true
+    });
+    const state=JSON.parse(reading.result.value);
+    if(!state.arena||state.paths<3||state.ticker==='none'||state.photoCards<5||
+      !(state.firstTop<height)||state.cardHeight>=220||!state.waveRibbon||state.overflow)
+      throw Error('Kinetic Explore UI failed: '+reading.result.value);
+    await writeFile(output,JSON.stringify(state,null,2));
+    process.stdout.write(output+' wavy Explore motion and compact card layout passed\n');
+  } else if (scope === 'kinetic-detail') {
+    const reading=await send('Runtime.evaluate',{
+      expression:'JSON.stringify({path:location.pathname,stripe:!!document.querySelector(".listing-flow-stripe"),'+
+        'line:!!document.querySelector(".listing-flow-stripe svg path"),'+
+        'title:document.querySelector(".listing-page .detail-title")?.textContent,'+
+        'facts:document.querySelectorAll(".listing-page .event-facts>div").length,'+
+        'action:!!document.querySelector(".listing-page .booking-panel .button.primary"),'+
+        'overflow:document.documentElement.scrollWidth>innerWidth})',
+      returnByValue:true
+    });
+    const state=JSON.parse(reading.result.value);
+    if(!state.path.startsWith('/listing/')||!state.stripe||!state.line||!state.title||
+       state.facts<4||!state.action||state.overflow)
+       throw Error('Kinetic listing page failed: '+reading.result.value);
+    await writeFile(output,JSON.stringify(state,null,2));
+    process.stdout.write(output+' event detail motion and facts passed\n');
+  } else if (scope === 'kinetic-home') {
+    const reading=await send('Runtime.evaluate',{
+      expression:'JSON.stringify({trail:!!document.querySelector(".home-speedlines"),'+
+        'featured:document.querySelectorAll("#featured-grid .photo-card").length,'+
+        'hero:!!document.querySelector(".home-journey .hero"),'+
+        'overflow:document.documentElement.scrollWidth>innerWidth})',
+      returnByValue:true
+    });
+    const state=JSON.parse(reading.result.value);
+    if(!state.trail||!state.hero||!state.featured||state.overflow)
+      throw Error('Kinetic homepage failed: '+reading.result.value);
+    await writeFile(output,JSON.stringify(state,null,2));
+    process.stdout.write(output+' animated Home hero and featured cards passed\n');
   } else if (scope === 'ux-home') {
     const reading = await send('Runtime.evaluate', {
       expression: '(() => { const root=document.querySelector(".home-journey");' +
