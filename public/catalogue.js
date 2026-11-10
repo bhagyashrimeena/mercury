@@ -9,6 +9,7 @@ export function listingStatus(e, now = Date.now()) {
   if (e.deadline && (e.deadline.length === 10 ? today > e.deadline : now >= Date.parse(e.deadline)))
     return { code: 'closed', label: 'Entry deadline passed' };
   if (today >= e.date) return { code: 'started', label: 'Event date reached · check organizer' };
+  if (e.reviewNote) return { code: 'stale', label: 'Verify venue before entry', reason: e.reviewNote };
   if (e.deadline?.length === 10 && today === e.deadline)
     return { code: 'deadline', label: 'Deadline today · confirm closing time' };
   if (Date.parse(today) - Date.parse(e.checkedOn) >= 7 * 86400000)
