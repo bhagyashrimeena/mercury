@@ -51,11 +51,11 @@ Instrument already-supported discovery and handoff metrics before creating more 
 
 Run the command below **after Vercel marks the production deployment ready**:
 
-\`\`\`sh
+```sh
 pnpm production:smoke
 # Or explicitly target the canonical deployment origin:
 node scripts/smoke-production.mjs https://www.playonmercury.com
-\`\`\`
+```
 
 The script issues only five public GET requests: Explore HTML, the browser Explore module, the stylesheet, the public listings API and the public events API. It verifies the compact Playboard markup, shipped assets and API response shapes. It does not log in, register players, click external organizers, change a database, or handle secrets.
 
