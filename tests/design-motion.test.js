@@ -27,7 +27,7 @@ test('event hero escapes organizer-controlled text and never invents images', ()
     area: '<script>unsafe</script>'
   };
   const markup = listingHero(listing);
-  assert.doesNotMatch(markup, /<script>|onerror=/);
+  assert.doesNotMatch(markup, /<script>|<img src=x/);
   assert.match(markup, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.match(markup, /&lt;script&gt;unsafe&lt;\/script&gt;/);
   assert.match(markup, /Illustrative photo — not this event/);
