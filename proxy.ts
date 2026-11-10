@@ -29,7 +29,7 @@ export async function proxy(request: NextRequest) {
   }
   if (process.env.MERCURY_PUBLIC_LAUNCH === 'true') return response;
   const path = request.nextUrl.pathname;
-  if (['/signin', '/signout', '/auth/callback', '/robots.txt', '/opengraph-image', '/privacy', '/terms', '/support', '/about', '/how-it-works'].includes(path)) return response;
+  if (['/signin', '/signout', '/auth/callback', '/robots.txt', '/opengraph-image', '/privacy', '/terms', '/support', '/about', '/how-it-works', '/for-organizers', '/list-event'].includes(path)) return response;
   if (path === '/api/session' || (path === '/api/support' && request.method === 'POST')) return response;
   if (publicBrowse()) {
     const browsePage = path === '/' || path === '/explore' || /^\/(listing|event)\/[^/]+$/.test(path);
