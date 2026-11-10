@@ -3026,3 +3026,134 @@ main:has(.studio-layout) .page-intro p:not(.eyebrow){max-width:680px;font-size:1
 main:has(.studio-layout) .studio-layout{margin-top:22px;gap:25px}
 main:has(.studio-layout) .inline-notice{margin:12px 0}
 @media(max-width:650px){main:has(.studio-layout) .page-intro{padding-top:13px}main:has(.studio-layout) .studio-layout{margin-top:13px}}
+
+
+/* Mercury Explore v2 — photo-led compact marketplace. Stock imagery is illustrative. */
+body:has(.explore-page) .header{height:72px;gap:18px}
+body:has(.explore-page) .brand img{width:138px;max-width:100%}
+body:has(.explore-page) .header nav{gap:23px}
+.explore-page{padding-bottom:40px}
+.explore-page .explore-intro{padding:8px 0 6px}
+.explore-page .explore-intro .eyebrow{font-size:9px;margin-bottom:5px}
+.explore-page .explore-intro h1{font-size:clamp(30px,3vw,43px);margin-bottom:4px;line-height:1.05}
+.explore-page .explore-intro>p:last-child{font-size:12px;line-height:1.4}
+.explore-page .explore-search{margin-top:11px;display:flex;flex-direction:column}
+.explore-page .explore-sports{order:2;gap:6px;padding:8px 0 6px;margin:0}
+.explore-page .sport-pill{min-height:34px;padding:6px 13px;font-size:11px;border-radius:24px;gap:7px}
+.explore-page .sport-dot{display:none}
+.explore-page .sport-symbol{font-size:14px;line-height:1.1;display:inline-block;font-weight:850}
+.explore-page .sport-pill.selected{background:var(--lime);border-color:var(--lime);color:var(--ink)}
+.explore-page .sport-pill.selected:hover{color:var(--ink)}
+.explore-page #directory-filters{order:1;grid-template-columns:minmax(0,1fr) 140px 155px 112px;gap:6px;padding:6px;box-shadow:none}
+.explore-page #directory-filters input,.explore-page #directory-filters select{height:40px;min-height:40px;font-size:12px}
+.explore-page #filter-toggle{min-height:40px}
+.explore-page .results-heading{margin:14px 0 9px;align-items:end}
+.explore-page .results-heading h2{font-size:22px;margin:0 0 4px}
+.explore-page #directory-count{font-size:11px}
+.explore-page .results-tools{display:flex;align-items:center;gap:10px}
+.explore-page .results-tools label{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--muted)}
+.explore-page .results-tools select{background:#fff;border:1px solid var(--border);border-radius:6px;padding:8px 10px;min-height:36px;color:var(--ink);font-size:11px;font-weight:750}
+.explore-page .quick-discovery{display:flex;gap:6px;align-items:center;margin:0 0 10px;flex-wrap:wrap}
+.explore-page .quick-discovery button{background:#fff;border:1px solid var(--border);border-radius:22px;padding:7px 11px;font-size:11px;line-height:1.1;font-weight:750;min-height:34px}
+.explore-page .quick-discovery button[aria-pressed="true"]{background:#e7ebff;border-color:#a8b6ff;color:var(--blue)}
+.explore-page .event-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px 13px}
+.directory-card.photo-card,.explore-page .directory-card.photo-card{
+  display:block;min-height:0;max-height:none;border:1px solid #e2e5de;border-radius:10px;
+  background:#fff;overflow:hidden;box-shadow:none;transition:transform .16s ease,border-color .16s ease
+}
+.directory-card.photo-card:hover,.explore-page .directory-card.photo-card:hover{border-color:#a5b0a9;transform:translateY(-2px)}
+.photo-card .photo-card-link,.explore-page .photo-card .photo-card-link{
+  display:grid;grid-template-columns:166px minmax(0,1fr);min-height:164px;height:100%;color:var(--ink);text-decoration:none
+}
+.photo-card .photo-card-link:focus-visible{outline:3px solid var(--blue);outline-offset:-3px}
+.photo-card .listing-photo{position:relative;width:100%;height:100%;min-height:164px;background:#3156f5;overflow:hidden}
+.photo-card.tennis .listing-photo{background:#d9ff38}
+.photo-card.pickleball .listing-photo{background:#3156f5}
+.photo-card.badminton .listing-photo{background:#10131a}
+.photo-card.running .listing-photo{background:#eebf7b}
+.photo-card.chess .listing-photo{background:#cdd1ec}
+.photo-card .listing-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;max-width:none;display:block}
+.photo-card .listing-photo img[hidden]{display:none}
+.photo-card .photo-fallback{position:absolute;inset:auto 12px 12px;color:#fff;font-size:20px;letter-spacing:-.05em;font-weight:850;line-height:1.1}
+.photo-card.tennis .photo-fallback,.photo-card.running .photo-fallback,.photo-card.chess .photo-fallback{color:var(--ink)}
+.photo-card .photo-disclosure{
+  position:absolute;left:7px;bottom:7px;z-index:2;background:rgba(16,19,26,.78);color:#fff;
+  border-radius:3px;padding:4px 6px;font-size:8px;line-height:1.3;letter-spacing:.01em;font-weight:750
+}
+.photo-card .photo-card-copy{display:flex;flex-direction:column;gap:6px;padding:14px 16px 12px;min-width:0;min-height:164px}
+.photo-card .photo-card-top{display:flex;align-items:center;flex-wrap:wrap;gap:5px 8px;min-width:0}
+.photo-card .photo-sport{color:var(--blue);font-size:10px;line-height:1.2;font-weight:850;letter-spacing:.02em}
+.photo-card .photo-status{background:#f4f3ee;color:#695825;font-size:9px;font-weight:750;padding:4px 6px;border-radius:4px;line-height:1.2}
+.photo-card .photo-status.closed,.photo-card .photo-status.withdrawn{background:#fff0ed;color:#913d27}
+.photo-card h3,.explore-page .directory-card.photo-card h3{
+  font-size:16px;line-height:1.22;letter-spacing:-.027em;font-weight:850;margin:0;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-height:0
+}
+.photo-card .photo-card-facts{display:flex;flex-wrap:wrap;gap:3px 12px;color:#697078;font-size:11px;line-height:1.35}
+.photo-card .photo-date,.photo-card .photo-area{display:inline-flex;align-items:center;gap:4px;min-width:0}
+.photo-card .photo-date:before{content:'◷';font-size:12px;color:var(--blue)}
+.photo-card .photo-area:before{content:'⌖';font-size:13px;color:var(--blue)}
+.photo-card .photo-card-foot{display:flex;align-items:end;justify-content:space-between;gap:6px;margin-top:auto;min-width:0}
+.photo-card .photo-price{min-width:0;display:flex;flex-direction:column;gap:2px}
+.photo-card .photo-price strong{font-size:15px;line-height:1.2;font-weight:850;color:var(--ink);overflow-wrap:anywhere}
+.photo-card .photo-price small{font-size:9px;color:#6e7278;line-height:1.25}
+.photo-card .photo-cta{display:inline-flex;justify-content:center;align-items:center;gap:7px;white-space:nowrap;
+  min-height:33px;background:var(--ink);color:#fff;border-radius:6px;padding:8px 10px;font-size:11px;font-weight:800}
+.photo-card .photo-card-link:hover .photo-cta{background:var(--blue)}
+.explore-page .active-filters{margin:0 0 6px}
+.explore-page .explore-how{margin:20px 0 8px}
+.listing-detail-stock{margin:0 0 14px}
+.listing-detail-image{height:150px;overflow:hidden;background:#e6e9ef;border-radius:8px}
+.listing-detail-image img{width:100%;height:100%;object-fit:cover}
+.listing-detail-image img[hidden]{display:none}
+.listing-detail-stock figcaption{font-size:10px;line-height:1.45;color:var(--muted);margin-top:5px}
+.listing-detail-stock figcaption a{text-decoration:underline;text-underline-offset:2px}
+body:has(.listing-detail-stock) .detail-layout{margin-top:17px}
+body:has(.listing-detail-stock) .detail-title{margin-top:6px}
+body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top:14px}
+@media(max-width:1060px){
+  .photo-card .photo-card-link,.explore-page .photo-card .photo-card-link{grid-template-columns:142px minmax(0,1fr);min-height:172px}
+  .photo-card .listing-photo,.photo-card .photo-card-copy{min-height:172px}
+  .photo-card .photo-card-copy{padding:12px}
+  .photo-card h3,.explore-page .directory-card.photo-card h3{font-size:15px}
+}
+@media(max-width:750px){
+  .explore-page #directory-filters{grid-template-columns:minmax(0,1fr) 120px 130px 84px}
+  .explore-page .results-tools{gap:6px}
+  .photo-card .photo-card-link,.explore-page .photo-card .photo-card-link{grid-template-columns:119px minmax(0,1fr);min-height:163px}
+  .photo-card .listing-photo,.photo-card .photo-card-copy{min-height:163px}
+  .photo-card .photo-card-copy{padding:11px;gap:5px}
+  .photo-card h3,.explore-page .directory-card.photo-card h3{font-size:15px}
+}
+@media(max-width:700px){
+  body:has(.explore-page) .header{height:67px}
+  body:has(.explore-page) .brand img{width:120px}
+  .explore-page .explore-intro h1{font-size:31px}
+  .explore-page .explore-search{margin-top:9px}
+  .explore-page #directory-filters{grid-template-columns:repeat(4,minmax(0,1fr));padding:6px;gap:6px}
+  .explore-page .explore-sports{margin-right:-18px;padding-right:18px;gap:6px}
+  .explore-page .sport-pill{min-height:34px;font-size:11px;padding:6px 10px}
+  .explore-page .results-heading{margin-top:13px}
+  .explore-page .results-heading h2{font-size:20px}
+  .explore-page .event-grid{grid-template-columns:1fr;gap:9px}
+  .explore-page .quick-discovery{gap:6px}
+  .explore-page .results-tools label span{display:none}
+  .photo-card .photo-card-link,.explore-page .photo-card .photo-card-link{grid-template-columns:121px minmax(0,1fr);min-height:160px}
+  .photo-card .listing-photo,.photo-card .photo-card-copy{min-height:160px}
+  .photo-card .photo-cta{min-height:32px;padding:8px;font-size:10px}
+  .photo-card h3,.explore-page .directory-card.photo-card h3{font-size:15px;-webkit-line-clamp:2;line-clamp:2}
+  .listing-detail-image{height:130px}
+}
+@media(max-width:400px){
+  .explore-page .results-heading{align-items:start}
+  .explore-page .results-tools{flex-direction:column;align-items:flex-end;gap:3px}
+  .photo-card .photo-card-link,.explore-page .photo-card .photo-card-link{grid-template-columns:105px minmax(0,1fr);min-height:164px}
+  .photo-card .listing-photo,.photo-card .photo-card-copy{min-height:164px}
+  .photo-card .photo-card-copy{padding:10px 11px}
+  .photo-card .photo-card-facts{font-size:10px}
+  .photo-card .photo-price strong{font-size:14px}
+  .photo-card .photo-status{font-size:9px;padding:3px 5px}
+}
+@media(prefers-reduced-motion:reduce){
+  .directory-card.photo-card,.explore-page .directory-card.photo-card{transition:none;transform:none!important}
+}
