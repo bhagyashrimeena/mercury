@@ -1,12 +1,46 @@
 import { listingDate, listingStatus } from './catalogue.js';
+import { sportPhoto, shortPrice } from './sport-media.js';
 import { trackMetric } from './metrics.js';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const external = (url, text, attributes = '') => `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" ${attributes}>${text} ↗</a>`;
+const cardStatus = code => ({
+  closed: 'Entry deadline passed',
+  stale: 'Details need rechecking',
+  deadline: 'Deadline today · verify time',
+  withdrawn: 'Listing withdrawn',
+  started: 'Event started'
+})[code] || '';
+
 export function listingCard(e) {
   const status = e.availability || listingStatus(e);
-  const sportClass = e.sport.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  const canEnter = !['closed', 'started', 'ended', 'withdrawn', 'stale'].includes(status.code);
-  return `<article class="event-card directory-card"><a class="listing-art ${sportClass}" href="/listing/${esc(e.id)}" aria-label="View ${esc(e.title)} details"><span>${esc(e.sport)} · ${esc(e.type)}</span><span class="listing-art-symbol" aria-hidden="true">${({ Badminton: '◈', Tennis: '◉', Pickleball: '◎', Running: '↝', Chess: '♟' })[e.sport] || '◎'}</span><b>${esc(listingDate(e))}</b><small>EDITORIAL ARTWORK · MUMBAI</small></a><div class="card-content"><a class="card-main" href="/listing/${esc(e.id)}"><p class="event-time">${esc(e.sport)} · ${esc(e.type)}</p><p class="card-date">${esc(listingDate(e))} · IST</p><h3>${esc(e.title)}</h3><p class="muted">⌖ ${esc(e.area)}</p><p class="card-eligibility">${esc(e.eligibility)}</p></a><div class="card-price"><b>${esc(e.priceLabel)}</b><small>${esc(e.priceNote)}</small></div><p class="listing-status ${esc(status.code)}">${esc(status.label)}</p><p class="card-route">Registration with organizer · ${esc(e.sourceName)}</p>${canEnter ? external(e.registrationUrl, 'Register with organizer', `class="card-outbound" data-outbound="${esc(e.id)}" aria-label="Register with organizer on ${esc(e.sourceName)} (opens new tab)"`) : '<a class="card-outbound" href="/listing/' + esc(e.id) + '">View entry details ↗</a>'}<p class="fine">Source checked <time datetime="${esc(e.checkedOn)}">${esc(e.checkedOn)}</time> · Status may change</p></div></article>`;
+  const media = sportPhoto(e);
+  const sportClass = String(e.sport || 'sport').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const href = '/listing/' + esc(e.id);
+  const warning = cardStatus(status.code);
+  const pricing = shortPrice(e);
+  const note = String(e.priceNote || '');
+  const feeHint = /^€/.test(e.priceLabel) ? 'Organizer charges INR at its own rate'
+    : /\bstudent\b/i.test(note) && /from\s*₹150/i.test(pricing) ? 'Student entry'
+    : '';
+  return '<article class="event-card directory-card photo-card ' + sportClass + '">' +
+    '<a class="photo-card-link" href="' + href + '" aria-label="View ' + esc(e.title) + ' event details">' +
+    '<div class="listing-photo ' + sportClass + '" aria-hidden="true">' +
+    '<div class="photo-fallback">' + esc(e.sport) + '</div>' +
+    '<img class="sport-stock-img" src="' + esc(media.src) + '" alt="" loading="lazy" decoding="async" width="560" height="440">' +
+    (media.source === 'stock' ? '<span class="photo-disclosure">Illustrative photo</span>' :
+      '<span class="photo-disclosure">Organizer image</span>') +
+    '</div>' +
+    '<div class="photo-card-copy">' +
+    '<div class="photo-card-top"><span class="photo-sport">' + esc(e.sport) + ' <span aria-hidden="true">·</span> ' + esc(e.type) + '</span>' +
+    (warning ? '<span class="photo-status ' + esc(status.code) + '">' + esc(warning) + '</span>' : '') +
+    '</div>' +
+    '<h3>' + esc(e.title) + '</h3>' +
+    '<div class="photo-card-facts"><span class="photo-date">' + esc(listingDate(e)) + '</span>' +
+    '<span class="photo-area">' + esc(e.area) + '</span></div>' +
+    '<div class="photo-card-foot"><div class="photo-price"><strong>' + esc(pricing) + '</strong>' +
+    (feeHint ? '<small>' + esc(feeHint) + '</small>' : '') + '</div>' +
+    '<span class="photo-cta">View event <span aria-hidden="true">↗</span></span></div>' +
+    '</div></a></article>';
 }
 export async function renderListing(id, { main, api, session, go, toast, openSheet }) {
   const { listing: e } = await api('listings/' + id);
