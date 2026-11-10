@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { listings, findListing, listingStatus, currentListings } from '../public/catalogue.js';
 import { filterLineup, rankForDiscovery } from '../public/explore.js';
+import { listingCard } from '../public/discovery.js';
 const at = s => Date.parse(s);
 test('catalogue has unique identities, dated primary provenance and HTTPS-only destinations', () => {
   assert.equal(new Set(listings.map(e => e.id)).size, listings.length);
@@ -96,8 +97,10 @@ test('upcoming Browse remains populated after source freshness expires without i
 });
 test('source freshness never creates fake confirmed availability for external organizer listings', () => {
   const e = { ...findListing('mumbai-pickleball-cup-s3'), availability: { code: 'stale', label: 'Recheck details with organizer' } };
-  const status = e.availability;
-  assert.equal(status.code, 'stale');
-  // Stale entries can be explored, but direct external handoff is held until the user sees the event detail page.
-  assert.equal(['closed', 'started', 'ended', 'withdrawn', 'stale'].includes(status.code), true);
+  const markup = listingCard(e);
+  // A stale card remains discoverable but cannot claim a direct active-registration handoff.
+  assert.match(markup, /View entry details/);
+  assert.match(markup, /Recheck details with organizer/);
+  assert.doesNotMatch(markup, /data-outbound=/);
+  assert.match(markup, /href="\/listing\/mumbai-pickleball-cup-s3"/);
 });
