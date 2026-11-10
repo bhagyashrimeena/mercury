@@ -76,7 +76,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
     ['sport', 'Sport', ['All sports', ...sports]],
     ['when', 'When', ['Any date', 'This weekend', 'Next 7 days']],
     ['area', 'Area', ['All Mumbai', ...new Set(items.map(event => event.area).filter(area => area && !/confirm/i.test(area)).sort())]],
-    ['type', 'Format', ['All formats', 'Tournament', 'League', 'Training camp', 'Social play']],
+    ['type', 'Format', ['All formats', ...new Set(items.map(event => event.type).filter(Boolean).sort())]],
     ['source', 'Booking route', ['All listings', 'External listings', 'Book on Mercury']],
     ['level', 'Playing level', ['Any level', ...new Set(items.map(event => event.level).filter(Boolean).sort())]],
     ['availability', 'Entry status', ['Entry possible', 'All upcoming', 'Closed or full', 'Needs source check']]
