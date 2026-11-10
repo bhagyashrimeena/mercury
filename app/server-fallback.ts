@@ -1,5 +1,5 @@
 import { getDatabase } from '../db/vercel';
-import { currentListings, listingDate, listingStatus } from '../public/catalogue.js';
+import { currentListings, indiaDay, listingDate, listingStatus } from '../public/catalogue.js';
 
 type Listing = ReturnType<typeof currentListings>[number];
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
@@ -41,7 +41,22 @@ function compactDiscoveryCard(listing: Listing) {
 export async function discoveryFallback(view: 'home' | 'explore') {
   const visible = await visibleListings();
   const current = visible.filter(listing => entryPossible(listingStatus(listing).code));
-  const display = view === 'home' ? current.slice(0, 3) : current;
+  // Match the interactive Explore default without hiding older source checks.
+  // Home remains entry-ready focused; Explore shows all upcoming events.
+  const today = indiaDay();
+  const calendar = visible.filter(listing =>
+    listing.date >= today && !['started', 'ended', 'withdrawn'].includes(listingStatus(listing).code)
+  );
+  const rank = (listing: Listing) => {
+    const code = listingStatus(listing).code;
+    return entryPossible(code) ? 0 : code === 'stale' ? 1 : 2;
+  };
+  const display = view === 'home' ? current.slice(0, 3) : calendar.sort((a, b) =>
+    rank(a) - rank(b) || a.date.localeCompare(b.date) || a.title.localeCompare(b.title)
+  );
+  const needsRecheck = view === 'explore' && display.length > 0 &&
+    display.every(listing => !entryPossible(listingStatus(listing).code)) &&
+    display.some(listing => listingStatus(listing).code === 'stale');
   if (view === 'explore') {
     return '<section class="page-width explore-page">' +
       '<header class="explore-intro"><p class="eyebrow blue">MUMBAI, IN PLAY ↗</p>' +
@@ -49,10 +64,13 @@ export async function discoveryFallback(view: 'home' | 'explore') {
       '<p>Tournaments, leagues and sessions. Less looking, more playing.</p></header>' +
       '<div class="results-heading"><div><h2>On the calendar<span class="results-spark" aria-hidden="true">✳</span></h2>' +
       '<p>' + display.length + ' opportunities · Soonest first</p></div></div>' +
+      (needsRecheck
+        ? '<p class="explore-freshness">Upcoming events are listed, but current entry details need checking. Confirm dates, fees and registration with the organizer before making plans.</p>'
+        : '') +
       '<div class="event-grid">' +
       (display.length
         ? display.map(compactDiscoveryCard).join('')
-        : '<div class="empty explore-empty"><h3>Entry-ready games are being checked.</h3>' +
+        : '<div class="empty explore-empty"><h3>Upcoming event details are being checked.</h3>' +
           '<p>Explore all upcoming events or return when organizers have confirmed details.</p>' +
           '<a class="button outline" href="/explore?availability=All%20upcoming">See all upcoming ↗</a></div>') +
       '</div><p class="fine explore-fine">Organizer listings are source-backed, not live inventory. Confirm final fees and eligibility before entering.</p>' +

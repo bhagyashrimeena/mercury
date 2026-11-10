@@ -46,3 +46,19 @@ Keep records unique by organizer, event and date, with explicit start/end times 
 ## Longer-term metrics
 
 Instrument already-supported discovery and handoff metrics before creating more homepage sections. Track discovery-to-detail, detail-to-organizer clicks, saves, zero-result queries, stale-source share, and published native bookings. Don't label an external click as a completed registration. Gather small-scale player feedback about whether people could find a relevant and eligible event within a minute.
+
+## After deployment: read-only production smoke
+
+Run the command below **after Vercel marks the production deployment ready**:
+
+```sh
+pnpm production:smoke
+# Or explicitly target the canonical deployment origin:
+node scripts/smoke-production.mjs https://www.playonmercury.com
+```
+
+The script issues only five public GET requests: Explore HTML, the browser Explore module, the stylesheet, the public listings API and the public events API. It verifies the compact Playboard markup, shipped assets and API response shapes. It does not log in, register players, click external organizers, change a database, or handle secrets.
+
+A non-200 response, redirect away from the canonical origin, HTML in place of JSON, or an old asset fails the check. **A passing result does not prove bookings, Google OAuth or organizer flows work.** Those still need the pilot runbook and real browser QA.
+
+If the production site intentionally requires Vercel Authentication, public GET checks may fail; that is a real access limit, not permission to turn off access controls without approval. Inspect the production protection configuration and run signed-in tests through an approved environment.
