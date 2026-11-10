@@ -58,6 +58,9 @@ socket.addEventListener('message', event => {
         notifications: accountFixture ? [{ id: 'review-note', event_id: fixtureEvent.id, message: cancelledBookingMode ? 'Review fixture: the organizer cancelled your game.' : pastBookingMode ? 'Review fixture: your earlier registration remains in My games.' : 'Review fixture: your place is confirmed.', created_at: Date.now(), read_at: null }] : [],
         paymentsEnabled: false, consentAccepted: accountFixture, isAdmin: ownerFixture };
       status = 200;
+    } else if (parts[1] === 'support' && mode === 'fixture-event-submission') {
+      payload = { id: 'test-organizer-request-123', message: 'Request is in the private owner inbox.' };
+      status = 200;
     } else if (parts[1] === 'support' && mode === 'fixture-support-failure') {
       payload = { error: { code: 'database_unavailable', message: 'Mercury is temporarily unavailable. Please try again.' } };
       status = 503;
@@ -235,6 +238,64 @@ try {
     const report = { ...clicked.result.value, countRequests: outboundRequests.length, countPath: new URL(outboundRequests[0]).pathname };
     await writeFile(output, JSON.stringify(report, null, 2));
     process.stdout.write(`${output} one organizer click count; external navigation remained independent\n`);
+  } else if (scope === 'public-organizer') {
+    const reading = await send('Runtime.evaluate', {
+      expression: 'JSON.stringify({path:location.pathname,head:document.querySelector(".organizer-public-hero h1")?.textContent,' +
+        'list:document.querySelector(".organizer-public-actions a[href=/list-event]")?.getAttribute("href"),' +
+        'host:!!document.querySelector(".organizer-public-actions a[href=/host]"),' +
+        'overflow:document.documentElement.scrollWidth>innerWidth,loading:!!document.querySelector("main [role=status]")})',
+      returnByValue: true
+    });
+    const state=JSON.parse(reading.result.value);
+    if(state.path!=='/for-organizers'||!state.head?.includes('We help people find it')||state.list!=='/list-event'||!state.host||state.overflow||state.loading)
+      throw Error('Public organizer landing failed: '+reading.result.value);
+    await writeFile(output, JSON.stringify(state,null,2));
+    process.stdout.write(output+' public organizer landing passed\n');
+  } else if (scope === 'public-how') {
+    const reading=await send('Runtime.evaluate',{
+      expression:'JSON.stringify({path:location.pathname,heading:document.querySelector(".public-how-intro h1")?.textContent,'+
+        'sections:document.querySelectorAll(".public-how-grid article").length,organizers:!!document.querySelector("a[href=/for-organizers]"),'+
+        'overflow:document.documentElement.scrollWidth>innerWidth})',
+      returnByValue:true
+    });
+    const state=JSON.parse(reading.result.value);
+    if(state.path!=='/how-it-works'||state.sections!==3||!state.organizers||state.overflow||!state.heading?.includes('Play it'))
+      throw Error('Public guide failed: '+reading.result.value);
+    await writeFile(output,JSON.stringify(state,null,2));
+    process.stdout.write(output+' publicly readable How It Works passed\n');
+  } else if (scope === 'public-submission') {
+    const first=await send('Runtime.evaluate',{
+      expression:'JSON.stringify({path:location.pathname,form:!!document.querySelector("#public-event-submission"),'+
+        'signedIn:!!document.querySelector(".signin-page"),overflow:document.documentElement.scrollWidth>innerWidth})',
+      returnByValue:true
+    });
+    const initial=JSON.parse(first.result.value);
+    if(initial.path!=='/list-event'||!initial.form||initial.signedIn||initial.overflow)
+      throw Error('Public form requires login or overflows: '+first.result.value);
+    const fill=await send('Runtime.evaluate',{expression:'(() => { const f=document.querySelector("#public-event-submission");'+
+      'f.elements.namedItem("registrationUrl").value="https://example.org/events/sunday";'+
+      'f.elements.namedItem("name").value="Review Sports Organizer";'+
+      'f.elements.namedItem("email").value="organizer@example.test";'+
+      'f.elements.namedItem("title").value="Sunday Fun Run";'+
+      'f.elements.namedItem("sport").value="Running";'+
+      'f.elements.namedItem("date").value="2026-12-20";'+
+      'f.elements.namedItem("consent").checked=true;'+
+      'f.dispatchEvent(new Event("input",{bubbles:true}));'+
+      'return JSON.stringify({preview:document.querySelector("#submission-preview-title")?.textContent,'+
+      'source:document.querySelector("#submission-preview-link")?.textContent});})()',returnByValue:true});
+    const state=JSON.parse(fill.result.value);
+    if(state.preview!=='Sunday Fun Run'||state.source!=='example.org')
+      throw Error('Preview did not update: '+fill.result.value);
+    await send('Runtime.evaluate',{expression:'document.querySelector("#public-event-submission").requestSubmit()'});
+    await new Promise(resolve=>setTimeout(resolve,900));
+    const result=await send('Runtime.evaluate',{expression:'JSON.stringify({ref:document.querySelector("#submitted-event-ref")?.textContent,'+
+      'text:document.querySelector(".organizer-submission-done")?.textContent||"",overflow:document.documentElement.scrollWidth>innerWidth})',
+      returnByValue:true});
+    const completed=JSON.parse(result.result.value);
+    if(completed.ref!=='test-organizer-request-123'||!completed.text.includes('manual review')||completed.overflow)
+      throw Error('Review intake did not finish: '+result.result.value);
+    await writeFile(output,JSON.stringify({initial,preview:state,completed},null,2));
+    process.stdout.write(output+' no-login organizer event submission passed\n');
   } else if (scope === 'ux-home') {
     const reading = await send('Runtime.evaluate', {
       expression: '(() => { const root=document.querySelector(".home-journey");' +
