@@ -311,7 +311,10 @@ export async function liveRoute(path, context) {
     const initialFallback = ['explore', 'listing', 'event'].includes(route)
         && ctx.main.querySelector('[data-server-path]')?.getAttribute('data-server-path') === path
         ? ctx.main.innerHTML : null;
-    page('<section class="page-intro"><p class="eyebrow blue">MERCURY</p><h1>Getting your game ready.</h1><p role="status">Just a moment…</p></section>');
+    // Keep useful server-rendered public content visible while session/API data loads.
+    // Never trade a real event card for an empty loading screen on first paint.
+    if (!initialFallback)
+        page('<section class="page-intro"><p class="eyebrow blue">MERCURY</p><h1>Getting your game ready.</h1><p role="status">Just a moment…</p></section>');
     try {
         if (route === 'privacy' || route === 'terms') { renderPolicy(path, ctx); return true; }
         try {
