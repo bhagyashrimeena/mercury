@@ -101,8 +101,8 @@ test('source freshness never creates fake confirmed availability for external or
   const e = { ...findListing('mumbai-pickleball-cup-s3'), availability: { code: 'stale', label: 'Recheck details with organizer' } };
   const markup = listingCard(e);
   // A stale card remains discoverable but cannot claim a direct active-registration handoff.
-  assert.match(markup, /View entry details/);
-  assert.match(markup, /Recheck details with organizer/);
+  assert.match(markup, /View event/);
+  assert.match(markup, /Details need rechecking/);
   assert.doesNotMatch(markup, /data-outbound=/);
   assert.match(markup, /href="\/listing\/mumbai-pickleball-cup-s3"/);
 });
