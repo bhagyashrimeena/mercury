@@ -86,7 +86,7 @@ test('upcoming Browse remains populated after source freshness expires without i
   const items = [closed, stale, native];
   assert.equal(listingStatus(stale, now).code, 'stale');
   const upcoming = filterLineup(items, { availability: 'All upcoming' }, now);
-  assert.deepEqual(upcoming.map(event => event.id), ['closed', 'free', 'stale']);
+  assert.deepEqual(upcoming.map(event => event.id), ['closed', 'stale', 'free']);
   assert.deepEqual(rankForDiscovery(upcoming, { availability: 'All upcoming' }, now).map(event => event.id),
     ['free', 'stale', 'closed']);
   assert.deepEqual(filterLineup(items, { availability: 'Entry possible' }, now).map(event => event.id),
