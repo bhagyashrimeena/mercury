@@ -29,7 +29,7 @@ function compactDiscoveryCard(listing: Listing) {
   return '<article class="event-card directory-card">' +
     '<a class="listing-art ' + sportClass + '" href="' + href + '" aria-label="View ' + esc(listing.title) + ' details">' +
     '<span>' + esc(listing.sport) + ' · ' + esc(listing.type) + '</span>' +
-    '<span class="listing-art-symbol" aria-hidden="true">◎</span></a>' +
+    '<span class="listing-art-symbol" aria-hidden="true">' + (listing.sport === 'Running' ? '↝' : listing.sport === 'Chess' ? '♟' : '◎') + '</span></a>' +
     '<div class="card-content"><a class="card-main" href="' + href + '">' +
     '<p class="card-date"><time datetime="' + esc(listing.date) + '">' + esc(listingDate(listing)) + '</time></p>' +
     '<h3>' + esc(listing.title) + '</h3><p class="muted">⌖ ' + esc(listing.area) + '</p></a>' +

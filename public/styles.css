@@ -2598,6 +2598,9 @@ dialog .button {
 .listing-art .listing-art-symbol{position:absolute;font-size:190px;line-height:1;right:-25px;top:25px;opacity:.16;transform:rotate(-20deg)}
 .listing-art.tennis,.listing-masthead.tennis{background:#d9ff38;color:#10131a}
 .listing-art.badminton,.listing-masthead.badminton{background:#10131a;color:#f7f8f2}
+/* Curated sport palettes: warm running energy and cool chess editorial, not organizer art. */
+.listing-art.running,.listing-masthead.running{background:#ffbd76;color:#10131a}
+.listing-art.chess,.listing-masthead.chess{background:#dfe2ff;color:#10131a}
 .directory-card .card-content{display:flex;flex-direction:column;flex:1}
 .directory-card{display:flex;flex-direction:column}
 .directory-card h3{min-height:0}

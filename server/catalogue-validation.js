@@ -11,7 +11,7 @@ export function validateCatalogue(input, today = new Date().toISOString().slice(
     if(typeof e.id !== 'string' || !/^[a-z0-9][a-z0-9-]{2,99}$/.test(e.id) || ids.has(e.id)) errors.push(`${prefix}: id must be a unique slug.`);
     ids.add(e.id);
     if(typeof e.sport !== 'string' || !/^[A-Za-z][A-Za-z &-]{2,40}$/.test(e.sport)) errors.push(`${prefix}: sport must be a plain-language sport name.`);
-    if(!['Tournament','League','Training camp','Social play'].includes(e.type)) errors.push(`${prefix}: unsupported event type.`);
+    if(!['Tournament','League','Training camp','Social play','Race'].includes(e.type)) errors.push(`${prefix}: unsupported event type.`);
     for(const k of ['date','endDate','checkedOn']) if(!day(e[k])) errors.push(`${prefix}: ${k} must be a real YYYY-MM-DD date.`);
     if(e.date>e.endDate) errors.push(`${prefix}: endDate is before date.`);
     if(e.checkedOn>today) errors.push(`${prefix}: source check date cannot be in the future.`);

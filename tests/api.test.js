@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, readdirSync } from 'node:fs';
 import { apiHandler } from '../server/api.js';
+import { currentListings } from '../public/catalogue.js';
 const now = Date.parse('2026-11-01T00:00:00Z');
 const host = { userId: 'host-1', email: 'host@example.test', fullName: 'Host One' };
 const player = n => ({ userId: 'player-' + n, email: `player${n}@example.test`, fullName: 'Player ' + n });
@@ -31,7 +32,7 @@ test('saved games and read status are isolated between accounts', async () => { 
 // External discovery cannot create Mercury passes or imply availability.
 test('external discovery is public, expires in IST and never creates native bookings', async () => {
   const h = harness(); const r = await h.req('listings', null);
-  assert.equal(r.status, 200); assert.equal(r.data.listings.length, 9);
+  assert.equal(r.status, 200); assert.equal(r.data.listings.length, currentListings(now).length);
   const id = r.data.listings[0].id;
   assert.equal((await h.req('listings/missing', null)).status, 404);
   assert.equal((await h.req('listings', null, undefined, 'GET', { now: Date.parse('2027-01-01') })).data.listings.length, 0);
