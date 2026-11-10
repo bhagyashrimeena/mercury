@@ -241,8 +241,8 @@ try {
   } else if (scope === 'public-organizer') {
     const reading = await send('Runtime.evaluate', {
       expression: 'JSON.stringify({path:location.pathname,head:document.querySelector(".organizer-public-hero h1")?.textContent,' +
-        'list:document.querySelector(".organizer-public-actions a[href=/list-event]")?.getAttribute("href"),' +
-        'host:!!document.querySelector(".organizer-public-actions a[href=/host]"),' +
+        'list:document.querySelector(".organizer-public-actions a.button.primary")?.getAttribute("href"),' +
+        'host:!!document.querySelector(".organizer-public-actions a.button.outline"),' +
         'overflow:document.documentElement.scrollWidth>innerWidth,loading:!!document.querySelector("main [role=status]")})',
       returnByValue: true
     });
@@ -254,7 +254,7 @@ try {
   } else if (scope === 'public-how') {
     const reading=await send('Runtime.evaluate',{
       expression:'JSON.stringify({path:location.pathname,heading:document.querySelector(".public-how-intro h1")?.textContent,'+
-        'sections:document.querySelectorAll(".public-how-grid article").length,organizers:!!document.querySelector("a[href=/for-organizers]"),'+
+        'sections:document.querySelectorAll(".public-how-grid article").length,organizers:!!document.querySelector(".public-how-note a.button"),'+
         'overflow:document.documentElement.scrollWidth>innerWidth})',
       returnByValue:true
     });
