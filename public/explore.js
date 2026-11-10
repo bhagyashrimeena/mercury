@@ -3,7 +3,7 @@ import { listingCard } from './discovery.js';
 import { trackMetric } from './metrics.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-const defaults = { query: '', sport: 'All sports', when: 'Any date', area: 'All Mumbai', type: 'All formats', source: 'All listings', level: 'Any level', availability: 'Entry possible', from: '', to: '' };
+const defaults = { query: '', sport: 'All sports', when: 'Any date', area: 'All Mumbai', type: 'All formats', source: 'All listings', level: 'Any level', availability: 'All upcoming', from: '', to: '' };
 const blocked = new Set(['closed', 'started', 'ended', 'withdrawn', 'stale']);
 const addDays = (day, count) => new Date(Date.parse(day + 'T00:00:00Z') + count * 86400000).toISOString().slice(0, 10);
 
@@ -51,6 +51,20 @@ export function filterLineup(items, filters, now = Date.now()) {
   }).sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 }
 
+// Keep uncertain external entries visible with explicit warnings rather than allowing the
+// seven-day source-freshness rule to empty Explore. Rank more actionable entries first.
+export function rankForDiscovery(items, filters = {}, now = Date.now()) {
+  if (filters.availability !== 'All upcoming') return [...items];
+  const rank = event => {
+    if (actionable(event, now)) return 0;
+    if (event.external && (event.availability || listingStatus(event, now)).code === 'stale') return 1;
+    return 2;
+  };
+  return [...items].sort((a, b) =>
+    rank(a) - rank(b) || a.date.localeCompare(b.date) || a.title.localeCompare(b.title)
+  );
+}
+
 export function renderExplore({ main, events, listings, gameCard }) {
   trackMetric('explore_view');
   const items = [
@@ -69,7 +83,9 @@ export function renderExplore({ main, events, listings, gameCard }) {
   ];
   const select = ([name, label, values], extraClass = '') =>
     '<label class="directory-filter ' + extraClass + '"><span>' + esc(label) + '</span><select name="' + esc(name) + '">' +
-    values.map(value => '<option value="' + esc(value) + '">' + esc(value) + '</option>').join('') +
+    values.map(value => '<option value="' + esc(value) + '">' +
+      esc(name === 'availability' && value === 'Entry possible' ? 'May accept entries · verify' : value) +
+      '</option>').join('') +
     '</select></label>';
   const sportButton = sport =>
     '<button type="button" class="sport-pill" data-sport="' + esc(sport) + '" aria-pressed="false">' +
@@ -112,6 +128,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
     '<button type="button" class="text-link" id="clear-filters">Clear filters</button>',
     '</div>',
     '<div id="active-filters" class="active-filters" role="group" aria-label="Active filters"></div>',
+    '<p class="explore-freshness" id="explore-freshness" hidden></p>',
     '<div class="event-grid" id="directory-results" aria-label="Upcoming sporting opportunities"></div>',
     '<details class="explore-how"><summary>How joining a game works on Mercury</summary>',
     '<p>Some events send you to the organizer to register. For free sessions booked directly on Mercury, your confirmed place appears in <a href="/my-games">My games</a>. Saving a listing is not a booking.</p>',
@@ -145,7 +162,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
 
   const update = (mode = 'none') => {
     const filters = values();
-    const result = filterLineup(items, filters);
+    const result = rankForDiscovery(filterLineup(items, filters), filters);
     const widened = result.length ? [] : filterLineup(items, {
       ...filters, query: '', area: 'All Mumbai', when: 'Any date', from: '', to: ''
     });
@@ -159,8 +176,20 @@ export function renderExplore({ main, events, listings, gameCard }) {
       button.setAttribute('aria-pressed', String(selected));
     });
 
+    const everyListingNeedsRecheck = result.length > 0 &&
+      result.every(event => !actionable(event)) &&
+      result.some(event => event.external &&
+        (event.availability || listingStatus(event)).code === 'stale');
+    const freshness = main.querySelector('#explore-freshness');
+    freshness.hidden = !everyListingNeedsRecheck;
+    freshness.textContent = everyListingNeedsRecheck
+      ? 'Upcoming events are listed, but current entry details need checking. Confirm dates, fees and registration with the organizer before making plans.'
+      : '';
     main.querySelector('#directory-count').textContent =
-      result.length + ' ' + (result.length === 1 ? 'opportunity' : 'opportunities') + ' · Soonest first';
+      result.length + ' ' + (result.length === 1 ? 'opportunity' : 'opportunities') +
+      ' · ' + (filters.availability === 'All upcoming' ? 'Entry status first' : 'Soonest first');
+    main.querySelector('#clear-filters').hidden = !Object.entries(filters).some(([name, value]) =>
+      name === 'solo' || (value && value !== defaults[name]));
     main.querySelector('#directory-results').innerHTML = result.length
       ? result.map(event => event.external ? listingCard(event) : gameCard(event)).join('')
       : '<div class="empty explore-empty"><span aria-hidden="true">✳</span><h3>No games match those filters.</h3>' +
