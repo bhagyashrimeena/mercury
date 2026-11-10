@@ -262,7 +262,7 @@ try {
       await send('Runtime.evaluate', { expression: 'document.querySelector("#filter-toggle").focus()' });
       await enter();
       const filterOpen = await state('JSON.stringify({expanded:document.querySelector("#filter-toggle").getAttribute("aria-expanded"),focus:document.activeElement?.name})');
-      if (JSON.parse(filterOpen).expanded !== 'true' || JSON.parse(filterOpen).focus !== 'query') throw new Error(`Filter keyboard open/focus failed: ${filterOpen}`);
+      if (JSON.parse(filterOpen).expanded !== 'true' || JSON.parse(filterOpen).focus !== 'sport') throw new Error(`Filter keyboard open/focus failed: ${filterOpen}`);
       await send('Runtime.evaluate', { expression: 'document.querySelector("#directory-filters [name=sport]").value="Tennis";document.querySelector("#directory-filters [name=sport]").dispatchEvent(new Event("change",{bubbles:true}));document.querySelector(".filter-apply").focus()' });
       await enter();
       const filterApplied = await state('JSON.stringify({url:location.search,expanded:document.querySelector("#filter-toggle").getAttribute("aria-expanded"),focus:document.activeElement?.id})');
