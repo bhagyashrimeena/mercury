@@ -3017,3 +3017,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
   .roster-tools input[type="search"]{width:100%;font-size:16px}
   .roster-tools #roster-result-count{grid-column:1}
 }
+
+
+/* Organizer screens prioritize creating / managing, not a second oversized marketing hero. */
+main:has(.studio-layout) .page-intro{padding:18px 0 9px}
+main:has(.studio-layout) .page-intro h1{font-size:clamp(32px,3.6vw,48px);line-height:1.08;margin-bottom:8px}
+main:has(.studio-layout) .page-intro p:not(.eyebrow){max-width:680px;font-size:13px;line-height:1.5}
+main:has(.studio-layout) .studio-layout{margin-top:22px;gap:25px}
+main:has(.studio-layout) .inline-notice{margin:12px 0}
+@media(max-width:650px){main:has(.studio-layout) .page-intro{padding-top:13px}main:has(.studio-layout) .studio-layout{margin-top:13px}}
