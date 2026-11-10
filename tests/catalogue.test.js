@@ -33,7 +33,9 @@ test('combined discovery respects sport, source, city area, format and free-entr
   const native = { id: 'native', title: 'Community rally', sport: 'Tennis', type: 'Social play', area: 'Powai', date: '2026-11-03', level: 'Beginner friendly', solo: true };
   const all = [native, ...listings.map(e => ({ ...e, external: true, availability: listingStatus(e, at('2026-11-01')) }))];
   assert.equal(filterLineup(all, { source: 'Book on Mercury' }).length, 1);
-  assert.deepEqual(filterLineup(all, { level: 'All levels' }).map(e => e.id), ['mumbai-pickleball-cup-s3']);
+  const allLevelIds = filterLineup(all, { level: 'All levels' }).map(e => e.id);
+  assert.ok(allLevelIds.includes('mumbai-pickleball-cup-s3'));
+  assert.ok(allLevelIds.includes('goflorun-women-mumbai-2026'));
   assert.ok(filterLineup(all, { sport: 'Badminton' }).every(e => e.sport === 'Badminton'));
   assert.equal(filterLineup(all, { type: 'Training camp', area: 'Andheri' })[0].id, 'barcelona-mumbai-camp-2026');
   assert.equal(filterLineup(all, { query: 'COOPERAGE' })[0].id, 'mslta-masters-mt400-2026');
@@ -118,4 +120,48 @@ test('venue conflicts remain discoverable but require organizer verification bef
   assert.equal(filterLineup([item], { availability: 'All upcoming' }, now).length, 1);
   assert.doesNotMatch(listingCard(item), /data-outbound=/);
   assert.equal(listingStatus(e, at('2026-11-23T18:30:00Z')).code, 'ended');
+});
+
+
+test('curated Mumbai race and chess sources retain exact fee units and sports taxonomy', () => {
+  const added = [
+    'indianoil-wnc-navy-half-marathon-2026',
+    'goflorun-women-mumbai-2026',
+    'nirmal-bang-malad-walkathon-2026',
+    'fit-mumbai-marathon-dec-2026',
+    'tarabai-shinde-rapid-chess-2026',
+    'rotary-queen-city-half-marathon-2026'
+  ].map(findListing);
+  assert.ok(added.every(Boolean));
+  assert.equal(added.filter(e => e.type === 'Race' && e.sport === 'Running').length, 5);
+  assert.equal(added.filter(e => e.type === 'Tournament' && e.sport === 'Chess').length, 1);
+  assert.ok(added.every(e => e.checkedOn === '2026-11-10'));
+  assert.ok(added.every(e => e.priceNote.includes('per ') || e.priceNote.includes('entry per')));
+  const idSet = new Set(added.map(e => e.id));
+  assert.equal(idSet.size, added.length);
+  const race = findListing('fit-mumbai-marathon-dec-2026');
+  assert.match(race.priceNote, /3K fun run ₹650/);
+  assert.match(race.venue, /Ghatkopar/);
+  const chess = findListing('tarabai-shinde-rapid-chess-2026');
+  assert.match(chess.sourceUrl, /aicf\.in\/wp-content\/uploads/);
+  assert.match(chess.registrationUrl, /circlechess\.com\/registration\?id=54365/);
+  assert.equal(chess.priceLabel, '₹1,500');
+  assert.match(chess.eligibility, /AICF ID/);
+});
+
+test('race format filters distinctly and category-specific deadlines remain honest', () => {
+  const today = Date.parse('2026-11-10T08:00:00Z');
+  const items = listings.map(e => ({ ...e, external: true, availability: listingStatus(e, today) }));
+  const races = filterLineup(items, { type: 'Race', availability: 'All upcoming' }, today);
+  assert.equal(races.length, 5);
+  assert.ok(races.every(e => e.sport === 'Running'));
+  const chess = filterLineup(items, { sport: 'Chess', availability: 'All upcoming' }, today);
+  assert.deepEqual(chess.map(e => e.id), ['tarabai-shinde-rapid-chess-2026']);
+  const walk = findListing('nirmal-bang-malad-walkathon-2026');
+  assert.equal(walk.deadline, null);
+  assert.match(walk.deadlineLabel, /disagree/);
+  const goflo = findListing('goflorun-women-mumbai-2026');
+  assert.equal(listingStatus(goflo, Date.parse('2026-11-21T04:00:00Z')).code, 'closed');
+  assert.equal(listingStatus(goflo, Date.parse('2026-11-20T04:00:00Z')).code, 'deadline');
+  assert.ok(filterLineup(items, { query: 'Nerul', sport: 'Chess' }, today).length > 0);
 });
