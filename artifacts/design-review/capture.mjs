@@ -12,8 +12,8 @@ const fixtureEvent = {
   id: 'review-state', title: 'Review fixture: Thursday Badminton', sport: 'Badminton',
   type: 'Social play', area: 'Powai', venue: 'Sample court, Powai, Mumbai',
   date: fixtureDate, time: '18:00', startsAt: Date.parse(`${fixtureDate}T18:00:00+05:30`),
-  duration: 90, capacity: 12, registered: mode === 'fixture-roster' ? 1 : ['fixture-account', 'fixture-pass', 'fixture-register'].includes(mode) ? 10 : 12,
-  spots: mode === 'fixture-roster' ? 11 : ['fixture-account', 'fixture-pass', 'fixture-register'].includes(mode) ? 2 : 0, price: 0,
+  duration: 90, capacity: 12, registered: mode === 'fixture-roster' ? 1 : ['fixture-account', 'fixture-pass', 'fixture-register', 'fixture-native-explore'].includes(mode) ? 10 : 12,
+  spots: mode === 'fixture-roster' ? 11 : ['fixture-account', 'fixture-pass', 'fixture-register', 'fixture-native-explore'].includes(mode) ? 2 : 0, price: 0,
   level: 'All levels', host: 'Review fixture organizer', hostBio: 'A test organizer for visual review.',
   hostContact: '', description: 'A sample free doubles session for reviewing full and cancelled game states.',
   included: ['Court time and shuttlecocks'], bring: 'Bring a racket, indoor shoes and water.',
@@ -62,7 +62,7 @@ socket.addEventListener('message', event => {
       payload = { error: { code: 'database_unavailable', message: 'Mercury is temporarily unavailable. Please try again.' } };
       status = 503;
     } else if (parts[1] === 'events' && parts.length === 2) {
-      payload = { events: accountFixture || ['fixture-cancelled', 'fixture-full'].includes(mode) ? [fixtureEvent] : [] };
+      payload = { events: accountFixture || ['fixture-cancelled', 'fixture-full', 'fixture-native-explore'].includes(mode) ? [fixtureEvent] : [] };
       status = 200;
     } else if (parts[1] === 'events' && parts.length === 3 && parts[2] === fixtureEvent.id) {
       payload = { event: fixtureEvent };
@@ -193,7 +193,7 @@ try {
       returnByValue: true,
     });
     const state = JSON.parse(restored.result.value);
-    if (state.url || state.sport !== 'All sports' || !state.count?.startsWith('8 games')) throw new Error(`Back navigation did not restore filters: ${restored.result.value}`);
+    if (state.url || state.sport !== 'All sports' || !state.count?.startsWith('8 opportunities')) throw new Error(`Back navigation did not restore filters: ${restored.result.value}`);
     process.stdout.write(`Filter history: ${changed.result.value} -> ${restored.result.value}\n`);
   }
   const metrics = await send('Runtime.evaluate', { expression: 'JSON.stringify({url:location.href,title:document.title,viewport:innerWidth,content:document.documentElement.scrollWidth,height:document.documentElement.scrollHeight,linksBottom:document.querySelector(".signin-links")?.getBoundingClientRect().bottom})', returnByValue: true });
@@ -231,6 +231,37 @@ try {
     const report = { ...clicked.result.value, countRequests: outboundRequests.length, countPath: new URL(outboundRequests[0]).pathname };
     await writeFile(output, JSON.stringify(report, null, 2));
     process.stdout.write(`${output} one organizer click count; external navigation remained independent\n`);
+  } else if (scope === 'explore') {
+    const evaluate = async expression => {
+      const reading = await send('Runtime.evaluate', { expression, returnByValue: true });
+      if (reading.exceptionDetails) throw new Error(reading.exceptionDetails.text);
+      return reading.result.value;
+    };
+    const initial = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,firstTop:document.querySelector("#directory-results .directory-card")?.getBoundingClientRect().top,overflow:document.documentElement.scrollWidth>innerWidth})'));
+    if (initial.cards < 8 || initial.firstTop >= height || initial.overflow) throw new Error(`Explore initial layout failed: ${JSON.stringify(initial)}`);
+    await evaluate('document.querySelector("[data-sport=Tennis]").click()');
+    const sport = JSON.parse(await evaluate('JSON.stringify({url:location.search,pressed:document.querySelector("[data-sport=Tennis]").getAttribute("aria-pressed"),cards:document.querySelectorAll("#directory-results .directory-card").length})'));
+    if (!sport.url.includes('sport=Tennis') || sport.pressed !== 'true' || sport.cards < 1 || sport.cards >= initial.cards) throw new Error(`Sport filter failed: ${JSON.stringify(sport)}`);
+    await evaluate('document.querySelector("#clear-filters").click()');
+    await evaluate('document.querySelector("#directory-filters [name=area]").value="Andheri";document.querySelector("#directory-filters [name=area]").dispatchEvent(new Event("change",{bubbles:true}));document.querySelector("#directory-filters [name=when]").value="Next 7 days";document.querySelector("#directory-filters [name=when]").dispatchEvent(new Event("change",{bubbles:true}))');
+    const timeAndArea = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,areas:[...document.querySelectorAll("#directory-results .directory-card .muted")].map(element=>element.textContent)})'));
+    if (!timeAndArea.url.includes('area=Andheri') || !timeAndArea.url.includes('when=Next+7+days') || !timeAndArea.cards || timeAndArea.cards >= initial.cards || timeAndArea.areas.some(area=>!area.includes('Andheri'))) throw new Error(`Date and area filters failed: ${JSON.stringify(timeAndArea)}`);
+    await evaluate('document.querySelector("#clear-filters").click()');
+    await evaluate('document.querySelector("#directory-filters [name=query]").value="no-such-game";document.querySelector("#directory-filters [name=query]").dispatchEvent(new Event("input",{bubbles:true}))');
+    const empty = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,empty:!!document.querySelector(".explore-empty"),url:location.search})'));
+    if (empty.cards || !empty.empty || !empty.url.includes('query=no-such-game')) throw new Error(`Empty search failed: ${JSON.stringify(empty)}`);
+    await evaluate('document.querySelector("#clear-filters").click();document.querySelector("#filter-toggle").click()');
+    const advanced = JSON.parse(await evaluate('JSON.stringify({expanded:document.querySelector("#filter-toggle").getAttribute("aria-expanded"),focus:document.activeElement?.name,hidden:document.querySelector("#directory-more-panel").hidden,cards:document.querySelectorAll("#directory-results .directory-card").length})'));
+    if (advanced.expanded !== 'true' || advanced.hidden || advanced.focus !== 'sport' || advanced.cards !== initial.cards) throw new Error(`Advanced filters failed: ${JSON.stringify(advanced)}`);
+    let native = null;
+    if (mode === 'fixture-native-explore') {
+      await evaluate('document.querySelector("#directory-filters [name=source]").value="Book on Mercury";document.querySelector("#directory-filters [name=source]").dispatchEvent(new Event("change",{bubbles:true}))');
+      native = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,route:document.querySelector(".mercury-card .card-outbound")?.getAttribute("href"),action:document.querySelector(".mercury-card .card-outbound")?.textContent})'));
+      if (!native.url.includes('source=Book+on+Mercury') || native.cards !== 1 || native.route !== '/register/review-state' || !native.action.includes('Book free place')) throw new Error(`Native booking route failed: ${JSON.stringify(native)}`);
+    }
+    const report = { page, initial, sport, timeAndArea, empty, advanced, native };
+    await writeFile(output, JSON.stringify(report, null, 2));
+    process.stdout.write(`${output} Explore interaction checks passed\n`);
   } else if (scope === 'perf') {
     const reading = await send('Runtime.evaluate', { expression: 'JSON.stringify({navigation:performance.getEntriesByType("navigation")[0]?.toJSON(),lcp:window.__mercuryPerf?.lcp,cls:window.__mercuryPerf?.cls,shifts:window.__mercuryPerf?.shifts,resources:performance.getEntriesByType("resource").length,transferBytes:performance.getEntriesByType("resource").reduce((sum,entry)=>sum+entry.transferSize,0)})', returnByValue: true });
     const report = { page, ...JSON.parse(reading.result.value) };
