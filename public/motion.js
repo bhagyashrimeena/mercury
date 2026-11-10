@@ -3,7 +3,8 @@
  * Progressive visual enhancement only. No content, route or form state is
  * controlled by this module. Everything stays visible if JS/motion fails.
  */
-const root = document.getElementById('main');
+const root = typeof document !== 'undefined' && typeof document.getElementById === 'function'
+  ? document.getElementById('main') : null;
 const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)');
 const selectors = [
   '.hero-copy h1', '.hero-copy > p:not(.eyebrow)',
