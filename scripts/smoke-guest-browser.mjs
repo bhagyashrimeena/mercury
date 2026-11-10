@@ -85,13 +85,14 @@ try {
   await send('Runtime.enable');
   await send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: width <= 760 });
   await send('Page.navigate', { url: `${origin}/signin` });
-  const signIn = await until(async () => evalInPage(`location.pathname === '/signin' && document.readyState === 'complete' && ({ url: location.href, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, guestBottom: [...document.querySelectorAll('a')].find(e => e.textContent.includes('Continue as guest'))?.getBoundingClientRect().bottom, buttons: [...document.querySelectorAll('button,a')].map(e => e.textContent.trim()).filter(Boolean) })`), 'sign-in page');
+  const signIn = await until(async () => evalInPage(`location.pathname === '/signin' && document.readyState === 'complete' && ({ url: location.href, width: innerWidth, scrollWidth: document.documentElement.scrollWidth, scrollHeight: document.scrollingElement.scrollHeight, viewportHeight: innerHeight, guestBottom: [...document.querySelectorAll('a')].find(e => e.textContent.includes('Continue as guest'))?.getBoundingClientRect().bottom, buttons: [...document.querySelectorAll('button,a')].map(e => e.textContent.trim()).filter(Boolean) })`), 'sign-in page');
   assert.equal(signIn.width, width);
+  console.log('Sign-in:', JSON.stringify(signIn));
   assert.ok(signIn.scrollWidth <= signIn.width, 'Sign-in has horizontal overflow');
+  if (width >= 1024 && height >= 768) assert.ok(signIn.scrollHeight <= signIn.viewportHeight, 'Sign-in scrolls on a standard desktop viewport');
   for (const option of ['Continue with Google', 'Continue with email', 'Continue as guest'])
     assert.ok(signIn.buttons.some(label => label.includes(option)), `${option} missing`);
   if (width <= 420 && height >= 700) assert.ok(signIn.guestBottom <= height, 'Guest choice starts below the first narrow-phone screen');
-  console.log('Sign-in:', JSON.stringify(signIn));
   await capture('sign-in-phone');
   const clicked = await evalInPage(`(() => { const link = [...document.querySelectorAll('a')].find(e => e.textContent.includes('Continue as guest')); if (!link) return false; link.click(); return true; })()`);
   if (!clicked) throw new Error('Continue as guest link missing');
