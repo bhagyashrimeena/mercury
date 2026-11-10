@@ -450,7 +450,7 @@ export async function liveRoute(path, context) {
     if (!handled)
         return false;
     const initialFallback = ['explore', 'listing', 'event', 'how-it-works', 'for-organizers', 'list-event'].includes(route)
-        && ctx.main.querySelector('[data-server-path]')?.getAttribute('data-server-path') === path
+        && ctx.main.querySelector('[data-server-path]')?.getAttribute?.('data-server-path') === path
         ? ctx.main.innerHTML : null;
     // Keep useful server-rendered public content visible while session/API data loads.
     // Never trade a real event card for an empty loading screen on first paint.
