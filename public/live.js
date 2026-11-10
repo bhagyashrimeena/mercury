@@ -2,7 +2,7 @@ import { renderAccount, renderSupport, renderAdmin, renderPolicy } from './servi
 import { listingCard, renderListing } from './discovery.js';
 import { organizerLandingMarkup, eventSubmissionMarkup, howItWorksMarkup, mountEventSubmission } from './organizer-public.js';
 import { sportPhoto } from './sport-media.js';
-import { actionable, renderExplore } from './explore.js';
+import { actionable, renderExplore, renderExploreLoading } from './explore.js';
 import { findListing, listingDate } from './catalogue.js';
 import { events as samples, dateLabel, timeLabel } from './data.js';
 import { newId, validateDraft, indiaDate } from './domain.js';
@@ -12,6 +12,9 @@ import { bookingPassMarkup, bindPassActions, passState } from './game-day.js';
 import { savedGamesLoader } from './my-games.js';
 import { mountOrganizerJourney, mountRosterSearch } from './organizer-journey.js';
 let ctx, session, turn = 0;
+// Only public event responses may be reused; never cache sessions or private bookings.
+let publicLineupCache = null;
+const PUBLIC_CACHE_MS = 30_000;
 const policy = 'Cancel your free place from My games any time before the event starts. If the organizer cancels, your registration is cancelled automatically. No payment is collected.';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // If a stock CDN is unavailable, show the branded sport placeholder instead of a broken image.
@@ -148,6 +151,7 @@ export async function enhanceHome(main) {
     try {
         const [{ events }, { listings }] = await Promise.all([api('events'), api('listings')]);
         if (!section?.isConnected) return;
+        publicLineupCache = { events, listings, savedAt: Date.now() };
         const all = [...events.map(e => ({ ...e, external: false })), ...listings.map(e => ({ ...e, external: true }))].sort((a,b) => a.date.localeCompare(b.date));
         const upcoming = all.filter(e => actionable(e));
         const quickline = main.querySelector('#quickline-results');
@@ -164,8 +168,10 @@ export async function enhanceHome(main) {
     } catch (e) { if (section?.isConnected) { section.querySelector('#featured-grid').innerHTML = notice(esc(e.message)) + btn('Try again', '/'); const quickline = main.querySelector('#quickline-results'); if (quickline) quickline.innerHTML = '<p>Upcoming games could not load. <a href="/">Try again ↗</a></p>'; } }
 }
 async function explore(expectedTurn) {
+    // Events and curated public listings load together, never behind /api/session.
     const [{ events }, { listings }] = await Promise.all([api('events'), api('listings')]);
     if (expectedTurn !== turn) return;
+    publicLineupCache = { events, listings, savedAt: Date.now() };
     renderExplore({ main: ctx.main, events, listings, gameCard });
 }
 async function detail(id) {
@@ -461,6 +467,26 @@ export async function liveRoute(path, context) {
         if (route === 'how-it-works') { ctx.main.innerHTML = howItWorksMarkup(); return true; }
         if (route === 'for-organizers') { ctx.main.innerHTML = organizerLandingMarkup(); return true; }
         if (route === 'list-event') { ctx.main.innerHTML = eventSubmissionMarkup(); mountEventSubmission(ctx.main); return true; }
+        if (route === 'explore') {
+            const cached = publicLineupCache && Date.now() - publicLineupCache.savedAt < PUBLIC_CACHE_MS
+                ? publicLineupCache : null;
+            // The initial HTML contains useful server-rendered results. On in-app
+            // transitions use recent public data or the Explore layout immediately.
+            if (!initialFallback) {
+                if (cached) renderExplore({ main: ctx.main, ...cached, gameCard });
+                else renderExploreLoading(ctx.main);
+            }
+            // Account state is useful for the header, but is not a dependency of browsing.
+            // A session outage cannot block public discovery.
+            void loadSession().catch(error => {
+                if (sequence !== turn || error.name === 'AbortError') return;
+                session = { user: null, saved: [], savedListings: [], notifications: [] };
+                const account = document.querySelector('#account-link');
+                if (account) account.textContent = 'Sign in';
+            });
+            if (!cached) await explore(sequence);
+            return true;
+        }
         try {
             await loadSession();
         } catch (error) {
@@ -470,9 +496,7 @@ export async function liveRoute(path, context) {
         }
         if (sequence !== turn)
             return true;
-        if (route === 'explore')
-            await explore(sequence);
-        else if (route === 'listing')
+        if (route === 'listing')
             await renderListing(id, { ...ctx, api, session });
         else if (route === 'event')
             await detail(id);
