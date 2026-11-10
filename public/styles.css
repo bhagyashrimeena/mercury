@@ -3157,3 +3157,11 @@ body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top
 @media(prefers-reduced-motion:reduce){
   .directory-card.photo-card,.explore-page .directory-card.photo-card{transition:none;transform:none!important}
 }
+
+
+/* Native free-game detail uses the same truthful real-photo fallback, not abstract artwork. */
+.detail-cover.event-photo-cover{height:200px;background:#3156f5;border-radius:10px}
+.detail-cover.event-photo-cover img{object-fit:cover}
+.detail-cover.event-photo-cover img[hidden]{display:none}
+.detail-cover.event-photo-cover span{left:14px;bottom:12px;font-size:9px;letter-spacing:.02em;transform:none;border-radius:4px;padding:7px 9px;background:#10131ae6;color:#fff}
+@media(max-width:650px){.detail-cover.event-photo-cover{height:130px}.detail-cover.event-photo-cover span{left:9px;bottom:8px;font-size:8px;padding:5px 7px}}
