@@ -1,5 +1,7 @@
 import { getDatabase } from '../db/vercel';
 import { currentListings, indiaDay, listingDate, listingStatus } from '../public/catalogue.js';
+import { listingCard } from '../public/discovery.js';
+import { sportPhoto } from '../public/sport-media.js';
 
 type Listing = ReturnType<typeof currentListings>[number];
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
@@ -22,21 +24,7 @@ function discoveryCard(listing: Listing) {
   return `<article class="manage-card"><p class="eyebrow blue">${esc(listing.sport)} · ${esc(listing.type)}</p><h3><a href="/listing/${esc(listing.id)}">${esc(listing.title)}</a></h3><p><time datetime="${esc(listing.date)}">${esc(listingDate(listing))}</time> · ${esc(listing.area)}, Mumbai</p><p>${esc(listing.eligibility)}</p><p><b>${esc(listing.priceLabel)}</b> · ${esc(listing.priceNote)}</p><p class="listing-status ${esc(status.code)}">${esc(status.label)}</p><a class="text-link" href="/listing/${esc(listing.id)}">View entry details ↗</a></article>`;
 }
 
-function compactDiscoveryCard(listing: Listing) {
-  const status = listingStatus(listing);
-  const sportClass = listing.sport.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  const href = '/listing/' + esc(listing.id);
-  return '<article class="event-card directory-card">' +
-    '<a class="listing-art ' + sportClass + '" href="' + href + '" aria-label="View ' + esc(listing.title) + ' details">' +
-    '<span>' + esc(listing.sport) + ' · ' + esc(listing.type) + '</span>' +
-    '<span class="listing-art-symbol" aria-hidden="true">' + (listing.sport === 'Running' ? '↝' : listing.sport === 'Chess' ? '♟' : '◎') + '</span></a>' +
-    '<div class="card-content"><a class="card-main" href="' + href + '">' +
-    '<p class="card-date"><time datetime="' + esc(listing.date) + '">' + esc(listingDate(listing)) + '</time></p>' +
-    '<h3>' + esc(listing.title) + '</h3><p class="muted">⌖ ' + esc(listing.area) + '</p></a>' +
-    '<div class="card-price"><b>' + esc(listing.priceLabel) + '</b></div>' +
-    '<p class="listing-status ' + esc(status.code) + '">' + esc(status.label) + '</p>' +
-    '<a class="card-outbound" href="' + href + '">View details ↗</a></div></article>';
-}
+function compactDiscoveryCard(listing: Listing) { return listingCard(listing); }
 
 export async function discoveryFallback(view: 'home' | 'explore') {
   const visible = await visibleListings();
@@ -47,12 +35,8 @@ export async function discoveryFallback(view: 'home' | 'explore') {
   const calendar = visible.filter(listing =>
     listing.date >= today && !['started', 'ended', 'withdrawn'].includes(listingStatus(listing).code)
   );
-  const rank = (listing: Listing) => {
-    const code = listingStatus(listing).code;
-    return entryPossible(code) ? 0 : code === 'stale' ? 1 : 2;
-  };
   const display = view === 'home' ? current.slice(0, 3) : calendar.sort((a, b) =>
-    rank(a) - rank(b) || a.date.localeCompare(b.date) || a.title.localeCompare(b.title)
+    a.date.localeCompare(b.date) || a.title.localeCompare(b.title)
   );
   const needsRecheck = view === 'explore' && display.length > 0 &&
     display.every(listing => !entryPossible(listingStatus(listing).code)) &&
@@ -62,8 +46,8 @@ export async function discoveryFallback(view: 'home' | 'explore') {
       '<header class="explore-intro"><p class="eyebrow blue">MUMBAI, IN PLAY ↗</p>' +
       '<h1>Find your next <em>game.</em></h1>' +
       '<p>Tournaments, leagues and sessions. Less looking, more playing.</p></header>' +
-      '<div class="results-heading"><div><h2>On the calendar<span class="results-spark" aria-hidden="true">✳</span></h2>' +
-      '<p>' + display.length + ' opportunities · Soonest first</p></div></div>' +
+      '<div class="results-heading"><div><h2>Explore events</h2>' +
+      '<p>' + display.length + ' events · Soonest first</p></div></div>' +
       (needsRecheck
         ? '<p class="explore-freshness">Upcoming events are listed, but current entry details need checking. Confirm dates, fees and registration with the organizer before making plans.</p>'
         : '') +
@@ -89,7 +73,12 @@ export function listingFallback(listing: Listing, visibility: 'visible' | 'hidde
     ? `<a class="button primary" href="${esc(listing.registrationUrl)}" target="_blank" rel="noopener noreferrer">Continue to ${esc(listing.sourceName)} to register ↗</a>`
     : visibility === 'hidden' ? ''
     : `<a class="button outline" href="${esc(listing.sourceUrl)}" target="_blank" rel="noopener noreferrer">Review organizer source ↗</a>`;
+  const media = sportPhoto(listing);
+  const cover = '<figure class="listing-detail-stock"><div class="listing-detail-image"><img class="sport-stock-img" src="' +
+    esc(media.src) + '" alt="' + esc(media.alt) + '" loading="lazy" width="560" height="360"></div>' +
+    '<figcaption>' + (media.source === 'stock' ? 'Illustrative stock photo — not this event.' :
+      'Organizer-supplied image') + '</figcaption></figure>';
   const reviewMessage = 'reason' in status && status.reason
     ? `<p class="inline-notice">${esc(status.reason)}</p>` : '';
-  return `<article class="page-width prose"><p class="eyebrow blue">${esc(listing.sport)} · ${esc(listing.type)} · External listing</p><h1>${esc(listing.title)}</h1><p class="listing-status ${esc(status.code)}">${esc(status.label)}</p>${reviewMessage}<p><b>Date:</b> <time datetime="${esc(listing.date)}">${esc(listingDate(listing))}</time> · Times in IST where published</p><p><b>Venue:</b> ${esc(listing.venue)}, ${esc(listing.area)}</p><p><b>Who can enter:</b> ${esc(listing.eligibility)}</p><p><b>Fee:</b> ${esc(listing.priceLabel)} · ${esc(listing.priceNote)}</p><p><b>Entry deadline:</b> ${esc(listing.deadlineLabel)}</p><p>${esc(listing.description)}</p><p>Source checked <time datetime="${esc(listing.checkedOn)}">${esc(listing.checkedOn)}</time>. Details may have changed. Mercury has not onboarded this organizer; only the organizer confirms entry.</p>${action}<p><a href="/support?category=Listing%20correction&amp;listing=${esc(listing.id)}">Suggest a correction</a></p></article>`;
+  return `<article class="page-width prose"><p class="eyebrow blue">${esc(listing.sport)} · ${esc(listing.type)} · External listing</p><h1>${esc(listing.title)}</h1>${cover}<p class="listing-status ${esc(status.code)}">${esc(status.label)}</p>${reviewMessage}<p><b>Date:</b> <time datetime="${esc(listing.date)}">${esc(listingDate(listing))}</time> · Times in IST where published</p><p><b>Venue:</b> ${esc(listing.venue)}, ${esc(listing.area)}</p><p><b>Who can enter:</b> ${esc(listing.eligibility)}</p><p><b>Fee:</b> ${esc(listing.priceLabel)} · ${esc(listing.priceNote)}</p><p><b>Entry deadline:</b> ${esc(listing.deadlineLabel)}</p><p>${esc(listing.description)}</p><p>Source checked <time datetime="${esc(listing.checkedOn)}">${esc(listing.checkedOn)}</time>. Details may have changed. Mercury has not onboarded this organizer; only the organizer confirms entry.</p>${action}<p><a href="/support?category=Listing%20correction&amp;listing=${esc(listing.id)}">Suggest a correction</a></p></article>`;
 }

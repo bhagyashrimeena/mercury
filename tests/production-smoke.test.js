@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { auditProduction } from '../scripts/smoke-production.mjs';
 
 const responses = {
-  '/explore': '<div data-server-path="/explore"><header class="explore-intro">Mercury</header><h2>On the calendar</h2></div>',
+  '/explore': '<div data-server-path="/explore"><header class="explore-intro">Mercury</header><h2>Explore events</h2></div>',
   '/explore.js': 'function rankForDiscovery() {} const className = "explore-sports";',
   '/styles.css': '/* Mercury Explore Playboard v1 */ .explore-page .directory-card {}',
   '/api/listings': JSON.stringify({ listings: [{ id: 'test' }] }),

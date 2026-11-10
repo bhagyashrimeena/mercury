@@ -1,4 +1,5 @@
 import { dateLabel, timeLabel } from './data.js';
+import { sportPhoto } from './sport-media.js';
 import { venueMapUrl } from './game-day.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -13,6 +14,7 @@ export function eventState(event, now = Date.now()) {
 
 export function eventDetailMarkup(event, { saved = false, preview = false, policy = '' } = {}) {
   const state = preview ? { code: 'draft', label: 'Private draft preview; not published', canBook: false } : eventState(event);
+  const media = sportPhoto(event);
   const fee = Number(event.price) ? `&#8377;${Number(event.price).toLocaleString('en-IN')} <span>/ player</span>` : 'Free <span>/ player</span>';
   const bookingAction = preview
     ? '<button class="button outline" type="button" disabled>Booking unavailable in preview</button>'
@@ -21,7 +23,7 @@ export function eventDetailMarkup(event, { saved = false, preview = false, polic
   const included = Array.isArray(event.included) ? event.included : String(event.included || '').split('\n').filter(Boolean);
   return `${preview ? '<div class="inline-notice"><b>Private preview.</b> These details are not saved or published. Booking controls are disabled.</div>' : ''}
     <a class="back" href="${preview ? '/host' : '/explore'}">&#8592; ${preview ? 'Back to editor' : 'All games'}</a>
-    <div class="detail-cover"><img src="/assets/mercury-motion.svg" alt="" aria-hidden="true"><span>ILLUSTRATIVE SPORT ARTWORK</span></div>
+    <div class="detail-cover event-photo-cover"><img class="sport-stock-img" src="${esc(media.src)}" alt="${esc(media.alt)}" width="1000" height="500" decoding="async"><span>${media.source === 'stock' ? 'ILLUSTRATIVE SPORT PHOTO · NOT THIS EVENT' : 'ORGANIZER-SUPPLIED PHOTO'}</span></div>
     <div class="detail-layout"><article>
       <div class="tags"><span class="blue-tag">${esc(event.sport)}</span><span>${esc(event.type)}</span><span class="state state-${state.code}">${esc(state.code)}</span></div>
       <h1 class="detail-title">${esc(event.title)}</h1><p class="host-by">Hosted by ${esc(event.host)}</p>

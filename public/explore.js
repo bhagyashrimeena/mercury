@@ -3,7 +3,7 @@ import { listingCard } from './discovery.js';
 import { trackMetric } from './metrics.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-const defaults = { query: '', sport: 'All sports', when: 'Any date', area: 'All Mumbai', type: 'All formats', source: 'All listings', level: 'Any level', availability: 'All upcoming', from: '', to: '' };
+const defaults = { query: '', sport: 'All sports', when: 'Any date', area: 'All Mumbai', type: 'All formats', source: 'All listings', level: 'Any level', availability: 'All upcoming', fee: 'Any fee', sort: 'Soonest first', from: '', to: '' };
 const blocked = new Set(['closed', 'started', 'ended', 'withdrawn', 'stale']);
 const addDays = (day, count) => new Date(Date.parse(day + 'T00:00:00Z') + count * 86400000).toISOString().slice(0, 10);
 
@@ -29,6 +29,8 @@ export function filterLineup(items, filters, now = Date.now()) {
   const today = indiaDay(now);
   let start = filters.from || '', end = filters.to || '';
   if (filters.when === 'Next 7 days') { start = today; end = addDays(today, 6); }
+  if (filters.when === 'Today') { start = today; end = today; }
+  if (filters.when === 'Tomorrow') { start = addDays(today, 1); end = start; }
   if (filters.when === 'This weekend') {
     const weekday = new Date(today + 'T00:00:00Z').getUTCDay();
     start = weekday === 0 ? today : addDays(today, (6 - weekday + 7) % 7);
@@ -43,6 +45,11 @@ export function filterLineup(items, filters, now = Date.now()) {
       && (!filters.source || filters.source === 'All listings' || (filters.source === 'External listings' ? event.external : !event.external))
       && (!filters.level || filters.level === 'Any level' || event.level === filters.level)
       && (filters.solo !== '1' || (!event.external && event.solo))
+      && (filters.fee !== 'Free' || (!event.external && Number(event.price) === 0))
+      && (filters.fee !== 'Under ₹1,000' || (event.external
+        ? /₹\s*[\d,]+/.test(String(event.priceLabel || '')) &&
+          Number(String(event.priceLabel).match(/₹\s*([\d,]+)/)?.[1].replaceAll(',', '')) < 1000
+        : Number(event.price) < 1000))
       && (filters.availability !== 'Entry possible' || actionable(event, now))
       && (filters.availability !== 'All upcoming' || upcoming(event, now, today))
       && (filters.availability !== 'Closed or full' || closedOrFull(event, now, today))
@@ -65,6 +72,22 @@ export function rankForDiscovery(items, filters = {}, now = Date.now()) {
   );
 }
 
+export function sortForDiscovery(items, mode = 'Soonest first', now = Date.now()) {
+  const sorted = [...items];
+  if (mode === 'Entry status first') return rankForDiscovery(sorted, { availability: 'All upcoming' }, now);
+  if (mode === 'Price: low to high') {
+    const fee = event => {
+      if (!event.external) return Number(event.price) || 0;
+      const text = String(event.priceLabel || '');
+      if (!text.includes('₹')) return Number.POSITIVE_INFINITY;
+      const match = text.match(/₹\s*([\d,]+(?:\.\d+)?)/);
+      return match ? Number(match[1].replaceAll(',', '')) : Number.POSITIVE_INFINITY;
+    };
+    return sorted.sort((a, b) => fee(a) - fee(b) || a.date.localeCompare(b.date));
+  }
+  return sorted.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+}
+
 export function renderExplore({ main, events, listings, gameCard }) {
   trackMetric('explore_view');
   const items = [
@@ -74,12 +97,13 @@ export function renderExplore({ main, events, listings, gameCard }) {
   const sports = [...new Set(items.map(event => event.sport).filter(Boolean))].sort();
   const options = [
     ['sport', 'Sport', ['All sports', ...sports]],
-    ['when', 'When', ['Any date', 'This weekend', 'Next 7 days']],
+    ['when', 'When', ['Any date', 'Today', 'Tomorrow', 'This weekend', 'Next 7 days']],
     ['area', 'Area', ['All Mumbai', ...new Set(items.map(event => event.area).filter(area => area && !/confirm/i.test(area)).sort())]],
     ['type', 'Format', ['All formats', ...new Set(items.map(event => event.type).filter(Boolean).sort())]],
     ['source', 'Booking route', ['All listings', 'External listings', 'Book on Mercury']],
     ['level', 'Playing level', ['Any level', ...new Set(items.map(event => event.level).filter(Boolean).sort())]],
-    ['availability', 'Entry status', ['Entry possible', 'All upcoming', 'Closed or full', 'Needs source check']]
+    ['availability', 'Entry status', ['Entry possible', 'All upcoming', 'Closed or full', 'Needs source check']],
+    ['fee', 'Listed entry fee', ['Any fee', 'Free', 'Under ₹1,000']]
   ];
   const select = ([name, label, values], extraClass = '') =>
     '<label class="directory-filter ' + extraClass + '"><span>' + esc(label) + '</span><select name="' + esc(name) + '">' +
@@ -87,9 +111,10 @@ export function renderExplore({ main, events, listings, gameCard }) {
       esc(name === 'availability' && value === 'Entry possible' ? 'May accept entries · verify' : value) +
       '</option>').join('') +
     '</select></label>';
+  const symbols = { 'All sports': '✳', Tennis: '◉', Badminton: '◈', Pickleball: '◎', Running: '↝', Chess: '♟' };
   const sportButton = sport =>
     '<button type="button" class="sport-pill" data-sport="' + esc(sport) + '" aria-pressed="false">' +
-    '<span class="sport-dot" aria-hidden="true"></span>' + esc(sport) + '</button>';
+    '<span class="sport-symbol" aria-hidden="true">' + esc(symbols[sport] || '✳') + '</span>' + esc(sport) + '</button>';
 
   main.innerHTML = [
     '<div class="page-width explore-page">',
@@ -122,10 +147,16 @@ export function renderExplore({ main, events, listings, gameCard }) {
     '</div>',
     '</form>',
     '</section>',
+    '<div class="quick-discovery" role="group" aria-label="Quick filters">',
+    '<button type="button" data-quick-name="when" data-quick-value="This weekend" aria-pressed="false">This weekend</button>',
+    '<button type="button" data-quick-name="fee" data-quick-value="Under ₹1,000" aria-pressed="false">Under ₹1,000</button>',
+    '<button type="button" data-quick-name="fee" data-quick-value="Free" aria-pressed="false">Free games</button>',
+    '</div>',
     '<div class="results-heading">',
-    '<div><h2>On the calendar<span class="results-spark" aria-hidden="true">✳</span></h2>',
+    '<div><h2>Explore events</h2>',
     '<p id="directory-count" role="status" aria-live="polite"></p></div>',
-    '<button type="button" class="text-link" id="clear-filters">Clear filters</button>',
+    '<div class="results-tools"><label><span>Sort</span><select id="sort-results" name="sort" form="directory-filters"><option>Soonest first</option><option>Entry status first</option><option>Price: low to high</option></select></label>',
+    '<button type="button" class="text-link" id="clear-filters">Reset</button></div>',
     '</div>',
     '<div id="active-filters" class="active-filters" role="group" aria-label="Active filters"></div>',
     '<p class="explore-freshness" id="explore-freshness" hidden></p>',
@@ -162,13 +193,17 @@ export function renderExplore({ main, events, listings, gameCard }) {
 
   const update = (mode = 'none') => {
     const filters = values();
-    const result = rankForDiscovery(filterLineup(items, filters), filters);
+    const result = sortForDiscovery(filterLineup(items, filters), filters.sort);
     const widened = result.length ? [] : filterLineup(items, {
       ...filters, query: '', area: 'All Mumbai', when: 'Any date', from: '', to: ''
     });
     const upcoming = result.length || widened.length ? [] : filterLineup(items, {
       ...filters, query: '', area: 'All Mumbai', when: 'Any date',
       from: '', to: '', availability: 'All upcoming'
+    });
+    main.querySelectorAll('[data-quick-name]').forEach(button => {
+      const active = filters[button.dataset.quickName] === button.dataset.quickValue;
+      button.setAttribute('aria-pressed', String(active));
     });
     sportButtons.forEach(button => {
       const selected = button.dataset.sport === filters.sport;
@@ -186,8 +221,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
       ? 'Upcoming events are listed, but current entry details need checking. Confirm dates, fees and registration with the organizer before making plans.'
       : '';
     main.querySelector('#directory-count').textContent =
-      result.length + ' ' + (result.length === 1 ? 'opportunity' : 'opportunities') +
-      ' · ' + (filters.availability === 'All upcoming' ? 'Entry status first' : 'Soonest first');
+      result.length + ' ' + (result.length === 1 ? 'event' : 'events') + ' · ' + (filters.sort || 'Soonest first');
     main.querySelector('#clear-filters').hidden = !Object.entries(filters).some(([name, value]) =>
       name === 'solo' || (value && value !== defaults[name]));
     main.querySelector('#directory-results').innerHTML = result.length
@@ -233,6 +267,14 @@ export function renderExplore({ main, events, listings, gameCard }) {
     toggle.classList.toggle('is-open', open);
     if (open) panel.querySelector('[name="sport"]')?.focus();
   };
+  main.querySelector('.quick-discovery').onclick = event => {
+    const button = event.target.closest('button[data-quick-name]');
+    if (!button) return;
+    const input = form.elements.namedItem(button.dataset.quickName);
+    input.value = input.value === button.dataset.quickValue ? defaults[button.dataset.quickName] : button.dataset.quickValue;
+    update('push');
+  };
+  main.querySelector('#sort-results').addEventListener('change', () => update('push'));
   main.querySelector('.explore-sports').onclick = event => {
     const button = event.target.closest('button[data-sport]');
     if (!button) return;
@@ -263,7 +305,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
     });
   };
   main.querySelector('#clear-filters').onclick = () => {
-    form.reset(); solo = false; update('push');
+    form.reset(); form.elements.namedItem('sort').value = defaults.sort; solo = false; update('push');
   };
   main.querySelector('#active-filters').onclick = event => {
     const button = event.target.closest('[data-remove-filter]');

@@ -38,7 +38,7 @@ export async function auditProduction({ origin = DEFAULT_ORIGIN, request = fetch
   await run('Explore route', '/explore', html => {
     if (typeof html !== 'string' || !html.includes('data-server-path="/explore"'))
       throw Error('Explore did not return the expected server-rendered Mercury route.');
-    if (!html.includes('explore-intro') || !html.includes('On the calendar'))
+    if (!html.includes('explore-intro') || !html.includes('Explore events'))
       throw Error('Explore does not contain the compact Playboard server fallback.');
     return 'Server-rendered Explore present';
   });

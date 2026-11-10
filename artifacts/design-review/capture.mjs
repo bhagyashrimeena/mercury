@@ -220,13 +220,15 @@ try {
     await writeFile(output, JSON.stringify(report, null, 2));
     process.stdout.write(`${output} sign-in configuration failure returns to the intended listing\n`);
   } else if (scope === 'cardstate') {
-    const reading = await send('Runtime.evaluate', { expression: 'JSON.stringify({status:document.querySelector(".mercury-card .listing-status")?.textContent,action:document.querySelector(".mercury-card .card-outbound")?.textContent,route:document.querySelector(".mercury-card .card-outbound")?.getAttribute("href")})', returnByValue: true });
+    const reading = await send('Runtime.evaluate', { expression: 'JSON.stringify({status:document.querySelector(".mercury-card .photo-status")?.textContent,action:document.querySelector(".mercury-card .photo-cta")?.textContent,route:document.querySelector(".mercury-card .photo-card-link")?.getAttribute("href")})', returnByValue: true });
     const report = JSON.parse(reading.result.value);
-    const expected = mode === 'fixture-cancelled' ? 'Cancelled by organizer' : 'Full · no places left';
-    if (report.status !== expected || report.action !== 'View details ↗' || report.route !== '/event/review-state') throw new Error(`Native card state mismatch: ${reading.result.value}`);
+    const expected = mode === 'fixture-cancelled' ? 'Cancelled' : 'Game full';
+    if (report.status !== expected || !report.action?.includes('View event') || report.route !== '/event/review-state') throw new Error(`Native card state mismatch: ${reading.result.value}`);
     await writeFile(output, JSON.stringify(report, null, 2));
     process.stdout.write(`${output} native ${mode} card state passed\n`);
   } else if (scope === 'handoff') {
+    await send('Runtime.evaluate', { expression: 'document.querySelector("#directory-results .photo-card-link")?.click()' });
+    await new Promise(resolve => setTimeout(resolve, 1000));
     const clicked = await send('Runtime.evaluate', { expression: '(() => { const link=document.querySelector("a[data-outbound]"); if (!link) return null; document.addEventListener("click", event => event.preventDefault(), {capture:true,once:true}); link.click(); return {listing:link.dataset.outbound,destination:link.href,page:location.pathname}; })()', returnByValue: true });
     await new Promise(resolve => setTimeout(resolve, 400));
     if (!clicked.result.value || outboundRequests.length !== 1) throw new Error(`Expected one nonblocking organizer click count: ${JSON.stringify({ clicked: clicked.result.value, outboundRequests })}`);
@@ -308,8 +310,8 @@ try {
       if (reading.exceptionDetails) throw new Error(reading.exceptionDetails.text);
       return reading.result.value;
     };
-    const initial = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,firstTop:document.querySelector("#directory-results .directory-card")?.getBoundingClientRect().top,overflow:document.documentElement.scrollWidth>innerWidth,availability:document.querySelector("#directory-filters [name=availability]")?.value,clearHidden:document.querySelector("#clear-filters")?.hidden,url:location.search})'));
-    if (initial.cards < 8 || initial.firstTop >= height || initial.overflow || initial.availability !== 'All upcoming' || !initial.clearHidden || initial.url) throw new Error(`Explore initial layout failed: ${JSON.stringify(initial)}`);
+    const initial = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,firstTop:document.querySelector("#directory-results .directory-card")?.getBoundingClientRect().top,cardHeight:document.querySelector("#directory-results .directory-card")?.getBoundingClientRect().height,photo:document.querySelector("#directory-results .directory-card img")?.src,cta:document.querySelector("#directory-results .directory-card .photo-cta")?.textContent,sort:document.querySelector("#sort-results")?.value,overflow:document.documentElement.scrollWidth>innerWidth,availability:document.querySelector("#directory-filters [name=availability]")?.value,clearHidden:document.querySelector("#clear-filters")?.hidden,url:location.search})'));
+    if (initial.cards < 8 || initial.firstTop >= height || initial.cardHeight > 220 || initial.overflow || !initial.photo?.includes('images.pexels.com') || !initial.cta?.includes('View event') || initial.sort !== 'Soonest first' || initial.availability !== 'All upcoming' || !initial.clearHidden || initial.url) throw new Error(`Explore initial layout failed: ${JSON.stringify(initial)}`);
     await evaluate('document.querySelector("[data-sport=Tennis]").click()');
     const sport = JSON.parse(await evaluate('JSON.stringify({url:location.search,pressed:document.querySelector("[data-sport=Tennis]").getAttribute("aria-pressed"),cards:document.querySelectorAll("#directory-results .directory-card").length})'));
     if (!sport.url.includes('sport=Tennis') || sport.pressed !== 'true' || sport.cards < 1 || sport.cards >= initial.cards) throw new Error(`Sport filter failed: ${JSON.stringify(sport)}`);
@@ -317,7 +319,7 @@ try {
     const reset = JSON.parse(await evaluate('JSON.stringify({url:location.search,availability:document.querySelector("#directory-filters [name=availability]").value,clearHidden:document.querySelector("#clear-filters").hidden})'));
     if (reset.url || reset.availability !== 'All upcoming' || !reset.clearHidden) throw new Error(`Filter reset failed: ${JSON.stringify(reset)}`);
     await evaluate('document.querySelector("#directory-filters [name=area]").value="Andheri";document.querySelector("#directory-filters [name=area]").dispatchEvent(new Event("change",{bubbles:true}));document.querySelector("#directory-filters [name=when]").value="Next 7 days";document.querySelector("#directory-filters [name=when]").dispatchEvent(new Event("change",{bubbles:true}))');
-    const timeAndArea = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,areas:[...document.querySelectorAll("#directory-results .directory-card .muted")].map(element=>element.textContent)})'));
+    const timeAndArea = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,areas:[...document.querySelectorAll("#directory-results .directory-card .photo-area")].map(element=>element.textContent)})'));
     if (!timeAndArea.url.includes('area=Andheri') || !timeAndArea.url.includes('when=Next+7+days') || !timeAndArea.cards || timeAndArea.cards >= initial.cards || timeAndArea.areas.some(area=>!area.includes('Andheri'))) throw new Error(`Date and area filters failed: ${JSON.stringify(timeAndArea)}`);
     await evaluate('document.querySelector("#clear-filters").click()');
     await evaluate('document.querySelector("#directory-filters [name=query]").value="no-such-game";document.querySelector("#directory-filters [name=query]").dispatchEvent(new Event("input",{bubbles:true}))');
@@ -326,11 +328,20 @@ try {
     await evaluate('document.querySelector("#clear-filters").click();document.querySelector("#filter-toggle").click()');
     const advanced = JSON.parse(await evaluate('JSON.stringify({expanded:document.querySelector("#filter-toggle").getAttribute("aria-expanded"),focus:document.activeElement?.name,hidden:document.querySelector("#directory-more-panel").hidden,cards:document.querySelectorAll("#directory-results .directory-card").length})'));
     if (advanced.expanded !== 'true' || advanced.hidden || advanced.focus !== 'sport' || advanced.cards !== initial.cards) throw new Error(`Advanced filters failed: ${JSON.stringify(advanced)}`);
+    await evaluate('document.querySelector("#sort-results").value="Price: low to high";document.querySelector("#sort-results").dispatchEvent(new Event("change",{bubbles:true}))');
+    const sorted = JSON.parse(await evaluate('JSON.stringify({sort:document.querySelector("#sort-results").value,url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length})'));
+    if(sorted.sort!=='Price: low to high'||!sorted.url.includes('sort=Price')||sorted.cards!==initial.cards)
+      throw new Error('Price sort failed: '+JSON.stringify(sorted));
+    await evaluate('document.querySelector("#clear-filters").click()');
+    await evaluate('document.querySelectorAll("[data-quick-name=fee]")[0].click()');
+    const budget=JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length})'));
+    if(!budget.url.includes('fee=Under')||budget.cards>=initial.cards||!budget.cards)throw new Error('Quick fee filter failed: '+JSON.stringify(budget));
+    await evaluate('document.querySelector("#clear-filters").click()');
     let native = null;
     if (mode === 'fixture-native-explore') {
       await evaluate('document.querySelector("#directory-filters [name=source]").value="Book on Mercury";document.querySelector("#directory-filters [name=source]").dispatchEvent(new Event("change",{bubbles:true}))');
-      native = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,route:document.querySelector(".mercury-card .card-outbound")?.getAttribute("href"),action:document.querySelector(".mercury-card .card-outbound")?.textContent})'));
-      if (!native.url.includes('source=Book+on+Mercury') || native.cards !== 1 || native.route !== '/register/review-state' || !native.action.includes('Book free place')) throw new Error(`Native booking route failed: ${JSON.stringify(native)}`);
+      native = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,route:document.querySelector(".mercury-card .photo-card-link")?.getAttribute("href"),action:document.querySelector(".mercury-card .photo-cta")?.textContent})'));
+      if (!native.url.includes('source=Book+on+Mercury') || native.cards !== 1 || native.route !== '/event/review-state' || !native.action.includes('View event')) throw new Error(`Native booking route failed: ${JSON.stringify(native)}`);
     }
     const report = { page, initial, sport, reset, timeAndArea, empty, advanced, native };
     await writeFile(output, JSON.stringify(report, null, 2));
