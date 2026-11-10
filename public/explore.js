@@ -231,6 +231,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
     panel.hidden = !open;
     toggle.setAttribute('aria-expanded', String(open));
     toggle.classList.toggle('is-open', open);
+    if (open) panel.querySelector('[name="sport"]')?.focus();
   };
   main.querySelector('.explore-sports').onclick = event => {
     const button = event.target.closest('button[data-sport]');
