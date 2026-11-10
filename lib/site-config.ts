@@ -4,7 +4,7 @@ export function siteOrigin() {
   catch { return fallback; }
 }
 export function publicLaunch() { return process.env.MERCURY_PUBLIC_LAUNCH === 'true'; }
-export function publicBrowse() { return publicLaunch() || process.env.MERCURY_PUBLIC_BROWSE === 'true'; }
+export function publicBrowse() { return true; }
 
 export function oauthOrigin(hostHeader: string | null, canonical: string, vercelHost = process.env.VERCEL_URL) {
   const configured = new URL(canonical);

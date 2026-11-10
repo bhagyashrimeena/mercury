@@ -43,10 +43,9 @@ Set these environment variables for **Production** before deploying:
 | `SUPABASE_DB_CA` | Supabase database CA certificate PEM from SSL Configuration; keep server-side |
 | `MERCURY_ADMIN_EMAIL` | Google email of the Mercury owner; enables the owner inbox and support intake |
 | `MERCURY_PUBLIC_LAUNCH` | `false` for the private pilot; change only when deliberately launching publicly |
-| `MERCURY_PUBLIC_BROWSE` | Optional `true` after the catalogue is reviewed to open discovery without search indexing; leave unset during the private pilot |
 | `MERCURY_SITE_ORIGIN` | Final HTTPS production origin: `https://www.playonmercury.com` while the apex domain redirects there |
 
-`MERCURY_ALLOWED_EMAILS` is optional: a comma-separated list of additional Google or email-code addresses allowed into the private pilot. `MERCURY_ADMIN_EMAIL` is always allowed. When `MERCURY_PUBLIC_LAUNCH=false`, the proxy rejects other visitors; that flag also keeps search indexing off. Set `MERCURY_PUBLIC_BROWSE=true` only when guest discovery is ready for review. When `MERCURY_PUBLIC_LAUNCH=true`, browsing opens publicly while account and owner API operations still require sign-in and ownership checks.
+`MERCURY_ALLOWED_EMAILS` is optional: a comma-separated list of additional Google or email-code addresses allowed into the private pilot. `MERCURY_ADMIN_EMAIL` is always allowed. Guest discovery is public while account and organizer routes remain protected. `MERCURY_PUBLIC_LAUNCH=false` keeps search indexing off and restricts account access to the pilot list. `MERCURY_PUBLIC_LAUNCH=true` opens account signup publicly while owner operations still require sign-in and ownership checks.
 
 Use separate values and preferably a separate Supabase project for **Preview** and **Development**. Do not point a preview that accepts writes at the production database. `MERCURY_SITE_ORIGIN` should be the canonical URL for that environment when set. Vercel also supplies `VERCEL_URL` as a fallback.
 

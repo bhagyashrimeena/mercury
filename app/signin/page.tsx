@@ -71,7 +71,7 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
       <div className="signin-layout">
         <section className="signin-intro">
           <Link href="/" className="signin-brand" aria-label="Mercury home">
-            <Image src="/assets/mark.svg" alt="" width={42} height={42} />mercury
+            <Image src="/assets/mercury-wordmark.png" alt="" width={180} height={64} priority />
           </Link>
           <p className="eyebrow">MUMBAI, IN PLAY</p>
           <h1>Keep your next game <em>close.</em></h1>

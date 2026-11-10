@@ -2,7 +2,7 @@
 
 Use this runbook for the current Next.js site on Vercel, with Google sign-in through Supabase Auth and application records in Supabase PostgreSQL. It is a test plan for approved pilot accounts, not a record that the hosted journeys have passed. The [deployment guide](vercel-deployment.md) has the current configuration steps; the [design review index](../artifacts/design-review/README.md) records local captures and their limits.
 
-Keep `MERCURY_PUBLIC_LAUNCH=false`. Leave `MERCURY_PUBLIC_BROWSE` unset during the private pilot. Do not add unreviewed catalogue listings or send real invitations from test events.
+Keep `MERCURY_PUBLIC_LAUNCH=false` during the private account pilot. Guests can browse the reviewed catalogue, while saving and booking require a pilot account. Do not add unreviewed catalogue listings or send real invitations from test events.
 
 ## Prepare the pilot
 

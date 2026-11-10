@@ -2,11 +2,11 @@
 
 Google sign-in can return to `http://localhost:3000`; it does not require deployment on playonmercury.com. The browser must start and finish on the same localhost origin so its Supabase PKCE cookie is available for the code exchange. Mercury sends the fixed `http://localhost:3000/auth/callback` redirect URI and keeps the post-login destination in a short-lived, HTTP-only cookie. Supabase's redirect allowlist must contain that exact local URL. Google's authorized redirect URI remains the Supabase provider callback, not the localhost URL. Keep the production Supabase Site URL unchanged.
 
-The current sign-in page offers Google, email code, and Continue as guest when `MERCURY_PUBLIC_BROWSE=true`. Guest discovery can open without an account; saving or booking sends the visitor to Account and then sign-in. After an approved existing account signs in, Account returns to the original listing or game. A new account completes consent first, then returns.
+The current sign-in page offers Google, email code, and Continue as guest. Guest discovery can open without an account; saving or booking sends the visitor to Account and then sign-in. After an approved existing account signs in, Account returns to the original listing or game. A new account completes consent first, then returns.
 
 ## Local setup
 
-1. Use the project's pinned Node and pnpm versions and an ignored `.env.local` with `MERCURY_SITE_ORIGIN=http://localhost:3000`, the Mercury Supabase URL and publishable key, and the private-pilot allowlist. Set `MERCURY_PUBLIC_BROWSE=true` to test guest browsing.
+1. Use the project's pinned Node and pnpm versions and an ignored `.env.local` with `MERCURY_SITE_ORIGIN=http://localhost:3000`, the Mercury Supabase URL and publishable key, and the private-pilot allowlist.
 2. In Supabase **Authentication → URL Configuration → Redirect URLs**, allow `http://localhost:3000/auth/callback`. Keep the production Site URL and production redirects in place.
 3. Run `npm run dev` and use `localhost` consistently, rather than switching to `127.0.0.1` during a sign-in.
 4. For email code testing, follow [the email setup guide](email-signin-setup.md). The Email provider being enabled does not prove that the Magic Link template or SMTP delivery is ready.

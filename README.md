@@ -12,7 +12,7 @@ Mercury runs as a Next.js app on Vercel. Supabase provides PostgreSQL, Google si
 
 The default pilot is private: `MERCURY_PUBLIC_LAUNCH=false` admits only `MERCURY_ADMIN_EMAIL` and any emails in `MERCURY_ALLOWED_EMAILS`. The flag also keeps pages out of search indexing. Decide the audience explicitly before changing it to `true`.
 
-For a staged release after the catalogue is reviewed, set `MERCURY_PUBLIC_BROWSE=true` to offer **Continue as guest** on the sign-in page. Guests can open home, Explore, event and listing details, then are asked to sign in when saving or booking. Accounts and organizer tools stay protected. This stage remains `noindex` until `MERCURY_PUBLIC_LAUNCH=true` is deliberately enabled. A production environment change requires a Vercel redeploy.
+Guest browsing is enabled: **Continue as guest** opens home, Explore, event and listing details, then asks visitors to sign in when saving or booking. Accounts and organizer tools stay protected. The site remains `noindex` until `MERCURY_PUBLIC_LAUNCH=true` is deliberately enabled.
 
 ## Code map
 
@@ -38,7 +38,7 @@ npm run typecheck
 npm run build
 ```
 
-To check the guest sign-in handoff in an isolated Chrome session, start the local server with `MERCURY_PUBLIC_BROWSE=true` and run `node scripts/smoke-guest-browser.mjs`. It defaults to a 390px viewport; `MERCURY_SMOKE_WIDTH` and `MERCURY_SMOKE_HEIGHT` can test other sizes. This checks the browser path without signing into Google or using an existing Chrome profile.
+To check the guest sign-in handoff in an isolated Chrome session, start the local server and run `node scripts/smoke-guest-browser.mjs`. It defaults to a 390px viewport; `MERCURY_SMOKE_WIDTH` and `MERCURY_SMOKE_HEIGHT` can test other sizes. This checks the browser path without signing into Google or using an existing Chrome profile.
 
 For local signed-in development, configure the Supabase values in an ignored `.env.local`, set `MERCURY_SITE_ORIGIN=http://localhost:3000`, apply the PostgreSQL schema, add the exact `http://localhost:3000/auth/callback` to Supabase Auth redirect URLs, and run `npm run dev`. Keep the production Site URL unchanged. Use `localhost` consistently rather than switching to `127.0.0.1` midway through sign-in, because PKCE cookies belong to the initiating host. Do not commit secrets or production data.
 

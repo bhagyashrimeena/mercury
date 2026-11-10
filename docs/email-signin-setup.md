@@ -1,6 +1,6 @@
 # Email code sign-in setup
 
-Mercury's sign-in page offers Google, email code and guest browsing. The email form calls Supabase `signInWithOtp` and verifies the six-digit code with `verifyOtp`. Existing email-code accounts sign in; a new email creates an account. Mercury's private-pilot allowlist still applies before a code is sent and after verification. Guests can browse when `MERCURY_PUBLIC_BROWSE=true`; saving and booking require a signed-in account and consent.
+Mercury's sign-in page offers Google, email code and guest browsing. The email form calls Supabase `signInWithOtp` and verifies the six-digit code with `verifyOtp`. Existing email-code accounts sign in; a new email creates an account. Mercury's private-pilot allowlist still applies before a code is sent and after verification. Guests can browse; saving and booking require a signed-in account and consent.
 
 An account originally created with Google may not receive an email code when it has no email identity. Supabase can return an obfuscated success response in this case. Those players should continue with Google. Do not promise that both methods work interchangeably for an existing account until this is verified in the project.
 

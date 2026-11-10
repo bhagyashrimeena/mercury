@@ -1,7 +1,7 @@
 export const shell = `
   <a class="skip" href="#main">Skip to content</a>
   <header class="header">
-    <a href="/" class="brand" aria-label="Mercury home"><img src="/assets/mark.svg" alt="" width="34" height="34">mercury<span class="brand-dot">™</span></a>
+    <a href="/" class="brand" aria-label="Mercury home"><img src="/assets/mercury-wordmark.png" alt="" width="154" height="55"></a>
     <nav aria-label="Main navigation">
       <a href="/explore" data-nav="explore">Explore</a>
       <a href="/how-it-works" data-nav="how-it-works">How it works</a>
@@ -21,7 +21,7 @@ export const shell = `
   <dialog id="action-sheet" aria-labelledby="sheet-title"></dialog>
   <main id="main" tabindex="-1">__SERVER_CONTENT__</main>
   <footer>
-    <a href="/" class="brand">mercury<span class="brand-dot">™</span></a>
+    <a href="/" class="brand" aria-label="Mercury home"><img src="/assets/mercury-wordmark.png" alt="" width="136" height="49" loading="lazy"></a>
     <p>More playing. Less planning.</p>
     <div>
       <a href="/about">About Mercury</a>
