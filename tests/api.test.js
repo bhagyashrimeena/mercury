@@ -67,6 +67,46 @@ test('corrections require identity and origin; click counts store no player iden
   assert.equal((await h.req('listings/missing/click', null, {})).status, 404);
   assert.equal(h.sqlite.prepare('SELECT count FROM listing_clicks WHERE listing_id=?').get(id).count, 2);
   assert.deepEqual(h.sqlite.prepare('PRAGMA table_info(listing_clicks)').all().map(r => r.name), ['listing_id', 'day', 'count']);
+  const reviewed = 'mumbai-flex-nov-2026';
+  await h.req('listings/' + reviewed + '/report', player(2), { reason: 'Please check the event information.' });
+  await h.req('admin/correction', host, { listingId: reviewed, userId: 'player-2', resolved: true });
+  assert.deepEqual((await h.req('admin/overview', host)).data.corrections.map(row => row.status), ['open', 'resolved']);
+  h.sqlite.close();
+});
+
+test('aggregate funnel counts are bounded, owner-only and contain no player identifiers', async () => {
+  const h = harness();
+  assert.equal((await h.req('metrics', null, { metric: 'home_view' })).status, 200);
+  assert.equal((await h.req('metrics', null, { metric: 'zero_results' })).status, 200);
+  assert.equal((await h.req('metrics', null, { metric: 'invented' })).status, 422);
+  assert.equal((await h.req('metrics', null, { metric: 'home_view' }, 'POST', { origin: 'https://evil.test' })).status, 403);
+  assert.equal((await h.req('admin/overview', player(1), undefined, 'GET', { consent: false })).status, 403);
+  const before = await h.req('admin/overview', host, undefined, 'GET', { consent: false });
+  assert.equal(before.data.metricsAvailable, true);
+  assert.deepEqual(before.data.metrics.map(row => [row.metric, row.count]).sort(), [['home_view', 1], ['zero_results', 1]]);
+  const id = await h.publish();
+  await h.req('saved/' + id, player(1), { saved: true });
+  await h.join(id, 1);
+  await h.join(id, 2);
+  const after = await h.req('admin/overview');
+  const counts = new Map(after.data.metrics.map(row => [row.metric, row.count]));
+  assert.equal(counts.get('saved_native'), 1);
+  assert.equal(counts.get('booking_confirmed'), 2);
+  assert.deepEqual(h.sqlite.prepare('PRAGMA table_info(site_metrics)').all().map(row => row.name), ['day', 'metric', 'count']);
+  for (let i = 0; i < 118; i++) assert.equal((await h.req('metrics', null, { metric: 'home_view' })).status, 200);
+  assert.equal((await h.req('metrics', null, { metric: 'home_view' })).status, 429);
+  h.sqlite.close();
+});
+
+test('missing optional metrics table never blocks consent or free booking', async () => {
+  const h = harness();
+  h.sqlite.exec('DROP TABLE site_metrics');
+  assert.equal((await h.req('metrics', null, { metric: 'home_view' })).status, 503);
+  const id = await h.publish();
+  assert.equal((await h.join(id, 1)).status, 200);
+  const overview = await h.req('admin/overview');
+  assert.equal(overview.status, 200);
+  assert.equal(overview.data.metricsAvailable, false);
   h.sqlite.close();
 });
 
@@ -162,4 +202,17 @@ test('owner backups restore into a new database and refuse overwriting existing 
     assert.throws(()=>restoreBackup(snapshot.data,file),/EEXIST/);
     assert.throws(()=>restoreBackup({...snapshot.data,tables:{}},joinPath(dir,'bad.sqlite')),/complete/);
   }finally{rmSync(dir,{recursive:true,force:true});h.sqlite.close();}
+});
+
+
+test('game pass includes the event duration without exposing request keys or account identifiers', async () => {
+  const h = harness();
+  try {
+    const id = await h.publish();
+    await h.join(id, 1);
+    const { data } = await h.req('bookings', player(1));
+    assert.equal(data.bookings[0].duration, 90);
+    assert.equal(data.bookings[0].user_id, undefined);
+    assert.equal(data.bookings[0].idempotency_key, undefined);
+  } finally { h.sqlite.close(); }
 });

@@ -22,7 +22,7 @@ export const listings = [
     "sourceUrl": "https://www.mbasso.in/webfiles/tournament/376-tournament-circular-gmba.pdf",
     "registrationUrl": "https://www.mbasso.in/tournaments-maharashtra-badminton-association",
     "registrationNote": "Choose the Bombay Gymkhana tournament on the association calendar.",
-    "checkedOn": "2026-11-01"
+    "checkedOn": "2026-11-09"
   },
   {
     "id": "mumbai-flex-nov-2026",
@@ -46,7 +46,7 @@ export const listings = [
     "sourceUrl": "https://app.utrsports.net/rankings/tennis-tournaments/india",
     "registrationUrl": "https://app.utrsports.net/events/404791",
     "registrationNote": "The UTR directory showed registration open when checked; current availability is on UTR.",
-    "checkedOn": "2026-11-01"
+    "checkedOn": "2026-11-09"
   },
   {
     "id": "ucan-november-2026",
@@ -70,7 +70,7 @@ export const listings = [
     "sourceUrl": "https://ucanracket.in/",
     "registrationUrl": "https://ucanracket.in/",
     "registrationNote": "Find the November programme. Category availability can differ.",
-    "checkedOn": "2026-11-01"
+    "checkedOn": "2026-11-09"
   },
   {
     "id": "barcelona-mumbai-camp-2026",
@@ -94,31 +94,31 @@ export const listings = [
     "sourceUrl": "https://barcelonasportsacademy.com/en/elevate-your-game-elite-spanish-tennis-training-comes-to-mumbai/",
     "registrationUrl": "https://barcelonasportsacademy.com/en/elevate-your-game-elite-spanish-tennis-training-comes-to-mumbai/",
     "registrationNote": "The official page provides the Indian representative’s contact details to arrange entry.",
-    "checkedOn": "2026-11-01"
+    "checkedOn": "2026-11-09"
   },
   {
     "id": "ninjas-championship-2026",
     "title": "Ninjas Championship Powered by Hudle",
     "sport": "Pickleball",
     "type": "Tournament",
-    "area": "Bandra",
+    "area": "Andheri / WTC",
     "date": "2026-11-20",
     "endDate": "2026-11-22",
     "timeNote": "20 November, 4 pm to 22 November, 11 pm IST; confirm category schedule",
-    "venue": "Torba, St Domnic Road, Bandra West, Mumbai 400050",
+    "venue": "Global Sports venues at Andheri Sports Complex and WTC; confirm your category's court with the organizer",
     "host": "Kick Off Net Ninjas",
     "eligibility": "Category and age requirements must be checked on Hudle.",
     "level": "Check categories",
     "priceLabel": "From ₹1,200",
     "priceNote": "Entry unit is not stated in the accessible listing; check the ticket category.",
-    "description": "A three-day pickleball championship in Bandra. Review the category rules and ticket details before registering.",
+    "description": "A three-day pickleball championship at the organizer's ASC and WTC venues. Confirm your category's court, rules and ticket details before registering.",
     "deadline": null,
     "deadlineLabel": "Not published in the accessible listing",
     "sourceName": "Hudle · organizer listing",
     "sourceUrl": "https://hudle.in/events/ninjas-championship/142692",
     "registrationUrl": "https://hudle.in/events/ninjas-championship/142692",
     "registrationNote": "Choose a category on Hudle and confirm the entry unit and refund policy.",
-    "checkedOn": "2026-11-01"
+    "checkedOn": "2026-11-09"
   },
   {
     "id": "racket-riders-s2-2026",
@@ -142,7 +142,7 @@ export const listings = [
     "sourceUrl": "https://www.khelomore.com/events/event-details/racket-riders/racket-riders-badminton-tournament-s2/1940",
     "registrationUrl": "https://www.khelomore.com/events/event-details/racket-riders/racket-riders-badminton-tournament-s2/1940",
     "registrationNote": "Review the event and selected ticket on KheloMore.",
-    "checkedOn": "2026-11-01"
+    "checkedOn": "2026-11-09"
   },
   {
     "id": "mumbai-pickleball-cup-s3",
@@ -166,7 +166,7 @@ export const listings = [
     "sourceUrl": "https://www.mumbaipickleballcup.com/",
     "registrationUrl": "https://www.mumbaipickleballcup.com/",
     "registrationNote": "Registration and payment are handled directly on the organizer’s website.",
-    "checkedOn": "2026-11-01"
+    "checkedOn": "2026-11-09"
   },
   {
     "id": "basch-pickleball-2026",
@@ -181,7 +181,7 @@ export const listings = [
     "host": "Aarya / BASCH",
     "eligibility": "Beginner, intermediate and 40+ beginner categories; singles and doubles. Confirm rating thresholds on Hudle.",
     "level": "Multiple divisions",
-    "priceLabel": "From ₹900",
+    "priceLabel": "From ₹1,000",
     "priceNote": "Check the ticket category for its price and whether it covers a player or pair.",
     "description": "A day of singles and doubles competition in Vile Parle. The listing advertises four matches per entry.",
     "deadline": null,
@@ -190,7 +190,7 @@ export const listings = [
     "sourceUrl": "https://hudle.in/events/basch-pickleball-tournament/976895",
     "registrationUrl": "https://hudle.in/events/basch-pickleball-tournament/976895",
     "registrationNote": "Select the appropriate ticket on Hudle and confirm current availability.",
-    "checkedOn": "2026-11-01"
+    "checkedOn": "2026-11-09"
   },
   {
     "id": "mslta-masters-mt400-2026",
@@ -211,9 +211,9 @@ export const listings = [
     "deadline": null,
     "deadlineLabel": "Check the Tour Zone fact sheet",
     "sourceName": "International Tennis Federation",
-    "sourceUrl": "https://www.itftennis.com/en/tournament/mt400-mumbai/ind/2026/s-mt400-ind-2026-010/",
-    "registrationUrl": "https://www.itftennis.com/en/tournament/mt400-mumbai/ind/2026/s-mt400-ind-2026-010/",
+    "sourceUrl": "https://www.world.tennis/en/tournament/mt400-mumbai/ind/2026/s-mt400-ind-2026-010/",
+    "registrationUrl": "https://www.world.tennis/en/tournament/mt400-mumbai/ind/2026/s-mt400-ind-2026-010/",
     "registrationNote": "Use the official ITF page to access Tour Zone and confirm entries.",
-    "checkedOn": "2026-11-01"
+    "checkedOn": "2026-11-09"
   }
 ];

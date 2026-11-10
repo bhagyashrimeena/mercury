@@ -1,0 +1,14 @@
+{
+  "page": {
+    "url": "http://localhost:3002/host",
+    "title": "Organizer studio — Mercury",
+    "viewport": 390,
+    "content": 390,
+    "height": 2270
+  },
+  "unnamed": [],
+  "missingAlt": [],
+  "invalidLabels": [],
+  "smallTargets": [],
+  "horizontalOverflow": false
+}

@@ -1,0 +1,14 @@
+{
+  "page": {
+    "url": "http://localhost:3002/",
+    "title": "Mercury — Your next game starts here",
+    "viewport": 390,
+    "content": 390,
+    "height": 5598
+  },
+  "unnamed": [],
+  "missingAlt": [],
+  "invalidLabels": [],
+  "smallTargets": [],
+  "horizontalOverflow": false
+}

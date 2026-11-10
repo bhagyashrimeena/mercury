@@ -1,0 +1,67 @@
+{
+  "url": "http://localhost:3002/host",
+  "violations": [],
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "nodes": [
+        {
+          "target": [
+            "a[data-nav=\"home\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⌂</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "a[href$=\"explore\"][data-nav=\"explore\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⌕</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "a[data-nav=\"my-games\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">♡</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".current[data-nav=\"host\"][aria-current=\"page\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⊕</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "div:nth-child(1) > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">◍</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "div:nth-child(2) > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⌂</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "div:nth-child(3) > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">◎</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".solo-note > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">✱</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        }
+      ]
+    }
+  ]
+}

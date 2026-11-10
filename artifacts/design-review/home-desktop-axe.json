@@ -1,0 +1,137 @@
+{
+  "url": "http://localhost:3002/",
+  "violations": [],
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "nodes": [
+        {
+          "target": [
+            "#location-button > span:nth-child(1)"
+          ],
+          "text": "<span>⌖</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "#location-button > span:nth-child(2)"
+          ],
+          "text": "<span>⌄</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".hero-copy > .eyebrow"
+          ],
+          "text": "<p class=\"eyebrow\"><span class=\"tiny-star\">✳</span> FOR THE LOVE OF THE GAME</p>",
+          "summary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "target": [
+            "h1"
+          ],
+          "text": "<h1>Less scrolling.<br>More <span>playing.</span></h1>",
+          "summary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "target": [
+            "h1 > span"
+          ],
+          "text": "<span>playing.</span>",
+          "summary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "target": [
+            ".hero-copy > p:nth-child(3)"
+          ],
+          "text": "<p>Tournaments, leagues and free sessions around Mumbai. Check dates and entry rules, then register with the organizer or book a free Mercury place.</p>",
+          "summary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "target": [
+            ".hero-note"
+          ],
+          "text": "<div class=\"hero-note\"><span class=\"mini-court\">↗</span> Choose a sport. Check the date. Make it a plan.</div>",
+          "summary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "target": [
+            ".hero-stamp > span:nth-child(1)"
+          ],
+          "text": "<span>MERCURY PLAY CLUB</span>",
+          "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+        },
+        {
+          "target": [
+            ".hero-stamp > b"
+          ],
+          "text": "<b>ALL GAME.<br>NO GATEKEEPING.</b>",
+          "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+        },
+        {
+          "target": [
+            ".hero-stamp > span:nth-child(3)"
+          ],
+          "text": "<span>MUMBAI, INDIA ↗</span>",
+          "summary": "Fix any of the following:\n  Element's background color could not be determined because it is overlapped by another element"
+        },
+        {
+          "target": [
+            ".hero-caption"
+          ],
+          "text": "<div class=\"hero-caption\">01 / THE COURT IS CALLING.</div>",
+          "summary": "Fix any of the following:\n  Element's background color could not be determined due to a background gradient"
+        },
+        {
+          "target": [
+            "button[data-home-sport=\"Badminton\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">◈</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "button[data-home-sport=\"Tennis\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">◉</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "button[data-home-sport=\"Pickleball\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">◎</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".tennis.listing-art[href$=\"mumbai-flex-nov-2026\"] > .listing-art-symbol[aria-hidden=\"true\"]"
+          ],
+          "text": "<span class=\"listing-art-symbol\" aria-hidden=\"true\">◉</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".pickleball > .listing-art-symbol[aria-hidden=\"true\"]"
+          ],
+          "text": "<span class=\"listing-art-symbol\" aria-hidden=\"true\">◎</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".event-card.directory-card:nth-child(3) > .tennis.listing-art > .listing-art-symbol[aria-hidden=\"true\"]"
+          ],
+          "text": "<span class=\"listing-art-symbol\" aria-hidden=\"true\">◉</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".photo-caption"
+          ],
+          "text": "<span class=\"photo-caption\">YOUR PEOPLE ARE OUT THERE.<br>PROBABLY ON A COURT.</span>",
+          "summary": "Fix any of the following:\n  Element's background color could not be determined due to a pseudo element"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Mercury motion artwork</title>
+  <desc id="desc">Abstract court lines and overlapping circles in blue and lime.</desc>
+  <defs>
+    <linearGradient id="field" x2="1" y2="1">
+      <stop stop-color="#183AB4"/>
+      <stop offset="1" stop-color="#3156F5"/>
+    </linearGradient>
+    <pattern id="grain" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#FFFFFF" opacity=".08"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="800" fill="url(#field)"/>
+  <rect width="1200" height="800" fill="url(#grain)"/>
+  <g fill="none" stroke="#FFFFFF" opacity=".22">
+    <path d="M650 -110 1260 500M760 -110 1370 500M870 -110 1480 500" stroke-width="2"/>
+    <rect x="630" y="120" width="470" height="570" rx="235" stroke-width="3" transform="rotate(-19 865 405)"/>
+    <rect x="725" y="210" width="280" height="390" rx="140" stroke-width="2" transform="rotate(-19 865 405)"/>
+    <path d="M650 515 1090 287M675 602l440-228" stroke-width="2"/>
+  </g>
+  <circle cx="966" cy="208" r="122" fill="#D9FF38"/>
+  <circle cx="966" cy="208" r="83" fill="none" stroke="#10131A" stroke-width="2" opacity=".45"/>
+  <circle cx="966" cy="208" r="15" fill="#10131A"/>
+  <path d="M754 579c67-114 215-137 307-55" fill="none" stroke="#D9FF38" stroke-width="12" stroke-linecap="round"/>
+  <path d="m1050 500 13 29-30-2" fill="none" stroke="#D9FF38" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#F7F8F2" font-family="Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="3" opacity=".74">
+    <text x="760" y="706">BADMINTON</text><text x="908" y="706">TENNIS</text><text x="1008" y="706">PICKLEBALL</text>
+  </g>
+</svg>

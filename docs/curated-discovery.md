@@ -19,10 +19,12 @@ Research performed 1 November 2026. Public business contacts below were observed
 | 2 | [Ninjas Championship](https://hudle.in/events/ninjas-championship/142692) | kickoffahmedabad@gmail.com | Category list, entry unit, deadline, cancellation policy |
 | 2 | [Mumbai Flex League](https://app.utrsports.net/events/404791) | UTR event organizer channel | Court arrangements, entry deadline, membership / age rules |
 | 3 | [Bombay Gymkhana circular](https://www.mbasso.in/webfiles/tournament/376-tournament-circular-gmba.pdf) | Official association calendar / circular query contacts | Registration process; resolve inconsistent weekday wording in circular |
-| 3 | [MSLTA Masters MT400](https://www.itftennis.com/en/tournament/mt400-mumbai/ind/2026/s-mt400-ind-2026-010/) | practennis@yahoo.com | Tour Zone eligibility, entry deadline and fees |
+| 3 | [MSLTA Masters MT400](https://www.world.tennis/en/tournament/mt400-mumbai/ind/2026/s-mt400-ind-2026-010/) | practennis@yahoo.com | Tour Zone eligibility, entry deadline and fees |
 | 3 | [Barcelona Sports Academy camp](https://barcelonasportsacademy.com/en/elevate-your-game-elite-spanish-tennis-training-comes-to-mumbai/) | info@barcelonasportsacademy.com | Remaining capacity, junior requirements, final INR payment and refund terms |
 
-The UTR India directory supplied the flex-league dates, fee range and event link; the event page itself requires client-side access. UCAN and KheloMore facts came from their indexed official listing text, whose crawl timestamps preceded the research date. Source checked means researched, not directly confirmed with the organizer. These limitations are why every CTA asks users to check the organizer and no card claims registration is currently open.
+The UTR India directory supplied the flex-league dates, fee range and event link; the event page itself requires client-side access. At the initial 1 November review, UCAN and KheloMore facts came from indexed official listing text whose crawl timestamps preceded the research date. Source checked means researched, not directly confirmed with the organizer. These limitations are why every CTA asks users to check the organizer and no card claims registration is currently open.
+
+All nine records were rechecked on 9 November 2026. The evidence and remaining unknowns are recorded in [the November catalogue review](catalogue-review-2026-11-09.md). Racket Riders needed a rendered browser page because a simple fetch exposed only its client-side shell.
 
 ## Held back
 

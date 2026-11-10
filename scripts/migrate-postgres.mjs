@@ -10,19 +10,24 @@ address.searchParams.delete('sslrootcert');
 const client = new pg.Client({ connectionString: address.toString(), ssl: { ca, rejectUnauthorized: true } });
 await client.connect();
 try {
-  const { rows: [{ exists }] } = await client.query("SELECT to_regclass('public.users') IS NOT NULL AS exists");
-  if (exists) throw new Error('Mercury tables already exist; refusing to reapply the initial migration.');
-  const source = await readFile(new URL('../supabase/migrations/20261102_initial.sql', import.meta.url), 'utf8');
-  const statements = source.split(/;\s*(?:\r?\n|$)/).map(value => value.trim()).filter(Boolean);
-  await client.query('BEGIN');
-  try {
-    for (const statement of statements) await client.query(statement);
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
+  for (const [table, file] of [
+    ['users', '20261102_initial.sql'],
+    ['site_metrics', '20261105132850_site_metrics.sql'],
+  ]) {
+    const { rows: [{ exists }] } = await client.query('SELECT to_regclass($1) IS NOT NULL AS exists', [`public.${table}`]);
+    if (exists) { console.log(`Skipped ${file}; public.${table} already exists.`); continue; }
+    const source = await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8');
+    const statements = source.split(/;\s*(?:\r?\n|$)/).map(value => value.trim()).filter(Boolean);
+    await client.query('BEGIN');
+    try {
+      for (const statement of statements) await client.query(statement);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    }
+    console.log(`Applied ${file} (${statements.length} statements).`);
   }
-  console.log(`Applied ${statements.length} PostgreSQL schema statements.`);
 } finally {
   await client.end();
 }

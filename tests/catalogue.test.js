@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { listings, findListing, listingStatus, currentListings } from '../public/catalogue.js';
-import { filterLineup } from '../public/discovery.js';
+import { filterLineup } from '../public/explore.js';
 const at = s => Date.parse(s);
 test('catalogue has unique identities, dated primary provenance and HTTPS-only destinations', () => {
   assert.equal(new Set(listings.map(e => e.id)).size, listings.length);
@@ -20,7 +20,7 @@ test('deadline timestamp closes exactly at cutoff; date-only deadlines do not in
   assert.equal(listingStatus(cup, at('2026-11-27T18:30:00Z')).code, 'closed');
 });
 test('sources go stale, ended listings leave discovery but remain addressable for saved bookmarks', () => {
-  const e = findListing('basch-pickleball-2026');
+  const e = { ...findListing('basch-pickleball-2026'), checkedOn: '2026-11-01' };
   assert.equal(listingStatus(e, at('2026-11-07T18:29:59Z')).code, 'check');
   assert.equal(listingStatus(e, at('2026-11-07T18:30:00Z')).code, 'stale');
   assert.equal(listingStatus(e, at('2026-11-29T18:29:59Z')).code, 'started');
@@ -40,11 +40,32 @@ test('combined discovery respects sport, source, city area, format and free-entr
   assert.equal(filterLineup(all, { query: 'not-a-real-event' }).length, 0);
 });
 
+test('discovery defaults can select actionable weekend entries and separate closed or full games', () => {
+  const now = at('2026-11-05T06:00:00Z');
+  const base = { title: 'Rally', sport: 'Tennis', type: 'Social play', area: 'Powai', venue: 'Test court', host: 'Host', level: 'All levels' };
+  const items = [
+    { ...base, id: 'open', date: '2026-11-07', startsAt: at('2026-11-07T04:00:00Z'), spots: 2, status: 'published', external: false },
+    { ...base, id: 'full', date: '2026-11-08', startsAt: at('2026-11-08T04:00:00Z'), spots: 0, status: 'published', external: false },
+    { ...base, id: 'closed', date: '2026-11-08', external: true, availability: { code: 'closed' } },
+    { ...base, id: 'external', date: '2026-11-08', external: true, availability: { code: 'check' } },
+    { ...base, id: 'stale', date: '2026-11-08', external: true, availability: { code: 'stale' } },
+    { ...base, id: 'later', date: '2026-11-12', external: true, availability: { code: 'check' } },
+    { ...base, id: 'withdrawn', date: '2026-11-09', external: true, availability: { code: 'withdrawn' } },
+    { ...base, id: 'ended', date: '2026-11-01', endDate: '2026-11-01', external: true, availability: { code: 'ended' } },
+  ];
+  assert.deepEqual(filterLineup(items, { availability: 'Entry possible', when: 'This weekend' }, now).map(e => e.id), ['open', 'external']);
+  assert.deepEqual(filterLineup(items, { availability: 'All upcoming' }, now).map(e => e.id), ['open', 'full', 'closed', 'external', 'stale', 'later']);
+  assert.deepEqual(filterLineup(items, { availability: 'Closed or full' }, now).map(e => e.id), ['full', 'closed']);
+  assert.deepEqual(filterLineup(items, { availability: 'Needs source check' }, now).map(e => e.id), ['stale']);
+  assert.deepEqual(filterLineup(items, { availability: 'Entry possible', when: 'Next 7 days' }, now).map(e => e.id), ['open', 'external']);
+});
+
 import { validateCatalogue } from '../server/catalogue-validation.js';
 test('import rejects invented dates, duplicate IDs, unsafe links and missing fee units',()=>{
-  assert.equal(validateCatalogue(listings,'2026-11-02').valid,true);
+  const reviewDay = listings.reduce((latest, e) => e.checkedOn > latest ? e.checkedOn : latest, '0000-01-01');
+  assert.equal(validateCatalogue(listings,reviewDay).valid,true);
   const base=structuredClone(listings[0]);
-  for(const patch of [{date:'2026-02-30'},{checkedOn:'2027-01-01'},{deadline:'2026-11-03T18:00:00'},{deadline:'2026-02-30T18:00:00+05:30'},{deadline:'2026-11-03T24:00:00+05:30'},{registrationUrl:'javascript:alert(1)'},{sourceUrl:'https://user:secret@example.com/'},{registrationUrl:'https://127.0.0.1/'},{priceNote:''}]) assert.equal(validateCatalogue([{...base,...patch}],'2026-11-02').valid,false,JSON.stringify(patch));
-  assert.equal(validateCatalogue([base,base],'2026-11-02').valid,false);
-  assert.equal(validateCatalogue([{...base,sport:'Cricket'}],'2026-11-02').valid,true);
+  for(const patch of [{date:'2026-02-30'},{checkedOn:'9999-01-01'},{deadline:'2026-11-03T18:00:00'},{deadline:'2026-02-30T18:00:00+05:30'},{deadline:'2026-11-03T24:00:00+05:30'},{registrationUrl:'javascript:alert(1)'},{sourceUrl:'https://user:secret@example.com/'},{registrationUrl:'https://127.0.0.1/'},{priceNote:''}]) assert.equal(validateCatalogue([{...base,...patch}],reviewDay).valid,false,JSON.stringify(patch));
+  assert.equal(validateCatalogue([base,base],reviewDay).valid,false);
+  assert.equal(validateCatalogue([{...base,sport:'Cricket'}],reviewDay).valid,true);
 });

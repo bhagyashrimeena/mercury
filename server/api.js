@@ -2,6 +2,7 @@ import { operations, POLICY_VERSION, isAdmin, consumeLimit } from './operations.
 import { clientIp } from './client-ip.js';
 import { findListing, currentListings, listingStatus, indiaDay } from '../public/catalogue.js';
 import { validateDraft, newId } from '../public/domain.js';
+import { CLIENT_METRICS, recordMetric } from './metrics.js';
 const ACTIVE = "('confirmed','checked_in')";
 const PUBLIC_SELECT = `SELECT e.*,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE}) AS registered FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
 export class ApiError extends Error {
@@ -55,12 +56,23 @@ export async function apiHandler(request, db, user, { now = Date.now(), adminEma
         const result = method === 'POST' && path[0] === 'events' && path[2] === 'register' && db.withEventLock
             ? await db.withEventLock(path[1], lockedDb => dispatch({ ...options, db: lockedDb }))
             : await dispatch(options);
+        const completedMetric = method === 'POST' && path[0] === 'account' && path[1] === 'consent' ? 'consent_accepted'
+            : method === 'POST' && path[0] === 'listings' && path[2] === 'save' && body.saved === true ? 'saved_external'
+            : method === 'POST' && path[0] === 'saved' && body.saved === true ? 'saved_native'
+            : method === 'POST' && path[0] === 'events' && path[2] === 'register' && !result.existing ? 'booking_confirmed'
+            : null;
+        if (completedMetric) await recordMetric(db, completedMetric, now);
         return Response.json(result, { headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Vary': 'Cookie' } });
     }
     catch (error) {
         const known = error instanceof ApiError;
         if (!known)
             console.error('Mercury API failure', { name:error?.name || 'Error', path:new URL(request.url).pathname.slice(0,180) });
+        const failurePath = new URL(request.url).pathname;
+        if (db && failurePath !== '/api/metrics') {
+            if (failurePath.endsWith('/register') && (known ? error.status >= 400 : true)) await recordMetric(db, 'booking_failed', now);
+            if (!known || error.status >= 500) await recordMetric(db, 'api_error', now);
+        }
         return Response.json({ error: { code: known ? error.code : 'server_error', message: known ? error.message : 'Something went wrong. Please try again.', fields: known ? error.fields : null } }, { status: known ? error.status : 500, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
     }
 }
@@ -71,6 +83,12 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
     if (m === 'GET' && route === 'health') {
         await one(db, 'SELECT 1 AS ok');
         return { ok: true, version: '0.5.0', paymentsEnabled: false };
+    }
+    if (m === 'POST' && route === 'metrics') {
+        if (!CLIENT_METRICS.has(b.metric)) fail(422, 'Choose a supported count.', 'validation_failed');
+        await consumeLimit(db, 'metric:' + clientIp(request), 120, now, fail);
+        if (!await recordMetric(db, b.metric, now)) fail(503, 'Counting is temporarily unavailable.', 'metrics_unavailable');
+        return { ok: true };
     }
     if (m === 'GET' && route === 'listings') {
         const hidden = new Set((await all(db, 'SELECT listing_id FROM listing_overrides WHERE hidden=1')).map(x => x.listing_id));
@@ -266,7 +284,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         return { id };
     }
     if (m === 'GET' && route === 'bookings') {
-        const rows = await all(db, 'SELECT b.*,e.title,e.sport,e.area,e.venue,e.date,e.time,e.starts_at,e.status AS event_status,e.cancellation FROM bookings b JOIN events e ON e.id=b.event_id WHERE b.user_id=? ORDER BY e.starts_at DESC LIMIT 200', uid);
+        const rows = await all(db, 'SELECT b.*,e.title,e.sport,e.area,e.venue,e.date,e.time,e.starts_at,e.duration,e.status AS event_status,e.cancellation FROM bookings b JOIN events e ON e.id=b.event_id WHERE b.user_id=? ORDER BY e.starts_at DESC LIMIT 200', uid);
         return { bookings: rows.map(({ user_id, idempotency_key, ...row }) => row) };
     }
     if (m === 'POST' && p[0] === 'bookings' && p[2] === 'cancel') {

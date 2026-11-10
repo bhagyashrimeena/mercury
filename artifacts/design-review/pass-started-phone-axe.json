@@ -1,0 +1,39 @@
+{
+  "url": "http://localhost:3002/booking/review-pass",
+  "violations": [],
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "nodes": [
+        {
+          "target": [
+            "a[data-nav=\"home\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⌂</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "a[data-nav=\"explore\"][href$=\"explore\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⌕</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "a[data-nav=\"my-games\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">♡</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "a[href$=\"host\"][data-nav=\"host\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⊕</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        }
+      ]
+    }
+  ]
+}

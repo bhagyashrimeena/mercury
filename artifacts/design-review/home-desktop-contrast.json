@@ -1,0 +1,10 @@
+{
+  "url": "http://localhost:3002/",
+  "violations": [],
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "nodes": 18
+    }
+  ]
+}

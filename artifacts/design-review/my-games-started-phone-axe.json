@@ -1,0 +1,46 @@
+{
+  "url": "http://localhost:3002/my-games",
+  "violations": [],
+  "incomplete": [
+    {
+      "id": "color-contrast",
+      "nodes": [
+        {
+          "target": [
+            "a[data-nav=\"home\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⌂</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "a[data-nav=\"explore\"][href$=\"explore\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⌕</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".current > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">♡</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            "a[href$=\"host\"][data-nav=\"host\"] > span[aria-hidden=\"true\"]"
+          ],
+          "text": "<span aria-hidden=\"true\">⊕</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        },
+        {
+          "target": [
+            ".listing-art-symbol"
+          ],
+          "text": "<span class=\"listing-art-symbol\" aria-hidden=\"true\">◉</span>",
+          "summary": "Fix any of the following:\n  Element content contains only non-text characters"
+        }
+      ]
+    }
+  ]
+}
