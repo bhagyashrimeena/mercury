@@ -2909,3 +2909,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 }
 
 @media(max-width:360px){.explore-page #filter-toggle span{display:none}}
+
+
+/* Explore entry-freshness notice: contextual, never presented as confirmed inventory. */
+.explore-page .explore-freshness:not([hidden]){
+  display:block;
+  max-width:850px;
+  margin:0 0 13px;
+  padding:7px 0 7px 12px;
+  border-left:3px solid var(--blue);
+  background:transparent;
+  color:#4b5661;
+  font-size:12px;
+  font-weight:650;
+  line-height:1.55;
+}
+.explore-page .explore-freshness[hidden],
+.explore-page #clear-filters[hidden]{display:none!important}
