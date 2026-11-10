@@ -3558,3 +3558,39 @@ body{overflow-x:clip}
     transition:none!important;transform:none!important
   }
 }
+
+
+/* Continue the same athletic visual language into Mercury-native games. */
+.detail-cover.event-photo-cover{
+  isolation:isolate;height:clamp(215px,26vw,345px);
+  border-radius:22px 22px 72px 14px
+}
+.detail-cover.event-photo-cover::after{
+  content:"";position:absolute;right:-6%;top:-35%;width:55%;height:160%;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 420'%3E%3Cpath d='M 80 -20 C 420 70 -60 210 290 460' fill='none' stroke='%23D9FF38' stroke-width='25' stroke-linecap='round'/%3E%3C/svg%3E") center/contain no-repeat;
+  opacity:.78;z-index:1;pointer-events:none;animation:mercury-wave-float 9s ease-in-out infinite alternate
+}
+.detail-cover.event-photo-cover>span{z-index:2}
+.detail-cover.event-photo-cover img{transition:transform .8s var(--motion-ease)}
+.detail-layout .detail-title{
+  font-family:Archivo,Manrope,Arial,sans-serif;font-style:italic;
+  font-size:clamp(35px,4.5vw,61px);line-height:1.03;text-wrap:balance
+}
+@media(hover:hover) and (pointer:fine){
+  .detail-cover.event-photo-cover:hover img{transform:scale(1.035)}
+}
+/* Auth stays fast and quiet, but no longer feels separate from Mercury. */
+.signin-intro::after{
+  content:"";right:-20%;bottom:-35%;width:110%;height:90%;font-size:initial;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 550 380'%3E%3Cpath d='M -50 350 C 170 20 120 440 360 160 S 490 20 610 -40' fill='none' stroke='%23D9FF38' stroke-width='27' stroke-linecap='round'/%3E%3Cpath d='M -50 350 C 170 20 120 440 360 160 S 490 20 610 -40' fill='none' stroke='%233156F5' stroke-width='2' stroke-dasharray='11 18'/%3E%3C/svg%3E") center/contain no-repeat;
+  opacity:.62;animation:mercury-wave-float 10s ease-in-out infinite alternate
+}
+@media(max-width:650px){
+  .detail-cover.event-photo-cover{height:200px;border-radius:14px 14px 40px 12px}
+  .detail-cover.event-photo-cover::after{width:65%;opacity:.5}
+  .signin-intro::after{right:-25%;bottom:-45%;opacity:.35}
+}
+@media(prefers-reduced-motion:reduce){
+  .detail-cover.event-photo-cover::after,.signin-intro::after{animation:none!important}
+  .detail-cover.event-photo-cover img{transition:none!important}
+}
