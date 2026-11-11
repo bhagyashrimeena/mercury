@@ -46,7 +46,7 @@ export function filterLineup(items, filters, now = Date.now()) {
       && (!filters.source || filters.source === 'All listings' || (filters.source === 'External listings' ? event.external : !event.external))
       && (!filters.level || filters.level === 'Any level' || event.level === filters.level)
       && (filters.solo !== '1' || (!event.external && event.solo))
-      && (filters.fee !== 'Free' || (!event.external && Number(event.price) === 0))
+      && (filters.fee !== 'Free' || (event.external ? /^Free(?:\b|$)/i.test(String(event.priceLabel || '').trim()) : Number(event.price) === 0))
       && (filters.fee !== 'Under ₹1,000' || (event.external
         ? /₹\s*[\d,]+/.test(String(event.priceLabel || '')) &&
           Number(String(event.priceLabel).match(/₹\s*([\d,]+)/)?.[1].replaceAll(',', '')) < 1000
@@ -168,7 +168,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
     '<div class="quick-discovery" role="group" aria-label="Quick filters">',
     '<button type="button" data-quick-name="when" data-quick-value="This weekend" aria-pressed="false">This weekend</button>',
     '<button type="button" data-quick-name="fee" data-quick-value="Under ₹1,000" aria-pressed="false">Under ₹1,000</button>',
-    '<button type="button" data-quick-name="fee" data-quick-value="Free" aria-pressed="false">Free games</button>',
+    '<button type="button" data-quick-name="fee" data-quick-value="Free" aria-pressed="false">Free events</button>',
     '</div>',
     '<div class="results-heading">',
     '<div><h2>Explore events</h2>',
