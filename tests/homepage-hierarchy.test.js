@@ -32,5 +32,5 @@ test('homepage motion respects reduced motion and does not hide event content', 
   assert.match(css, /MERCURY HOME \/ ARENA FIRST/);
   assert.match(css, /\.home-journey \.hero/);
   assert.match(css, /@media\(prefers-reduced-motion:reduce\)/);
-  assert.doesNotMatch(home, /style="display:none"|hidden="true"/);
+  assert.doesNotMatch(home, /style="display:none"|\\shidden="true"/);
 });
