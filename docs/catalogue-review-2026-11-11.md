@@ -8,7 +8,6 @@ Sources are public organizer pages and registration partners. **No live availabi
 
 | New listing | Sport | Date | Fee shown (category restrictions apply) | Source / registration destination |
 | --- | --- | --- | --- | --- |
-| Rotary Queen City Half Marathon 2026 | Running | 2026-12-20 | From ₹700 | [India Running · Rotary Queen City registration listing](https://www.indiarunning.com/events/rotaryqueencityhalfmarathon2026-38601) |
 | Miles For Change 2026 | Running | 2026-11-29 | From ₹750 | [RaceMart · organizer registration listing](https://racemart.in/events/miles-for-change) |
 | Joyathon 2026 by Little Joys · Kids Run Festival | Running | 2026-11-29 | From ₹499 | [India Running · Little Joys event](https://www.indiarunning.com/events/joyathon_2026_33704) |
 | Dosti Thane Half Marathon · Season 5 | Running | 2026-12-06 | From ₹600 | [RaceMart · Dosti registration](https://racemart.in/events/dosti-thane-half-marathon-2026) |
@@ -32,7 +31,6 @@ Sources are public organizer pages and registration partners. **No live availabi
 | Football Ch.1 with Uhtend · Andheri | Football | 2026-11-15 | Free | [Luma · Uhtend organizer event](https://luma.com/eha7eigw) |
 | Fitness Fest 2.0 · Thane | Fitness | 2026-11-15 | Free | [Mumbai2Go · organizer's Luma event](https://mumbai2go.in/event/fitness-fest-2-0-20261115-597024) |
 | Founders Running Club · Mumbai Community Run (21 Nov) | Running | 2026-11-21 | Free | [Meetup · Founders Running Club](https://www.meetup.com/founders-running-club-mumbai/events/jmwrrtyjcpbcc/) |
-
 ## Notable exclusions or caveats
 
 - Excluded the Borivali 'Mumbai Ultra Marathon' whose directory date conflicts with the primary registration page.
