@@ -6,7 +6,7 @@ import { filterLineup, sortForDiscovery } from '../public/explore.js';
 import { listings, listingStatus } from '../public/catalogue.js';
 
 test('illustrative stock photos are sourced from real licensed Pexels sport pages', () => {
-  const sports = ['Tennis','Badminton','Pickleball','Running','Chess'];
+  const sports = ['Tennis','Badminton','Pickleball','Running','Chess','Padel','Football','Fitness'];
   for (const sport of sports) {
     const photo = sportPhoto({ id: 'sample-' + sport, title: 'Demo', sport });
     assert.equal(photo.source, 'stock');
@@ -62,7 +62,9 @@ test('This weekend, Free, INR fee ceilings and chronology work without inventing
   assert.ok(affordable.some(e => e.id === 'nirmal-bang-malad-walkathon-2026'));
   assert.ok(affordable.every(e => !e.priceLabel.startsWith('€')));
   const free = filterLineup(items,{availability:'All upcoming',fee:'Free'},now);
-  assert.equal(free.length,0);
+  assert.ok(free.length >= 4);
+  assert.ok(free.every(e => e.external && e.priceLabel === 'Free'));
+  assert.ok(free.some(e => e.id === 'football-uhtend-andheri-2026'));
   const byDate = sortForDiscovery(items,'Soonest first');
   assert.ok(byDate.every((e,i)=>i===0 || byDate[i-1].date <= e.date));
   const byPrice = sortForDiscovery(items,'Price: low to high');
