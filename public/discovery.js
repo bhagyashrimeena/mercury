@@ -48,9 +48,10 @@ export function listingCard(e) {
 // official media is shown only when approved; stock is clearly identified.
 export function listingHero(e) {
   const media = sportPhoto(e);
+  const heroSrc = media.source === 'stock' ? media.src.replace('w=560&h=440', 'w=1400&h=720') : media.src;
   const category = String(e.sport || 'sport').toLowerCase().replace(/[^a-z0-9]+/g, '-');
   return '<section class="listing-stage listing-stage--' + category + '" aria-labelledby="listing-stage-title">' +
-    '<div class="listing-stage-backdrop" aria-hidden="true"><img class="sport-stock-img" src="' + esc(media.src) +
+    '<div class="listing-stage-backdrop" aria-hidden="true"><img class="sport-stock-img" src="' + esc(heroSrc) +
     '" alt="" width="1280" height="610" decoding="async" fetchpriority="high"></div>' +
     '<div class="listing-stage-shade" aria-hidden="true"></div>' +
     '<svg class="listing-stage-swoosh" viewBox="0 0 1000 370" preserveAspectRatio="none" aria-hidden="true" focusable="false">' +
