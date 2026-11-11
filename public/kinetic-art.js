@@ -4,13 +4,14 @@ import { sportPhoto } from './sport-media.js';
 // disclosed as illustrative and never presented as an image of a named event.
 export function arenaIntroMarkup() {
   const photo = sportPhoto({ id: 'mercury-city-in-play', sport: 'Running' });
+  const photoSrc = photo.src.replace('w=560&h=440', 'w=960&h=540');
   return '<header class="explore-intro mercury-arena" aria-labelledby="explore-title">' +
     '<div class="arena-copy">' +
     '<p class="arena-eyebrow"><span class="arena-live-dot" aria-hidden="true"></span>MUMBAI, IN PLAY <span class="arena-sup" aria-hidden="true">/ 01</span></p>' +
     '<h1 id="explore-title">FIND YOUR<br><em>NEXT GAME<span class="arena-stop">.</span></em></h1>' +
     '<p class="arena-description">Tournaments, races, leagues and good reasons to get out and play.</p>' +
     '</div>' +
-    '<figure class="arena-photo"><img src="' + photo.src.replaceAll('&','&amp;') +
+    '<figure class="arena-photo"><img src="' + photoSrc.replaceAll('&','&amp;') +
     '" alt="" width="640" height="420" decoding="async" fetchpriority="high">' +
     '<figcaption><a href="' + photo.page + '" target="_blank" rel="noopener noreferrer">Illustrative sports photo · Pexels</a></figcaption></figure>' +
     '<div class="arena-art" aria-hidden="true"><svg class="arena-wave-svg" viewBox="0 0 760 258" fill="none" preserveAspectRatio="xMidYMid slice" focusable="false">' +
