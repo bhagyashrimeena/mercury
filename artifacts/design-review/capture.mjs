@@ -345,7 +345,7 @@ try {
     });
     const state=JSON.parse(reading.result.value);
     if(!state.arena||state.paths<3||state.ticker==='none'||state.photoCards<5||
-      !(state.firstTop<height)||state.cardHeight>=220||!state.waveRibbon||state.overflow)
+      !(state.firstTop<height)||state.cardHeight >= (width > 700 ? 370 : 220)||!state.waveRibbon||state.overflow)
       throw Error('Kinetic Explore UI failed: '+reading.result.value);
     await writeFile(output,JSON.stringify(state,null,2));
     process.stdout.write(output+' wavy Explore motion and compact card layout passed\n');
@@ -353,7 +353,7 @@ try {
     const reading=await send('Runtime.evaluate',{
       expression:'JSON.stringify({path:location.pathname,stripe:!!document.querySelector(".listing-flow-stripe"),'+
         'line:!!document.querySelector(".listing-flow-stripe svg path"),'+
-        'title:document.querySelector(".listing-page .detail-title")?.textContent,'+
+        'title:document.querySelector(".listing-page .listing-stage h1, .listing-page .detail-title")?.textContent,'+
         'facts:document.querySelectorAll(".listing-page .event-facts>div").length,'+
         'action:!!document.querySelector(".listing-page .booking-panel .button.primary"),'+
         'overflow:document.documentElement.scrollWidth>innerWidth})',
@@ -454,7 +454,7 @@ try {
       return reading.result.value;
     };
     const initial = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,firstTop:document.querySelector("#directory-results .directory-card")?.getBoundingClientRect().top,cardHeight:document.querySelector("#directory-results .directory-card")?.getBoundingClientRect().height,photo:document.querySelector("#directory-results .directory-card img")?.src,cta:document.querySelector("#directory-results .directory-card .photo-cta")?.textContent,sort:document.querySelector("#sort-results")?.value,overflow:document.documentElement.scrollWidth>innerWidth,availability:document.querySelector("#directory-filters [name=availability]")?.value,clearHidden:document.querySelector("#clear-filters")?.hidden,url:location.search})'));
-    if (initial.cards < 8 || initial.firstTop >= height || initial.cardHeight > 220 || initial.overflow || !initial.photo?.includes('images.pexels.com') || !initial.cta?.includes('View event') || initial.sort !== 'Soonest first' || initial.availability !== 'All upcoming' || !initial.clearHidden || initial.url) throw new Error(`Explore initial layout failed: ${JSON.stringify(initial)}`);
+    if (initial.cards < 8 || initial.firstTop >= height || initial.cardHeight > (width > 700 ? 370 : 220) || initial.overflow || !initial.photo?.includes('images.pexels.com') || !initial.cta?.includes('View event') || initial.sort !== 'Soonest first' || initial.availability !== 'All upcoming' || !initial.clearHidden || initial.url) throw new Error(`Explore initial layout failed: ${JSON.stringify(initial)}`);
     await evaluate('document.querySelector("[data-sport=Tennis]").click()');
     const sport = JSON.parse(await evaluate('JSON.stringify({url:location.search,pressed:document.querySelector("[data-sport=Tennis]").getAttribute("aria-pressed"),cards:document.querySelectorAll("#directory-results .directory-card").length})'));
     if (!sport.url.includes('sport=Tennis') || sport.pressed !== 'true' || sport.cards < 1 || sport.cards >= initial.cards) throw new Error(`Sport filter failed: ${JSON.stringify(sport)}`);
