@@ -353,7 +353,7 @@ try {
     const reading=await send('Runtime.evaluate',{
       expression:'JSON.stringify({path:location.pathname,stripe:!!document.querySelector(".listing-flow-stripe"),'+
         'line:!!document.querySelector(".listing-flow-stripe svg path"),'+
-        'title:document.querySelector(".listing-page .detail-title")?.textContent,'+
+        'title:document.querySelector(".listing-page .listing-stage h1, .listing-page .detail-title")?.textContent,'+
         'facts:document.querySelectorAll(".listing-page .event-facts>div").length,'+
         'action:!!document.querySelector(".listing-page .booking-panel .button.primary"),'+
         'overflow:document.documentElement.scrollWidth>innerWidth})',
