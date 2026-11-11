@@ -1,8 +1,7 @@
 import { getDatabase } from '../db/vercel';
 import { currentListings, indiaDay, listingDate, listingStatus } from '../public/catalogue.js';
-import { listingCard } from '../public/discovery.js';
-import { sportPhoto } from '../public/sport-media.js';
-import { arenaIntroMarkup, waveRibbonMarkup } from '../public/kinetic-art.js';
+import { listingCard, listingHero } from '../public/discovery.js';
+import { arenaIntroMarkup, waveRibbonMarkup, listingFlowMarkup } from '../public/kinetic-art.js';
 
 type Listing = ReturnType<typeof currentListings>[number];
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
@@ -84,12 +83,32 @@ export function listingFallback(listing: Listing, visibility: 'visible' | 'hidde
     ? `<a class="button primary" href="${esc(listing.registrationUrl)}" target="_blank" rel="noopener noreferrer">Continue to ${esc(listing.sourceName)} to register ↗</a>`
     : visibility === 'hidden' ? ''
     : `<a class="button outline" href="${esc(listing.sourceUrl)}" target="_blank" rel="noopener noreferrer">Review organizer source ↗</a>`;
-  const media = sportPhoto(listing);
-  const cover = '<figure class="listing-detail-stock"><div class="listing-detail-image"><img class="sport-stock-img" src="' +
-    esc(media.src) + '" alt="' + esc(media.alt) + '" loading="lazy" width="560" height="360"></div>' +
-    '<figcaption>' + (media.source === 'stock' ? 'Illustrative stock photo — not this event.' :
-      'Organizer-supplied image') + '</figcaption></figure>';
+  const stage = listingHero(listing);
   const reviewMessage = 'reason' in status && status.reason
-    ? `<p class="inline-notice">${esc(status.reason)}</p>` : '';
-  return `<article class="page-width prose"><p class="eyebrow blue">${esc(listing.sport)} · ${esc(listing.type)} · External listing</p><h1>${esc(listing.title)}</h1>${cover}<p class="listing-status ${esc(status.code)}">${esc(status.label)}</p>${reviewMessage}<p><b>Date:</b> <time datetime="${esc(listing.date)}">${esc(listingDate(listing))}</time> · Times in IST where published</p><p><b>Venue:</b> ${esc(listing.venue)}, ${esc(listing.area)}</p><p><b>Who can enter:</b> ${esc(listing.eligibility)}</p><p><b>Fee:</b> ${esc(listing.priceLabel)} · ${esc(listing.priceNote)}</p><p><b>Entry deadline:</b> ${esc(listing.deadlineLabel)}</p><p>${esc(listing.description)}</p>${categories}${highlights}<p>Source checked <time datetime="${esc(listing.checkedOn)}">${esc(listing.checkedOn)}</time>. Details may have changed. Mercury has not onboarded this organizer; only the organizer confirms entry.</p>${action}<p><a href="/support?category=Listing%20correction&amp;listing=${esc(listing.id)}">Suggest a correction</a></p><p>Organizing this event? <a href="/list-event?claim=${esc(listing.id)}">Request to claim or update it</a>. Ownership is checked manually.</p></article>`;
+    ? '<p class="inline-notice">' + esc(status.reason) + '</p>' : '';
+  return '<div class="page-width listing-page">' +
+    '<a class="back" href="/explore">← All listings</a>' + stage + listingFlowMarkup() +
+    '<div class="detail-layout"><article>' +
+    '<div class="tags"><span class="blue-tag">External listing</span><span>' + esc(listing.type) + '</span></div>' +
+    '<p class="host-by">Listed organizer: ' + esc(listing.host) + '</p>' +
+    '<p class="listing-status ' + esc(status.code) + '" role="status">' + esc(status.label) + '</p>' +
+    reviewMessage +
+    '<div class="event-facts">' +
+      '<div><span aria-hidden="true">◷</span><p><b>' + esc(listingDate(listing)) + '</b><small>Times in IST where published</small></p></div>' +
+      '<div><span aria-hidden="true">⌖</span><p><b>' + esc(listing.area) + ', Mumbai</b><small>' + esc(listing.venue) + '</small></p></div>' +
+      '<div><span aria-hidden="true">◎</span><p><b>Who can enter</b><small>' + esc(listing.eligibility) + '</small></p></div>' +
+      '<div><span aria-hidden="true">↗</span><p><b>Entry deadline</b><small>' + esc(listing.deadlineLabel) + '</small></p></div>' +
+    '</div>' + categories + highlights +
+    '<h2>About this event</h2><p class="body-copy">' + esc(listing.description) + '</p>' +
+    '<p class="fine">Source checked <time datetime="' + esc(listing.checkedOn) + '">' + esc(listing.checkedOn) + '</time>. Details can change; Mercury does not confirm external entries.</p>' +
+    '<p><a href="/support?category=Listing%20correction&amp;listing=' + esc(listing.id) + '">Suggest a correction</a></p>' +
+    '<p>Organizing this event? <a href="/list-event?claim=' + esc(listing.id) + '">Request to claim or update it</a>.</p>' +
+    '</article><aside class="booking-panel" id="registration-panel">' +
+    '<p class="eyebrow blue">YOUR NEXT MOVE</p>' +
+    '<div class="price listing-price">' + esc(listing.priceLabel) + '</div>' +
+    '<p class="muted">' + esc(listing.priceNote) + '</p>' +
+    '<p class="listing-status ' + esc(status.code) + '">' + esc(status.label) + '</p>' +
+    action +
+    '<p class="fine">Registration happens with the organizer. Availability is not live.</p>' +
+    '</aside></div></div>';
 }
