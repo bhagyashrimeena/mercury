@@ -62,7 +62,7 @@ export function listingHero(e) {
     '<div class="listing-stage-copy">' +
     '<p class="listing-stage-label">' + esc(e.sport) + ' <span aria-hidden="true">·</span> ' + esc(e.type) + '</p>' +
     '<h1 id="listing-stage-title">' + esc(e.title) + '</h1>' +
-    '<div class="listing-stage-facts"><span>◷ ' + esc(listingDate(e)) + '</span><span>⌖ ' + esc(areaLabel(e.area)) + '</span></div>' +
+    '<div class="listing-stage-facts"><span>' + esc(listingDate(e)) + '</span><span>' + esc(areaLabel(e.area)) + '</span></div>' +
     '<a class="listing-stage-action" href="#registration-panel">View entry details <span aria-hidden="true">↘</span></a>' +
     '</div>' +
     '<p class="listing-stage-disclosure">' +
