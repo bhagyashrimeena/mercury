@@ -3911,3 +3911,26 @@ body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top
 @media(prefers-reduced-motion:reduce) {
   .listing-stage-action {transition:none!important}
 }
+
+
+
+/* 320px: preserve 40px action while limiting long-title card expansion. */
+@media(max-width:360px){
+  .photo-card .photo-card-link,.explore-page .photo-card .photo-card-link{
+    grid-template-columns:97px minmax(0,1fr);
+    min-height:174px
+  }
+  .photo-card .listing-photo{min-height:174px}
+  .photo-card .photo-card-copy{padding:9px 8px;gap:3px;min-height:174px}
+  .photo-card .photo-sport{font-size:8px;padding:3px 5px;letter-spacing:0}
+  .photo-card .photo-status{font-size:8px;padding:3px 5px}
+  .photo-card h3,.explore-page .directory-card.photo-card h3{
+    font-size:14px;line-height:1.2;
+    -webkit-line-clamp:2;line-clamp:2
+  }
+  .photo-card .photo-card-facts{font-size:9px;gap:2px 6px}
+  .photo-card .photo-card-foot{padding-top:2px}
+  .photo-card .photo-price strong{font-size:14px}
+  .photo-card .photo-price small{font-size:8px}
+  .photo-card .photo-cta{min-height:40px;font-size:9px;padding:9px 8px}
+}
