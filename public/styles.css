@@ -3961,3 +3961,181 @@ body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top
 .listing-page .event-facts>div:nth-child(1)>span:first-child{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%20stroke%3D%22%233156F5%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%222.5%22%20y%3D%224.5%22%20width%3D%2215%22%20height%3D%2213%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M6%202.5v4M14%202.5v4M2.5%208.5h15%22%2F%3E%3C%2Fsvg%3E")}
 .listing-page .event-facts>div:nth-child(2)>span:first-child{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%20stroke%3D%22%233156F5%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M16%208c0%204.1-6%2010-6%2010S4%2012.1%204%208a6%206%200%201%201%2012%200Z%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%228%22%20r%3D%222%22%2F%3E%3C%2Fsvg%3E")}
 .listing-page .event-facts>div:nth-child(3)>span:first-child{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%20stroke%3D%22%233156F5%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%227%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2210%22%20r%3D%223%22%2F%3E%3C%2Fsvg%3E")}
+
+
+/* MERCURY HOME / ARENA FIRST (Nov 11)
+   Bring the same clarity and athletic identity as Explore to the landing page.
+   Preserve real-photo sourcing, clear external booking and all existing forms. */
+body:has(.home-journey) .header {height:72px;gap:18px}
+body:has(.home-journey) .header .brand img {width:138px;max-width:100%}
+body:has(.home-journey) .header nav {gap:23px}
+.home-journey .demo-banner {
+  min-height:33px;display:flex;align-items:center;
+  padding:0 0 8px;margin:0;color:#555e69
+}
+.home-journey .hero {
+  isolation:isolate;position:relative;overflow:hidden;
+  height:clamp(350px,32vw,420px)!important;
+  margin:0!important;
+  border-radius:19px 19px 48px 13px;
+  background:linear-gradient(115deg,#10131a,#233a80);
+  box-shadow:0 9px 0 #3156f51c,0 18px 40px #10131a1b
+}
+.home-journey .hero-photo {object-position:center 43%;filter:saturate(1.12) contrast(1.05)}
+.home-journey .hero-shade {
+  background:linear-gradient(95deg,rgba(9,13,28,.96) 1%,rgba(12,20,50,.9) 35%,rgba(16,28,70,.34) 78%,rgba(16,28,70,.23) 100%)
+}
+.home-journey .hero-copy {
+  z-index:3;position:relative;
+  max-width:min(760px,75%);
+  padding:clamp(31px,4.4vw,61px) clamp(25px,4.8vw,70px);
+}
+.home-journey .hero-copy .eyebrow {
+  display:flex;align-items:center;gap:8px;color:#e8ebff;
+  margin:0 0 16px;font-weight:900;font-size:10px;letter-spacing:.15em
+}
+.home-journey .hero h1 {
+  font-family:Archivo,Manrope,Arial,sans-serif;
+  font-style:italic;
+  font-size:clamp(43px,5.2vw,75px)!important;
+  line-height:.98;letter-spacing:-.066em;text-wrap:balance;
+  max-width:780px;margin:0 0 18px;
+}
+.home-journey .hero h1 span {color:var(--lime)}
+.home-journey .hero-copy>p:not(.eyebrow){
+  font-size:clamp(12px,1.18vw,15px);line-height:1.55;
+  max-width:500px;margin:0 0 20px
+}
+.home-journey .hero .button.lime {
+  min-height:47px;padding:12px 21px;
+  border-radius:10px 26px 26px 10px;
+  font-weight:900;letter-spacing:.005em
+}
+.home-journey .home-speedlines {
+  z-index:2;right:-8%;width:66%;top:-9%;height:119%;opacity:.67
+}
+.home-journey .hero-stamp{
+  z-index:3;right:32px;bottom:26px;width:148px;
+  padding:12px 15px;transform:rotate(7deg);
+  border-radius:6px;box-shadow:0 9px 28px #10131a33
+}
+.home-journey .hero-stamp b{font-size:18px;padding:10px 0;margin:7px 0}
+.home-journey .hero-caption {
+  z-index:4;right:15px;bottom:7px;font-size:9px;
+  color:#fff;background:#10131ab8;border-radius:4px;
+  padding:4px 7px;letter-spacing:0
+}
+.home-journey .hero-caption a{color:inherit;text-decoration:underline}
+.home-journey .search-bar {
+  position:relative;z-index:5;
+  margin:-19px clamp(10px,2vw,27px) 0;
+  background:#fff;
+  padding:11px 13px;gap:6px;
+  border:1px solid #d4dbdf;border-radius:15px;
+  box-shadow:0 8px 24px #10131a17;
+  transform:none;
+}
+.home-journey .search-bar label {padding:4px 12px}
+.home-journey .search-bar .button {
+  background:var(--blue);min-height:48px;
+  border-radius:8px 18px 18px 8px;
+  padding:12px 18px;font-size:12px;font-weight:900;
+}
+.home-journey .discovery-section {padding-top:39px}
+.home-journey .discovery-section .section-heading {
+  align-items:flex-end;margin-bottom:15px
+}
+.home-journey .discovery-section .section-heading h2 {
+  font:italic 900 clamp(28px,3.1vw,43px)/1.04 Archivo,Manrope,Arial,sans-serif;
+  margin:4px 0 8px;letter-spacing:-.055em
+}
+.home-journey .discovery-section .section-heading h2 em {color:var(--blue)}
+.home-journey .discovery-section .section-heading p.muted {
+  color:#58616d;line-height:1.5;font-size:12px
+}
+.home-journey .sport-tabs {gap:8px;margin-bottom:17px;flex-wrap:wrap}
+.home-journey .sport-tab{
+  min-height:41px;padding:9px 14px;
+  border-radius:10px 22px 22px 10px;
+  background:#fff;border:1px solid #d7ddd8;
+  font-size:12px;font-weight:850;
+  transition:transform .2s ease,background .2s ease,box-shadow .2s ease
+}
+.home-journey .sport-tab.selected{
+  background:var(--ink);border-color:var(--ink);
+  box-shadow:inset 0 -3px 0 var(--lime)
+}
+@media(hover:hover) and (pointer:fine){
+ .home-journey .sport-tab:hover {transform:translateY(-2px);box-shadow:3px 4px 0 var(--lime)}
+}
+.home-journey .discovery-section .event-grid {
+  margin-top:0
+}
+.home-journey .host-banner{margin-top:36px}
+@media(max-width:1020px){
+  .home-journey .hero-copy{max-width:77%}
+  .home-journey .hero h1{font-size:clamp(40px,5.4vw,62px)!important}
+  .home-journey .hero-stamp{display:none}
+}
+@media(max-width:700px){
+  body:has(.home-journey) .header {height:67px}
+  body:has(.home-journey) .header .brand img{width:120px}
+  .home-journey .demo-banner{padding:3px 0 9px;font-size:9px}
+  .home-journey .demo-banner>span:last-child{display:none}
+  .home-journey .hero {
+    height:clamp(330px,91vw,395px)!important;
+    border-radius:15px 16px 38px 11px
+  }
+  .home-journey .hero-photo {
+    object-position:61% 43%;filter:saturate(1.06)
+  }
+  .home-journey .hero-shade{
+    background:linear-gradient(96deg,#10131af2 2%,#10131ac9 57%,#10131a52 100%),
+      linear-gradient(0deg,#10131a9e,transparent 75%)
+  }
+  .home-journey .hero-copy {
+    max-width:96%;padding:25px 20px;z-index:3
+  }
+  .home-journey .hero h1 {
+    font-size:clamp(40px,10.1vw,55px)!important;
+    max-width:350px;line-height:.98;margin-bottom:15px
+  }
+  .home-journey .hero-copy>p:not(.eyebrow){max-width:300px;font-size:12px;margin-bottom:16px}
+  .home-journey .hero-copy .eyebrow{margin-bottom:15px;font-size:9px}
+  .home-journey .hero .button.lime{min-height:44px}
+  .home-journey .hero-note {display:none}
+  .home-journey .home-speedlines{
+    right:-62%;width:135%;opacity:.44
+  }
+  .home-journey .hero-caption{font-size:7px;right:8px;bottom:8px;max-width:72%}
+  .home-journey .search-bar {
+    margin:-12px 6px 0;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:6px;padding:9px;border-radius:13px
+  }
+  .home-journey .search-bar label{padding:5px 9px}
+  .home-journey .search-bar label:nth-child(2){border-right:0}
+  .home-journey .search-bar .search-input{
+    grid-column:1/-1;order:-1;
+    border-right:0;border-bottom:1px solid var(--border);
+    padding:7px 9px 11px
+  }
+  .home-journey .search-bar .button{
+    grid-column:1/-1;min-height:44px;border-radius:10px;
+    justify-content:space-between
+  }
+  .home-journey .discovery-section{padding-top:29px}
+  .home-journey .discovery-section .section-heading{
+    align-items:flex-start;gap:9px
+  }
+  .home-journey .discovery-section .section-heading h2{
+    font-size:clamp(27px,8.1vw,36px)
+  }
+  .home-journey .sport-tabs{gap:6px}
+  .home-journey .sport-tab{min-height:39px;padding:7px 10px;font-size:11px}
+  .home-journey .sample-note{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .home-journey .hero-photo,.home-journey .home-speedlines *,
+  .home-journey .sport-tab{animation:none!important;transition:none!important}
+}

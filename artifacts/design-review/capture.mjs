@@ -381,15 +381,16 @@ try {
   } else if (scope === 'ux-home') {
     const reading = await send('Runtime.evaluate', {
       expression: '(() => { const root=document.querySelector(".home-journey");' +
-        'const positions=[".quickline","#hero-search",".discovery-section",".hero",".host-banner"].map(s=>[...root.children].indexOf(root.querySelector(s)));' +
-        'return JSON.stringify({positions,featured:document.querySelectorAll("#featured-grid .directory-card").length,overflow:document.documentElement.scrollWidth>innerWidth,location:location.pathname});})()',
+        'const positions=[".hero","#hero-search",".discovery-section",".host-banner"].map(s=>[...root.children].indexOf(root.querySelector(s)));' +
+        'return JSON.stringify({positions,hasQuickline:!!root.querySelector(".quickline"),heroTitle:root.querySelector(".hero h1")?.textContent,hasImage:!!root.querySelector(".hero-photo"),featured:document.querySelectorAll("#featured-grid .directory-card").length,overflow:document.documentElement.scrollWidth>innerWidth,location:location.pathname});})()',
       returnByValue: true
     });
     const state = JSON.parse(reading.result.value);
-    if(state.location!=='/'||state.positions.some((index,i)=>index<0||(i>0&&index<=state.positions[i-1]))||
+    if(state.location!=='/'||state.hasQuickline||!state.heroTitle?.includes('Play your game')||!state.hasImage||
+       state.positions.some((index,i)=>index<0||(i>0&&index<=state.positions[i-1]))||
        state.featured<1||state.overflow) throw Error('Home UX failed: '+reading.result.value);
     await writeFile(output,JSON.stringify(state,null,2));
-    process.stdout.write(output+' player-first Home passed\n');
+    process.stdout.write(output+' arena-first Home passed\n');
   } else if (scope === 'ux-organizer') {
     const initial = await send('Runtime.evaluate', {
       expression: 'JSON.stringify({steps:document.querySelectorAll(".organizer-progress-item").length,'+
