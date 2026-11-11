@@ -95,7 +95,7 @@ export function listingFallback(listing: Listing, visibility: 'visible' | 'hidde
     reviewMessage +
     '<div class="event-facts">' +
       '<div><span aria-hidden="true">◷</span><p><b>' + esc(listingDate(listing)) + '</b><small>Times in IST where published</small></p></div>' +
-      '<div><span aria-hidden="true">⌖</span><p><b>' + esc(listing.area) + ', Mumbai</b><small>' + esc(listing.venue) + '</small></p></div>' +
+      '<div><span aria-hidden="true">⌖</span><p><b>' + esc(/mumbai/i.test(listing.area) ? listing.area : listing.area + ', Mumbai') + '</b><small>' + esc(listing.venue) + '</small></p></div>' +
       '<div><span aria-hidden="true">◎</span><p><b>Who can enter</b><small>' + esc(listing.eligibility) + '</small></p></div>' +
       '<div><span aria-hidden="true">↗</span><p><b>Entry deadline</b><small>' + esc(listing.deadlineLabel) + '</small></p></div>' +
     '</div>' + categories + highlights +
