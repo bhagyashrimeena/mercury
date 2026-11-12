@@ -279,11 +279,13 @@ try {
       expression: 'JSON.stringify({path:location.pathname,head:document.querySelector(".organizer-public-hero h1")?.textContent,' +
         'list:document.querySelector(".organizer-public-actions a.button.primary")?.getAttribute("href"),' +
         'host:!!document.querySelector(".organizer-public-actions a.button.outline"),' +
+        'routes:document.querySelectorAll(".organizer-path-card").length,' +
+        'nativeFree:document.querySelector(".organizer-availability-note")?.textContent.includes("Free bookings"),' +
         'overflow:document.documentElement.scrollWidth>innerWidth,loading:!!document.querySelector("main [role=status]")})',
       returnByValue: true
     });
     const state=JSON.parse(reading.result.value);
-    if(state.path!=='/for-organizers'||!state.head?.includes('We help people find it')||state.list!=='/list-event'||!state.host||state.overflow||state.loading)
+    if(state.path!=='/for-organizers'||!state.head?.includes('We help people find it')||state.list!=='/list-event'||!state.host||state.routes!==2||!state.nativeFree||state.overflow||state.loading)
       throw Error('Public organizer landing failed: '+reading.result.value);
     await writeFile(output, JSON.stringify(state,null,2));
     process.stdout.write(output+' public organizer landing passed\n');
