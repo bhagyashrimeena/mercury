@@ -63,10 +63,18 @@ async function api(path, body, method = body ? 'POST' : 'GET') {
 }
 async function loadSession() { session = await api('session'); const a = document.querySelector('#account-link'); if (a)
     a.textContent = session.user ? 'Account' : 'Sign in'; return session; }
-function requireUser() {
+function requireUser(context = 'player') {
     if (session?.user && session.consentAccepted) return true;
+    const organizer = context === 'organizer';
     const account = '/account?return_to=' + encodeURIComponent(location.pathname + location.search);
-    page(heading('YOUR MERCURY ACCOUNT', 'Good games start<br>with <em>you.</em>', session?.user ? 'Finish your account notice to save and join games.' : 'Sign in to save games, reserve a place or run your next session.') + `<div class="form-card account-card">${btn(session?.user ? 'Finish account setup' : 'Open account', account)}<p class="fine">Browsing listings and following organizer links does not require a Mercury account once public access is enabled.</p>${btn('Browse events', '/explore', 'outline')}</div>`);
+    const title = organizer ? 'Bring your club<br>into <em>play.</em>' : 'Good games start<br>with <em>you.</em>';
+    const message = organizer
+        ? 'Sign in to create free games, save drafts and manage registered players. If you already take registrations on your own website, you can showcase it without an account.'
+        : session?.user ? 'Finish your account notice to save and join games.' : 'Sign in to save games, reserve a place or run your next session.';
+    page(heading(organizer ? 'MERCURY ORGANIZER STUDIO' : 'YOUR MERCURY ACCOUNT', title, message) +
+        `<div class="form-card account-card organizer-entry-gate">${btn(session?.user ? 'Finish account setup' : organizer ? 'Set up organizer account' : 'Open account', account)}
+        <p class="fine">Mercury accounts are for adults 18 and over. Free native bookings are available to eligible accounts during the pilot; paid Mercury checkout is disabled.</p>
+        ${organizer ? btn('Showcase an existing event instead', '/list-event', 'outline') : btn('Browse events', '/explore', 'outline')}</div>`);
     return false;
 }
 function formSubmit(selector, work) {
@@ -317,7 +325,7 @@ function organizerCard(event) {
 }
 
 async function host(editId) {
-    if (!requireUser())
+    if (!requireUser('organizer'))
         return;
     const { events } = await api('organizer/events');
     const edit = editId ? events.find(e => e.id === editId) : null;
