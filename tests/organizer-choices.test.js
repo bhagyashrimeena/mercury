@@ -58,4 +58,6 @@ test('existing host forms and booking safeguards remain wired', () => {
   assert.match(host, /formSubmit\('#event-form'/);
   assert.match(host, /mountOrganizerJourney\(eventForm/);
   assert.match(host, /href="\/list-event"/);
+  assert.match(host, /requireUser\('organizer'\)/);
+  assert.match(host, /Showcase an existing event instead/);
 });
