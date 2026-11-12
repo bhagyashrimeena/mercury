@@ -4225,3 +4225,9 @@ body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top
  .organizer-choices-page .organizer-path-card.button,
  .host-playbook-hero .button,.host-studio-step{transition:none!important;animation:none!important}
 }
+
+/* Contextual sign-in gate when someone chooses Mercury-managed free games. */
+.organizer-entry-gate{border-radius:15px 24px 15px 24px;box-shadow:0 10px 26px #10131a0b}
+.organizer-entry-gate .button{min-height:44px;margin:0 8px 10px 0;gap:14px}
+.organizer-entry-gate .fine{margin:4px 0 12px;line-height:1.6;max-width:570px}
+@media(max-width:650px){.organizer-entry-gate .button{display:flex;width:100%;justify-content:center}}
