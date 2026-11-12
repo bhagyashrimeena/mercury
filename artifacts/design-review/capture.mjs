@@ -280,7 +280,7 @@ try {
         'list:document.querySelector(".organizer-public-actions a.button.primary")?.getAttribute("href"),' +
         'host:!!document.querySelector(".organizer-public-actions a.button.outline"),' +
         'routes:document.querySelectorAll(".organizer-path-card").length,' +
-        'nativeFree:document.querySelector(".organizer-availability-note")?.textContent.includes("Free bookings"),' +
+        'nativeFree:document.querySelector(".organizer-availability-note")?.textContent.includes("free adult games only"),' +
         'overflow:document.documentElement.scrollWidth>innerWidth,loading:!!document.querySelector("main [role=status]")})',
       returnByValue: true
     });
