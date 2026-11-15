@@ -4082,4 +4082,10 @@ body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top
 .payment-step [hidden]{display:none!important}
 .payment-step input[type=file],.payment-settings input[type=file]{max-width:100%;min-width:0;width:100%;box-sizing:border-box}
 .state-pending{background:#fff2c7;color:#6c4c00}.state-rejected{background:#ffe1e0;color:#8b1b1b}
+.registration-progress{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:24px;font-size:12px;color:var(--muted,#656b74)}
+.registration-progress [aria-current=step]{color:var(--blue,#4d4dff);font-weight:750;border-bottom:3px solid currentColor;padding-bottom:10px}
+.registration-wizard [data-registration-panel][hidden],.registration-wizard [data-registration-progress][hidden],.registration-wizard [data-cash-registration-note][hidden],.registration-wizard [data-qr-load-error][hidden]{display:none!important}
+.registration-wizard section{min-width:0}
+.registration-wizard input[readonly]{background:#f2f3f6;color:#4c5260}
+.review-payment-image{display:block;max-width:100%;max-height:45vh;width:auto;height:auto;object-fit:contain;margin:16px auto;border:1px solid var(--border,#ddd);border-radius:8px}
 @media(max-width:600px){.payment-step{padding:12px}.payment-status a{overflow-wrap:anywhere}.roster-row .action-row{flex-wrap:wrap}}

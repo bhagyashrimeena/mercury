@@ -96,7 +96,7 @@ export default async function Page({ params, searchParams }: Props) {
   const fallback = listing
     ? listingFallback(listing, await listingVisibility(listing.id))
     : event
-      ? `<article class="page-width prose"><p class="eyebrow blue">${esc(event.sport)} · ${esc(event.status)} · Mercury booking</p><h1>${esc(event.title)}</h1><p>${esc(event.description)}</p><p><b>Date:</b> ${esc(event.date)} · ${esc(event.time)} IST</p><p><b>Venue:</b> ${esc(event.venue)}, ${esc(event.area)}, Mumbai</p><p><b>Fee:</b> Free per player. A confirmed place appears in My games.</p></article>`
+      ? `<article class="page-width prose"><p class="eyebrow blue">${esc(event.sport)} · ${esc(event.status)} · Mercury booking</p><h1>${esc(event.title)}</h1><p>${esc(event.description)}</p><p><b>Date:</b> ${esc(event.date)} · ${esc(event.time)} IST</p><p><b>Venue:</b> ${esc(event.venue)}, ${esc(event.area)}, Mumbai</p><p><b>Fee:</b> ${Number(event.price) > 0 ? '&#8377;' + esc(event.price) + ' per player. Pay the organizer directly; entry awaits organizer approval.' : 'Free per player. A confirmed place appears in My games.'}</p></article>`
       : path[0] === 'for-organizers'
         ? organizerLandingMarkup()
         : path[0] === 'list-event'

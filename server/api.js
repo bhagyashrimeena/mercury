@@ -4,7 +4,7 @@ import { findListing, currentListings, listingStatus, indiaDay } from '../public
 import { validateDraft, newId } from '../public/domain.js';
 import { CLIENT_METRICS, recordMetric } from './metrics.js';
 const ACTIVE = "('pending','confirmed','checked_in')";
-const PUBLIC_SELECT = `SELECT e.id,e.owner_id,e.title,e.sport,e.area,e.venue,e.description,e.date,e.time,e.starts_at,e.duration,e.capacity,e.price,e.level,e.format,e.included,e.bring,e.cancellation,e.status,e.revision,e.created_at,e.payment_methods,CASE WHEN length(e.qr_image)>0 THEN 'present' ELSE '' END AS qr_image,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE}) AS registered FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
+const PUBLIC_SELECT = `SELECT e.id,e.owner_id,e.title,e.sport,e.area,e.venue,e.description,e.date,e.time,e.starts_at,e.duration,e.capacity,e.price,e.level,e.format,e.included,e.bring,e.cancellation,e.status,e.revision,e.created_at,e.payment_methods,CASE WHEN length(e.qr_image)>0 THEN 'present' ELSE '' END AS qr_image,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE}) AS registered,(SELECT COUNT(*) FROM bookings pending WHERE pending.event_id=e.id AND pending.status='pending') AS pending_count FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
 export class ApiError extends Error {
     constructor(status, message, code = 'request_failed', fields = null) { super(message); this.status = status; this.code = code; this.fields = fields; }
 }
@@ -14,7 +14,7 @@ const one = (db, sql, ...values) => db.prepare(sql).bind(...values).first();
 const all = async (db, sql, ...values) => (await db.prepare(sql).bind(...values).all()).results;
 const run = (db, sql, ...values) => db.prepare(sql).bind(...values).run();
 export function publicEvent(row) { if (!row)
-    return null; return { id: row.id, title: row.title, sport: row.sport, area: row.area, venue: row.venue, description: row.description, date: row.date, time: row.time, startsAt: row.starts_at, duration: row.duration, capacity: row.capacity, price: row.price, paymentMethods: (row.payment_methods || '').split(',').filter(Boolean), qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '', level: row.level, type: row.format, format: row.format + ' · individual entry', included: row.included.split('\n').filter(Boolean), bring: row.bring, cancellation: row.cancellation, status: row.status, revision: row.revision, host: row.host, hostBio: row.host_bio, hostContact: row.host_contact, spots: Math.max(0, row.capacity - Number(row.registered)), registered: Number(row.registered), image: row.sport === 'Badminton' ? 'badminton.jpg' : row.sport === 'Tennis' ? 'tennis.jpg' : 'court.jpg', solo: true, isDemo: false, tag: 'YOUR NEXT GAME STARTS HERE' }; }
+    return null; return { id: row.id, title: row.title, sport: row.sport, area: row.area, venue: row.venue, description: row.description, date: row.date, time: row.time, startsAt: row.starts_at, duration: row.duration, capacity: row.capacity, price: row.price, paymentMethods: (row.payment_methods || '').split(',').filter(Boolean), qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '', level: row.level, type: row.format, format: row.format + ' · individual entry', included: row.included.split('\n').filter(Boolean), bring: row.bring, cancellation: row.cancellation, status: row.status, revision: row.revision, host: row.host, hostBio: row.host_bio, hostContact: row.host_contact, spots: Math.max(0, row.capacity - Number(row.registered)), registered: Number(row.registered), pendingCount: Number(row.pending_count || 0), image: row.sport === 'Badminton' ? 'badminton.jpg' : row.sport === 'Tennis' ? 'tennis.jpg' : 'court.jpg', solo: true, isDemo: false, tag: 'YOUR NEXT GAME STARTS HERE' }; }
 function ensureUser(user) {
     if (!user?.userId || !user?.email) fail(401, 'Sign in to continue.', 'sign_in_required');
     return user.userId;
@@ -161,7 +161,8 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         const organizer = await one(db, 'SELECT name,bio,contact FROM organizers WHERE user_id=?', uid);
         const saved = await all(db, 'SELECT event_id FROM saved_events WHERE user_id=?', uid);
         const savedListings = await all(db, 'SELECT listing_id FROM saved_listings WHERE user_id=?', uid);
-        const notifications = await all(db, 'SELECT id,event_id,message,read_at,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 50', uid);
+        const notificationRows = await all(db, 'SELECT n.id,n.event_id,n.message,n.read_at,n.created_at,(SELECT owner_id FROM events WHERE id=n.event_id) AS event_owner FROM notifications n WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 50', uid);
+        const notifications = notificationRows.map(({event_owner, ...n}) => ({...n, actionPath: n.event_id && event_owner === uid ? '/roster/' + encodeURIComponent(n.event_id) : '/my-games'}));
         return { user: { name:profile?.name || clean(user.fullName || 'Player',80), email:user.email }, organizer, saved:saved.map(x=>x.event_id), savedListings:savedListings.map(x=>x.listing_id), notifications, paymentsEnabled:false, isAdmin:isAdmin(user,config) };
     }
     const uid = ensureUser(user);
@@ -270,7 +271,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
             return { ok: true };
         }
         if (m === 'GET' && p[3] === 'attendees') {
-            const attendees = await all(db, 'SELECT id,player_name,level,status,created_at,checked_in_at,payment_method,amount,review_note,CASE WHEN length(payment_proof)>0 THEN 1 ELSE 0 END AS has_proof FROM bookings WHERE event_id=? ORDER BY created_at', id);
+            const attendees = await all(db, 'SELECT id,player_name,level,status,created_at,checked_in_at,payment_method,amount,review_note,CASE WHEN length(payment_proof)>0 THEN 1 ELSE 0 END AS has_proof,(SELECT email FROM users WHERE users.id=bookings.user_id) AS player_email FROM bookings WHERE event_id=? ORDER BY created_at', id);
             return { event: publicEvent(await one(db, `${PUBLIC_SELECT} WHERE e.id=?`, id)), attendees };
         }
         if (m === 'POST' && p[3] === 'review' && p.length === 4) {

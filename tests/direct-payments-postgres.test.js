@@ -1,11 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {readFile,mkdtemp,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join,resolve,sep,basename} from 'node:path';
 import {PGlite} from '@electric-sql/pglite';
 import {apiHandler} from '../server/api.js';
 
-test('PostgreSQL API persists paid review transitions and preserves pending uniqueness',async()=>{
- const pg=new PGlite();
+test('PostgreSQL API persists QR and receipts across reopen and protects review transitions',async()=>{
+ const directory=await mkdtemp(join(tmpdir(),'mercury-registration-'));
+ let pg=new PGlite(directory);
  try{
  for(const file of ['20261102_initial.sql','20261105132850_site_metrics.sql','20261115000000_direct_payments.sql'])await pg.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
  function adapter(runner) {
@@ -37,15 +40,36 @@ test('PostgreSQL API persists paid review transitions and preserves pending uniq
  const req=async(path,user,body)=>{const r=await apiHandler(new Request('https://mercury.test/api/'+path,{method:body?'POST':'GET',headers:{origin:'https://mercury.test','content-type':'application/json'},body:body?JSON.stringify(body):undefined}),db,user);const result=await r.json();assert.equal(r.status,200,JSON.stringify(result));return result};
  for(const user of [host,player])await req('session',user);
  await req('organizer/profile',host,{name:'Test Club',contact:'host@example.test'});
- const {id}=await req('organizer/events',host,{title:'Paid PostgreSQL Rally',sport:'Badminton',area:'Powai',venue:'QA Court Mumbai',description:'A friendly paid doubles session for testing.',date:'2030-11-22',time:'18:00',capacity:2,price:250,level:'All levels',format:'Social play',included:'Court time',bring:'Racket and water',cancellation:'Contact organizer for cancellation and refunds.',paymentMethods:['cash']});
+ const image='data:image/png;base64,'+(await readFile(new URL('./fixtures/payment-upi.png',import.meta.url))).toString('base64');
+ const {id}=await req('organizer/events',host,{title:'Paid PostgreSQL Rally',sport:'Badminton',area:'Powai',venue:'QA Court Mumbai',description:'A friendly paid doubles session for testing.',date:'2030-11-22',time:'18:00',capacity:2,price:250,level:'All levels',format:'Social play',included:'Court time',bring:'Racket and water',cancellation:'Contact organizer for cancellation and refunds.',paymentMethods:['upi','cash'],qrImage:image});
  await req('organizer/events/'+id+'/publish',host,{});
  const entry={name:'Test Player',level:'Beginner',adultConfirmed:true,rulesAccepted:true,revision:1,idempotencyKey:'postgres-paid-test-key',paymentMethod:'cash',paymentConsentVersion:'2026-11-15-direct-payments'};
  const b=await req('events/'+id+'/register',player,entry);assert.equal(b.status,'pending');
  assert.equal((await req('events/'+id+'/register',player,entry)).id,b.id);
  assert.equal((await req('events/'+id,null)).event.spots,1);
+ const second={userId:'second-player',email:'second@example.test'};
+ const pending=await req('events/'+id+'/register',second,{...entry,idempotencyKey:'second-postgres-request',paymentMethod:'upi',paymentProof:image,email:'spoofed@example.test'});
+ assert.equal(pending.status,'pending');
+ const roster=await req('organizer/events/'+id+'/attendees',host);
+ assert.equal(roster.attendees.find(a=>a.id===pending.id).player_email,second.email);
+ assert.equal(roster.attendees.find(a=>a.id===pending.id).has_proof,1);
+ assert.equal(roster.event.pendingCount,2);
+ const imageResponse=await apiHandler(new Request('https://mercury.test/api/events/'+id+'/qr'),db,second);
+ assert.equal(imageResponse.status,200);
+ assert.equal(Buffer.from(await imageResponse.arrayBuffer()).toString('base64'),image.split(',')[1]);
+ const proofResponse=await apiHandler(new Request('https://mercury.test/api/bookings/'+pending.id+'/proof'),db,host);
+ assert.equal(proofResponse.status,200);
+ assert.equal(Buffer.from(await proofResponse.arrayBuffer()).toString('base64'),image.split(',')[1]);
+ assert.ok((await req('session',host)).notifications.some(n=>n.actionPath==='/roster/'+id));
  await req('organizer/events/'+id+'/review',host,{bookingId:b.id,decision:'accept'});
  assert.equal((await req('bookings',player)).bookings[0].status,'confirmed');
  await req('organizer/events/'+id+'/cancel',host,{});
  assert.equal((await req('bookings',player)).bookings[0].status,'event_cancelled');
- }finally{await pg.close()}
+ await pg.close();pg=new PGlite(directory);
+ assert.equal((await pg.query('SELECT qr_image FROM events WHERE id=$1',[id])).rows[0].qr_image,image);
+ assert.equal((await pg.query('SELECT payment_proof FROM bookings WHERE id=$1',[pending.id])).rows[0].payment_proof,image);
+ }finally{
+  await pg.close();
+  if(resolve(directory).startsWith(resolve(tmpdir())+sep)&&basename(directory).startsWith('mercury-registration-'))await rm(directory,{recursive:true,force:true});
+ }
 });

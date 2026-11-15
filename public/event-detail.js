@@ -18,7 +18,7 @@ export function eventDetailMarkup(event, { saved = false, preview = false, polic
   const fee = Number(event.price) ? `&#8377;${Number(event.price).toLocaleString('en-IN')} <span>/ player</span>` : 'Free <span>/ player</span>';
   const bookingAction = preview
     ? '<button class="button outline" type="button" disabled>Booking unavailable in preview</button>'
-    : state.canBook ? link(Number(event.price) ? 'Register for organizer review' : 'Book free place on Mercury', '/register/' + event.id)
+    : state.canBook ? link('Register now', '/register/' + event.id)
     : link('Explore other games', '/explore', 'outline');
   const included = Array.isArray(event.included) ? event.included : String(event.included || '').split('\n').filter(Boolean);
   return `${preview ? '<div class="inline-notice"><b>Private preview.</b> These details are not saved or published. Booking controls are disabled.</div>' : ''}

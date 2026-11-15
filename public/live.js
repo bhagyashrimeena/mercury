@@ -1,3 +1,4 @@
+import { registrationFormMarkup, mountRegistrationJourney } from './registration-journey.js';
 import { mountPaymentOptions } from './payment-qr.js';
 import { renderAccount, renderSupport, renderAdmin, renderPolicy } from './service-ui.js';
 import { listingCard, renderListing } from './discovery.js';
@@ -275,7 +276,7 @@ async function detail(id) {
         ctx.openSheet('Bring your people.', `<label class="share-label">Game link<input readonly value="${esc(location.origin + '/event/' + id)}" onclick="this.select()"></label><p class="fine">Anyone can view this game. Sign in to register.</p>`);
     });
     if (state.canBook) {
-        ctx.main.insertAdjacentHTML('beforeend', `<div class="mobile-event-cta"><div><b>${Number(e.price) ? '&#8377;' + esc(e.price) : 'Free'}</b><small>1 player</small></div>${btn('Register', '/register/' + id)}</div>`);
+        ctx.main.insertAdjacentHTML('beforeend', `<div class="mobile-event-cta"><div><b>${Number(e.price) ? '&#8377;' + esc(e.price) : 'Free'}</b><small>1 player</small></div>${btn('Register now', '/register/' + id)}</div>`);
         document.body.classList.add('has-event-cta');
     } else {
         ctx.main.insertAdjacentHTML('beforeend', `<div class="mobile-event-cta"><div><b>${esc(state.label)}</b><small>Booking on Mercury</small></div>${btn('Explore games', '/explore', 'outline')}</div>`);
@@ -287,27 +288,17 @@ async function readPaymentImage(file) {
 }
 async function register(id) {
     if (!requireUser()) return;
-    const {event:e} = await api('events/' + id);
+    const [{event:e}, {bookings}] = await Promise.all([api('events/' + id), api('bookings')]);
+    const existing = bookings.find(b => b.event_id === id && ['pending','confirmed','checked_in'].includes(b.status));
+    if (existing) { ctx.go('/booking/' + existing.id); return; }
     if (e.status !== 'published' || e.startsAt <= Date.now() || !e.spots) return detail(id);
     const paid = Number(e.price) > 0;
     document.title = `Register - ${e.title} - Mercury`;
     page(`<a class="back" href="/event/${esc(id)}">Back to game</a>${heading('REGISTER', 'Make it a <em>plan.</em>', paid ? 'Approval is required before entry is confirmed.' : 'Reserve a free place.')}
-    <div class="checkout-layout"><form class="form-card" id="live-registration"><h2>1. Player details</h2>
-    <label>Your name<input name="name" autocomplete="name" value="${esc(session.user.name === 'Player' ? '' : session.user.name)}" minlength="2" maxlength="80" required></label>
-    <label>Playing level<select name="level" required><option value="">Choose level</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></label>
-    <label class="checkbox"><input type="checkbox" name="adult" required><span>I am 18 or older.</span></label>
-    <label class="checkbox"><input type="checkbox" name="rules" required><span>I accept the event rules and cancellation policy.</span></label>
-    ${paid ? `<fieldset class="payment-step"><legend>2. Payment and review</legend><p>Entry: &#8377;${esc(e.price)}. Verify the recipient with ${esc(e.host)} before paying.</p>
-    <label>Payment method<select name="paymentMethod" required><option value="">Choose payment</option>${e.paymentMethods.map(m => `<option value="${m}">${m === 'upi' ? 'UPI directly to organizer' : 'Cash arranged with organizer'}</option>`).join('')}</select></label>
-    <div id="upi-payment" hidden><p>Scan or save this QR and pay &#8377;${esc(e.price)} in your UPI app. Verify recipient and amount.</p><a href="${esc(e.qrImage)}" target="_blank" rel="noopener"><img class="payment-image" src="${esc(e.qrImage)}" alt="Organizer UPI payment QR code"></a><label>Payment screenshot (PNG, JPEG or WebP, max 750 KB)<input name="proof" type="file" accept="image/png,image/jpeg,image/webp"></label><p class="fine">Crop unrelated balances and transactions. Only you and this organizer can view the proof.</p></div>
-    <p id="cash-payment" hidden>Pay cash as agreed with the organizer. Choosing cash does not mean you have paid.</p>
-    <p>If payment succeeds but submission fails, keep your receipt and retry this form. If the event fills or closes, contact the organizer for a refund. Do not pay twice.</p>
-    <p>Contact: <a href="mailto:${esc(e.hostContact)}">${esc(e.hostContact)}</a></p>
-    <label class="checkbox"><input type="checkbox" name="paymentConsent" required><span>I accept the <a href="/terms" target="_blank" rel="noopener">direct payment terms</a>. I pay the organizer at my own risk. Payment does not confirm entry. The organizer handles refunds and disputes; NextPlay Sports Private Limited does not collect or hold these funds.</span></label></fieldset>` : `<p>${policy}</p>`}
-    <p class="fine">Your name and level${paid ? ', payment method and receipt' : ''} are shared with the organizer. Updates appear in My games; email and SMS are not sent.</p>${err}<button type="submit" class="button primary">${paid ? 'Submit for organizer review' : 'Confirm my free place'}</button></form>
+    <div class="checkout-layout">${registrationFormMarkup(e, session.user)}
     <aside class="order-card"><h2>${esc(e.title)}</h2><p>${dateLabel(e)} &middot; ${timeLabel(e)} IST</p><p>${esc(e.venue)}</p><div class="total"><span>Entry fee</span><b>&#8377;${esc(e.price)}</b></div><p>${paid ? 'Pending until accepted. A screenshot is evidence for review, not automatic payment verification.' : 'Confirmation is saved to your account.'}</p></aside></div>`);
     const form = document.querySelector('#live-registration');
-    if (paid) form.elements.paymentMethod.onchange = () => { const upi = form.elements.paymentMethod.value === 'upi'; form.querySelector('#upi-payment').hidden = !upi; form.querySelector('#cash-payment').hidden = form.elements.paymentMethod.value !== 'cash'; form.elements.proof.required = upi; };
+    mountRegistrationJourney(form);
     const key = newId();
     formSubmit('#live-registration', async d => {
         const result = await api('events/' + id + '/register', {name:d.name,level:d.level,adultConfirmed:d.adult==='on',rulesAccepted:d.rules==='on',revision:e.revision,idempotencyKey:key,paymentMethod:d.paymentMethod,paymentConsentVersion:d.paymentConsent==='on' ? '2026-11-15-direct-payments' : '',paymentProof:paid && d.paymentMethod==='upi' ? await readPaymentImage(form.elements.proof.files[0]) : ''});
@@ -343,7 +334,7 @@ async function myGames(bookingId) {
     const completed = bookings.filter(b => ongoing(b) && Number(b.starts_at) <= now);
     const cancelled = bookings.filter(b => !ongoing(b) && !(b.status === 'pending' && Number(b.starts_at) > now));
     const bookingCard = b => `<article class="manage-card">${bookingStamp(b.status)}<h3>${esc(b.title)}</h3><p>${dateLabel(b)} · ${timeLabel(b)} IST</p><p class="muted">${esc(b.venue)}</p><div class="action-row">${btn(['pending','rejected'].includes(b.status) ? 'View registration' : 'View pass', '/booking/' + b.id, 'outline')}${['pending','confirmed'].includes(b.status) && b.starts_at > Date.now() ? `<button class="text-link danger" data-cancel-booking="${b.id}">Cancel my place</button>` : ''}</div></article>`;
-    page(heading('YOUR TIME TO PLAY', 'My <em>games.</em>', 'Registrations, bookmarks and updates in one place.') + `<div class="account-toolbar"><a class="text-link" href="/account">Your account ↗</a></div><h2>Mercury registrations</h2><div class="manage-grid">${active.length ? active.map(bookingCard).join('') : completed.length || cancelled.length ? '<p class="muted">No upcoming confirmed games. Your earlier registrations are below.</p>' : empty('Make room for your next game.', 'Find a session and your confirmed place will appear here.', btn('Find a game', '/explore'))}</div>${completed.length ? `<details ${active.length ? '' : 'open'}><summary>Started or past Mercury games (${completed.length})</summary><div class="manage-grid">${completed.map(bookingCard).join('')}</div></details>` : ''}${cancelled.length ? `<details ${active.length || completed.length ? '' : 'open'}><summary>Other registrations (${cancelled.length})</summary><div class="manage-grid">${cancelled.map(bookingCard).join('')}</div></details>` : ''}<h2 class="section-space" id="saved-mercury-heading">Saved Mercury games</h2><div class="event-grid" id="saved-mercury-games" role="group" aria-labelledby="saved-mercury-heading" aria-live="polite" tabindex="-1"></div><h2 class="section-space" id="saved-listings-heading">Saved external listings</h2><p class="fine">These are bookmarks, not registrations. Get confirmation and tickets from the organizer.</p><div class="event-grid" id="saved-external-listings" role="group" aria-labelledby="saved-listings-heading" aria-live="polite" tabindex="-1"></div><div class="section-heading section-space"><h2>Your updates</h2><button class="text-link" id="read-updates">Mark all read ✓</button></div><p class="fine">Updates appear here. Email and SMS notifications are not active.</p><div class="updates">${session.notifications.map(n => `<article class="update ${n.read_at ? '' : 'unread'}"><p>${esc(n.message)}</p><small>${new Date(n.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</small> <a href="/event/${n.event_id}" class="text-link">View game ↗</a></article>`).join('') || '<p class="muted">You’re all caught up.</p>'}</div>`);
+    page(heading('YOUR TIME TO PLAY', 'My <em>games.</em>', 'Registrations, bookmarks and updates in one place.') + `<div class="account-toolbar"><a class="text-link" href="/account">Your account ↗</a></div><h2>Mercury registrations</h2><div class="manage-grid">${active.length ? active.map(bookingCard).join('') : completed.length || cancelled.length ? '<p class="muted">No upcoming confirmed games. Your earlier registrations are below.</p>' : empty('Make room for your next game.', 'Find a session and your confirmed place will appear here.', btn('Find a game', '/explore'))}</div>${completed.length ? `<details ${active.length ? '' : 'open'}><summary>Started or past Mercury games (${completed.length})</summary><div class="manage-grid">${completed.map(bookingCard).join('')}</div></details>` : ''}${cancelled.length ? `<details ${active.length || completed.length ? '' : 'open'}><summary>Other registrations (${cancelled.length})</summary><div class="manage-grid">${cancelled.map(bookingCard).join('')}</div></details>` : ''}<h2 class="section-space" id="saved-mercury-heading">Saved Mercury games</h2><div class="event-grid" id="saved-mercury-games" role="group" aria-labelledby="saved-mercury-heading" aria-live="polite" tabindex="-1"></div><h2 class="section-space" id="saved-listings-heading">Saved external listings</h2><p class="fine">These are bookmarks, not registrations. Get confirmation and tickets from the organizer.</p><div class="event-grid" id="saved-external-listings" role="group" aria-labelledby="saved-listings-heading" aria-live="polite" tabindex="-1"></div><div class="section-heading section-space"><h2>Your updates</h2><button class="text-link" id="read-updates">Mark all read ✓</button></div><p class="fine">Updates appear here. Email and SMS notifications are not active.</p><div class="updates">${session.notifications.map(n => `<article class="update ${n.read_at ? '' : 'unread'}"><p>${esc(n.message)}</p><small>${new Date(n.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</small> <a href="${esc(n.actionPath || '/event/' + n.event_id)}" class="text-link">${n.actionPath?.startsWith('/roster/') ? 'Review registrations' : 'View game'} ↗</a></article>`).join('') || '<p class="muted">You’re all caught up.</p>'}</div>`);
     action('[data-cancel-booking]', async (b) => { confirmAction('Cancel your place?', 'Your place will become available to another player. For direct payments, arrange any refund with the organizer.', 'Cancel my place', async () => { await api('bookings/' + b.dataset.cancelBooking + '/cancel', {}); await loadSession({ refresh: true }); await myGames(); ctx.toast('Your place was cancelled.'); }); });
     action('#read-updates', async () => { await api('notifications/read', {}); await loadSession({ refresh: true }); await myGames(); });
     // Render registrations and updates first. Each bookmark section loads and
@@ -396,7 +387,7 @@ function organizerCard(event) {
     const primary = draft && future
         ? '<button type="button" class="button primary" data-event-action="publish" data-id="' + id + '">Publish game ↗</button>'
         : published
-            ? '<a class="button primary" href="/roster/' + id + '">Manage players ↗</a>'
+            ? '<a class="button primary" href="/roster/' + id + '">' + (event.pendingCount ? 'Review registrations (' + esc(event.pendingCount) + ')' : 'Manage players') + ' ↗</a>'
             : draft
                 ? '<a class="button primary" href="/host/' + id + '">Continue editing ↗</a>'
                 : '<a class="button outline" href="/roster/' + id + '">View roster ↗</a>';
@@ -526,7 +517,7 @@ async function roster(id, filters = {}) {
             ? '<button class="button primary" data-check-in="' + esc(b.id) + '">Check in ✓</button>' : '') +
         '</div></article>';
     page('<a class="back" href="/host">← Organizer studio</a>' +
-        heading('GAME DAY CONTROL', esc(e.title), 'Find a player by name or pass reference, then check them in.') +
+        heading('GAME DAY CONTROL', esc(e.title), 'Review pending requests, verify receipts, and check in accepted players.') +
         '<div class="roster-summary">' + stamp(e.status) +
         '<b>' + checked + ' checked in</b><span>' + e.registered + ' active registrations / ' +
         e.capacity + ' places</span>' +
@@ -552,7 +543,8 @@ async function roster(id, filters = {}) {
     });
     action('[data-review]', async b => {
         const decision = b.dataset.review;
-        const sheet = ctx.openSheet(decision === 'accept' ? 'Accept registration' : 'Reject registration', `<form id="review-registration"><p>${decision === 'accept' ? 'Verify the receipt in your own account or confirm your cash arrangement. A screenshot alone does not verify payment.' : 'The player will receive your contact for any refund. You must handle refunds directly.'}</p><label>Message to player (optional)<textarea name="note" maxlength="500"></textarea></label>${err}<button class="button primary" type="submit">${decision === 'accept' ? 'Accept and confirm place' : 'Reject registration'}</button></form>`);
+        const attendee = attendees.find(a => a.id === b.dataset.booking);
+        const sheet = ctx.openSheet(decision === 'accept' ? 'Accept registration' : 'Reject registration', `<form id="review-registration"><h3>${esc(attendee.player_name)}</h3><p>${esc(attendee.player_email)} &middot; ${esc(attendee.level)}</p><p>Payment: ${esc(attendee.payment_method)} &middot; &#8377;${esc(attendee.amount)}</p>${attendee.has_proof ? `<a href="/api/bookings/${encodeURIComponent(attendee.id)}/proof" target="_blank" rel="noopener noreferrer"><img class="review-payment-image" src="/api/bookings/${encodeURIComponent(attendee.id)}/proof" alt="Payment screenshot submitted by ${esc(attendee.player_name)}"></a><p class="fine">Select the receipt to open it at full size.</p>` : '<p>The organizer receives payment separately. Confirm your arrangement with this player.</p>'}<p>${decision === 'accept' ? 'Verify the receipt in your own account or confirm your cash arrangement. A screenshot alone does not verify payment.' : 'The player will receive your contact for any refund. You must handle refunds directly.'}</p><label>Message to player (optional)<textarea name="note" maxlength="500"></textarea></label>${err}<button class="button primary" type="submit">${decision === 'accept' ? 'Accept and confirm place' : 'Reject registration'}</button></form>`);
         formSubmit('#review-registration', async d => { await api('organizer/events/' + id + '/review', {bookingId:b.dataset.booking,decision,note:d.note}); sheet.close(); await roster(id,currentFilters()); ctx.toast('Registration reviewed.'); });
     });
     action('#refresh-roster', () => roster(id, currentFilters()));
