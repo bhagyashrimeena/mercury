@@ -2,7 +2,6 @@
 export const defaultFilters = Object.freeze({
   sport: "All sports",
   area: "All Mumbai",
-  level: "All levels",
   type: "All formats",
   query: "",
   sort: "soonest",
@@ -11,7 +10,6 @@ export const defaultFilters = Object.freeze({
 const choices = {
   sport: ["All sports", "Badminton", "Tennis", "Pickleball"],
   area: ["All Mumbai", "Powai", "Chandivali", "Andheri", "Bandra", "BKC", "Borivali", "Malad", "Ghatkopar", "Vile Parle", "South Mumbai", "Nerul, Navi Mumbai", "Thane"],
-  level: ["All levels", "Beginner friendly", "Intermediate", "Advanced", "Competitive"],
   type: ["All formats", "Social play", "Tournament"],
   sort: ["soonest", "price-low", "price-high"],
 };
@@ -74,7 +72,6 @@ export function validateDraft(input, now = new Date()) {
       "time",
       "venue",
       "description",
-      "level",
       "format",
       "included",
       "bring",
@@ -88,8 +85,6 @@ export function validateDraft(input, now = new Date()) {
     errors.sport = "Choose a supported sport.";
   if (!choices.area.slice(1).includes(d.area))
     errors.area = "Choose a neighbourhood.";
-  if (!choices.level.includes(d.level))
-    errors.level = "Choose a playing level.";
   if (!["Social play", "Tournament"].includes(d.format))
     errors.format = "Choose a format.";
   const starts = new Date(`${d.date}T${d.time}:00+05:30`);
@@ -134,12 +129,11 @@ export function migrateDrafts(drafts) {
   return drafts
     .filter((d) => d && typeof d.title === "string")
     .map((d, index) => ({
-      ...d,
+      ...Object.fromEntries(Object.entries(d).filter(([field]) => field !== 'level')),
       id:
         typeof d.id === "string" && /^[a-zA-Z0-9-]+$/.test(d.id)
           ? d.id
           : `legacy-${index}`,
-      level: d.level || "All levels",
       format: d.format || "Social play",
     }));
 }

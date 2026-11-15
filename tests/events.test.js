@@ -8,12 +8,11 @@ import {
   dateLabel,
   timeLabel,
 } from "../public/data.js";
-test("combines sport, neighbourhood, level and search without leaking other results", () => {
+test("combines sport, neighbourhood and search without leaking other results", () => {
   const found = filterEvents(events, {
     sport: "Badminton",
     area: "Powai",
     type: "Tournament",
-    level: "Intermediate",
     query: "weekend",
   });
   assert.deepEqual(
@@ -41,9 +40,8 @@ test("does not allow booking a full session", () =>
       ),
     /full/,
   ));
-test("validates names and playing level before creating a booking", () => {
+test("validates names before creating a booking", () => {
   assert.throws(() => bookingFor(events[0], " ", "Beginner"), /name/);
-  assert.throws(() => bookingFor(events[0], "Player", ""), /level/);
   const b = bookingFor(events[0], "  Ri  ", "Beginner");
   assert.equal(b.name, "Ri");
   assert.equal(b.status, "demo");

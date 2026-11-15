@@ -33,7 +33,6 @@ test("filter links preserve all selections including non-ASCII query", () => {
   const f = {
     sport: "Tennis",
     area: "Powai",
-    level: "Intermediate",
     type: "Social play",
     query: "rally & café",
     sort: "price-low",
@@ -111,10 +110,9 @@ test("legacy drafts remain editable with deterministic identifiers", () => {
   assert.deepEqual(
     migrateDrafts([null, { title: "Old event" }]).map((d) => [
       d.id,
-      d.level,
       d.format,
     ]),
-    [["legacy-0", "All levels", "Social play"]],
+    [["legacy-0", "Social play"]],
   );
 });
 test("recovery tolerates corrupt, non-object and inaccessible storage", () => {

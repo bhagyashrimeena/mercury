@@ -10,7 +10,7 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
  const directory=await mkdtemp(join(tmpdir(),'mercury-registration-'));
  let pg=new PGlite(directory);
  try{
- for(const file of ['20261102_initial.sql','20261105132850_site_metrics.sql','20261115000000_direct_payments.sql','20261115010000_optional_event_instructions.sql','20261116000000_event_covers.sql'])await pg.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
+ for(const file of ['20261102_initial.sql','20261105132850_site_metrics.sql','20261115000000_direct_payments.sql','20261115010000_optional_event_instructions.sql','20261116000000_event_covers.sql','20261116010000_cancellation_requests.sql'])await pg.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
  function adapter(runner) {
    return { async batch(statements) {
      const results=[];
@@ -72,9 +72,13 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
  assert.ok((await req('session',host)).notifications.some(n=>n.actionPath==='/participants/'+id));
  await req('organizer/events/'+id+'/review',host,{bookingId:b.id,decision:'accept'});
  assert.equal((await req('bookings',player)).bookings.find(entry=>entry.id===b.id).status,'confirmed');
+ const cancelled=await req('bookings/'+b.id+'/cancel',player,{});assert.equal(cancelled.status,'cancellation_pending');
+ assert.equal((await req('bookings',player)).bookings.find(entry=>entry.id===b.id).status,'cancellation_pending');
+ await req('organizer/events/'+id+'/resolve-cancellation',host,{bookingId:b.id,paymentResolution:'not_collected'});
  await req('organizer/events/'+id+'/cancel',host,{});
- assert.equal((await req('bookings',player)).bookings.find(entry=>entry.id===b.id).status,'event_cancelled');
+ assert.equal((await req('bookings',player)).bookings.find(entry=>entry.id===b.id).status,'cancelled');
  await pg.close();pg=new PGlite(directory);
+ assert.equal((await pg.query('SELECT refund_resolution FROM bookings WHERE id=$1',[b.id])).rows[0].refund_resolution,'not_collected');
  assert.equal((await pg.query('SELECT cover_image FROM events WHERE id=$1',[id])).rows[0].cover_image,cover);
  assert.equal((await pg.query('SELECT qr_image FROM events WHERE id=$1',[id])).rows[0].qr_image,image);
  assert.equal((await pg.query('SELECT payment_proof FROM bookings WHERE id=$1',[pending.id])).rows[0].payment_proof,image);

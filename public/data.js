@@ -9,7 +9,6 @@ export const events = [
     date: "2026-11-08",
     time: "08:00",
     duration: 120,
-    level: "All levels",
     price: 450,
     spots: 6,
     capacity: 16,
@@ -37,7 +36,6 @@ export const events = [
     date: "2026-11-07",
     time: "17:00",
     duration: 90,
-    level: "Beginner friendly",
     price: 650,
     spots: 4,
     capacity: 12,
@@ -65,7 +63,6 @@ export const events = [
     date: "2026-11-08",
     time: "18:00",
     duration: 90,
-    level: "Beginner friendly",
     price: 500,
     spots: 8,
     capacity: 16,
@@ -93,7 +90,6 @@ export const events = [
     date: "2026-11-14",
     time: "09:00",
     duration: 240,
-    level: "Intermediate",
     price: 900,
     spots: 12,
     capacity: 32,
@@ -121,7 +117,6 @@ export const events = [
     date: "2026-11-15",
     time: "16:30",
     duration: 90,
-    level: "Intermediate",
     price: 700,
     spots: 0,
     capacity: 12,
@@ -145,7 +140,6 @@ export const events = [
     date: "2026-11-06",
     time: "19:30",
     duration: 90,
-    level: "All levels",
     price: 400,
     spots: 5,
     capacity: 16,
@@ -184,7 +178,6 @@ export function filterEvents(
   {
     sport = "All sports",
     query = "",
-    level = "All levels",
     type = "All formats",
     area = "All Mumbai",
     saved = null,
@@ -193,7 +186,6 @@ export function filterEvents(
   return items.filter(
     (e) =>
       (sport === "All sports" || e.sport === sport) &&
-      (level === "All levels" || e.level === level) &&
       (type === "All formats" || e.type === type) &&
       (area === "All Mumbai" || e.area === area) &&
       (!saved || saved.includes(e.id)) &&
@@ -210,11 +202,9 @@ export function readStore(storage, key, fallback) {
     return fallback;
   }
 }
-export function bookingFor(e, name, level) {
+export function bookingFor(e, name) {
   if (!e || e.spots <= 0) throw new Error("This session is full.");
   if (name.trim().length < 2) throw new Error("Please enter your name.");
-  if (!["Beginner", "Intermediate", "Advanced"].includes(level))
-    throw new Error("Choose your playing level.");
   return {
     id:
       typeof crypto.randomUUID === "function"
@@ -224,7 +214,6 @@ export function bookingFor(e, name, level) {
           ).join(""),
     eventId: e.id,
     name: name.trim(),
-    level,
     createdAt: new Date().toISOString(),
     status: "demo",
   };

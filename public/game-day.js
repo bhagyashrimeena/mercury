@@ -8,11 +8,11 @@ export function venueMapUrl(event) {
 }
 
 export function passState(booking, now = Date.now()) {
+  if (booking.status === 'cancellation_pending') return {code:'cancellation_pending',label:'Cancellation pending',title:'Cancellation requested.',message:'Your place is released. Contact the organizer to resolve your payment.',active:false,canCancel:false,canPlan:false};
+  if (booking.status === 'cancelled') return {code:'cancelled',label:'Cancelled',title:'Registration cancelled.',message:'Your registration stays in My games.',active:false,canCancel:false,canPlan:false};
   if (booking.event_status === 'cancelled' || booking.status === 'event_cancelled')
     return { code: 'event_cancelled', label: 'Cancelled by organizer', title: 'A change of plans.', message: 'This game was cancelled. This pass no longer admits entry.', active: false, canCancel: false, canPlan: false };
-  if (booking.status === 'cancelled')
-    return { code: 'cancelled', label: 'You cancelled', title: 'Your place is cancelled.', message: 'Your place has been released. This is a record of your cancelled registration.', active: false, canCancel: false, canPlan: false };
-  if (booking.status === 'pending') return {code:'pending',label:'Pending organizer review',title:'Awaiting organizer approval.',message:'Your registration is submitted. This is not an entry pass. Check My games for the organizer decision.',active:false,canCancel:Number(booking.starts_at)>now,canPlan:false};
+  if (booking.status === 'pending') return {code:'pending',label:'Pending organizer review',title:'Awaiting approval.',message:'The organizer is reviewing your entry.',active:false,canCancel:Number(booking.starts_at)>now,canPlan:false};
   if (booking.status === 'rejected') return {code:'rejected',label:'Registration rejected',title:'Your registration was rejected.',message:'Contact the organizer for any refund. Mercury does not process refunds for direct payments.',active:false,canCancel:false,canPlan:false};
   const starts = Number(booking.starts_at);
   const future = Number.isFinite(starts) && starts > now;
@@ -62,34 +62,24 @@ export function bookingCalendar(booking, origin, now = Date.now()) {
 export function bookingPassMarkup(booking, { now = Date.now() } = {}) {
   const state = passState(booking, now);
   const eventUrl = '/event/' + encodeURIComponent(booking.event_id);
-  return `<a class="back" href="/my-games">← My games</a>
-    <section class="page-intro pass-intro"><p class="eyebrow blue">YOUR GAME PASS</p><h1>${esc(state.title)}</h1><p>${esc(state.message)}</p></section>
-    <div class="pass-layout"><article class="pass-ticket" aria-labelledby="pass-game-title">
-      <div class="pass-ticket-top"><span class="state state-${state.code}">${esc(state.label)}</span><span class="pass-fee">${Number(booking.amount) ? '&#8377;' + esc(booking.amount) + ' / ' + esc(booking.payment_method) : 'FREE'} / 1 PLAYER</span><h2 id="pass-game-title">${esc(booking.title)}</h2><p>${esc(booking.sport)} · ${esc(booking.area)}, Mumbai</p></div>
-      <div class="pass-ticket-body"><dl class="pass-facts"><div><dt>Date</dt><dd>${dateLabel(booking)}</dd></div><div><dt>Start time</dt><dd>${timeLabel(booking)} IST</dd></div><div class="pass-fact-wide"><dt>Venue</dt><dd>${esc(booking.venue)}</dd></div><div><dt>Player</dt><dd>${esc(booking.player_name)}</dd></div><div><dt>Playing level</dt><dd>${esc(booking.level)}</dd></div></dl>
-      <div class="pass-reference-box"><label for="pass-reference">Pass reference</label><input id="pass-reference" class="pass-reference" readonly value="${esc(booking.id)}" spellcheck="false"><button class="text-link" id="copy-pass-reference" type="button">Copy reference</button><p class="fine">${state.active ? 'Your host verifies this reference on their private roster.' : 'Kept for your records. Not valid for entry.'}</p></div>
-      <div class="action-row"><a class="button outline" href="${esc(eventUrl)}">View game details ↗</a>${!state.active ? '<a class="button primary" href="/explore">Find another game ↗</a>' : ''}</div></div>
-    </article><aside class="pass-guide" aria-labelledby="pass-guide-title"><p class="eyebrow blue">${state.canNavigate ? 'BEFORE YOU GO' : 'KEEP IN MIND'}</p><h2 id="pass-guide-title">${state.canNavigate ? 'Ready for game day.' : 'Your next move.'}</h2>
-      ${state.canNavigate ? `<div class="pass-planning-actions">${state.canPlan ? '<button class="button primary" id="download-game-calendar" type="button">Add to calendar ↓</button>' : ''}<a class="button outline" href="${esc(venueMapUrl(booking))}" target="_blank" rel="noopener noreferrer" aria-label="Open venue in Google Maps (new tab)">Open venue map ↗</a></div><p class="fine">${state.canPlan ? 'Downloads a calendar file to import. It does not update automatically. ' : ''}The map searches the organizer’s address; confirm the exact court before travelling.</p><ol class="pass-checklist"><li>Save a screenshot of this pass for weak signal at the venue.</li><li>Check the game details for what to bring and arrival instructions.</li><li>Open My games before you leave for the latest updates.</li></ol>` : `<p>${state.active ? 'Keep this pass as your registration record. Check the game page for organizer details.' : 'If you added this game to your calendar, remove it there too. Mercury cannot update your calendar copy.'}</p>`}
-      ${Number(booking.amount) ? `<div class="payment-status"><h3>Direct organizer payment</h3><p>&#8377;${esc(booking.amount)} / ${esc(booking.payment_method)}. ${booking.payment_method === 'cash' ? 'Arrange cash payment with the organizer.' : 'The organizer reviews your receipt. Mercury does not verify bank settlement.'}</p><p>For payment, rejection, cancellation or refund queries: <a href="mailto:${esc(booking.organizer_contact)}">${esc(booking.organizer_contact)}</a>. Refunds are not automatic.</p>${booking.review_note ? `<p>Organizer message: ${esc(booking.review_note)}</p>` : ''}</div>` : ''}
-      <p class="fine">Event updates appear in My games.</p>
-      ${state.canCancel ? '<div class="pass-cancellation"><h3>Plans changed?</h3><p>Cancel before the start to give another player your place. For direct payments, contact the organizer about any refund.</p><button class="text-link danger" id="cancel-pass" type="button">Cancel my place</button></div>' : ''}
-      <p id="pass-action-status" class="pass-action-status" role="status" aria-live="polite"></p>
-    </aside></div>`;
+  const contact = booking.organizer_contact || booking.current_organizer_contact || '';
+  const resolution = booking.refund_resolution === 'refunded' ? 'Organizer marked the refund as sent.' : booking.refund_resolution === 'not_collected' ? 'Organizer recorded no payment received.' : '';
+  return `<div class="compact-pass-page"><a class="back" href="/my-games">← My games</a>
+    <header class="pass-page-heading"><p class="eyebrow blue">YOUR GAME PASS</p><h1>${esc(state.title)}</h1><p>${esc(state.message)}</p></header>
+    <article class="pass-ticket" aria-labelledby="pass-game-title">
+      <div class="pass-ticket-top"><div class="pass-ticket-status"><span class="state state-${state.code}">${esc(state.label)}</span><span class="pass-fee">${Number(booking.amount) ? '&#8377;' + esc(booking.amount) + ' / ' + (booking.payment_method === 'upi' ? 'UPI' : 'Cash') : 'Free'} · 1 player</span></div><h2 id="pass-game-title">${esc(booking.title)}</h2><p>${esc(booking.sport)} · ${esc(booking.area)}, Mumbai</p></div>
+      <div class="pass-ticket-body"><dl class="pass-facts"><div><dt>Date</dt><dd>${dateLabel(booking)}</dd></div><div><dt>Start time</dt><dd>${timeLabel(booking)} IST</dd></div><div class="pass-fact-wide"><dt>Venue</dt><dd>${esc(booking.venue)}</dd></div><div class="pass-fact-wide"><dt>Player</dt><dd>${esc(booking.player_name)}</dd></div></dl>
+      <div class="pass-reference-row"><span>Pass reference</span><code>${esc(booking.id)}</code></div>
+      ${Number(booking.amount) && contact ? `<div class="pass-organizer-contact"><span>${state.code === 'cancellation_pending' ? 'Refund contact' : 'Organizer'}</span><b>${esc(booking.organizer_name || 'Event organizer')}</b><a href="mailto:${esc(contact)}">${esc(contact)}</a>${resolution ? `<p>${esc(resolution)}</p>` : ''}</div>` : ''}
+      ${booking.review_note ? `<p class="pass-review-note">Organizer: ${esc(booking.review_note)}</p>` : ''}
+      <div class="pass-main-actions"><a class="button outline" href="${esc(eventUrl)}">View game details ↗</a>${state.canCancel ? '<button class="button danger-outline" id="cancel-pass" type="button">Cancel registration</button>' : ''}</div>
+      ${state.canNavigate ? `<div class="pass-utilities">${state.canPlan ? '<button class="text-link" id="download-game-calendar" type="button">Add to calendar ↓</button>' : ''}<a class="text-link" href="${esc(venueMapUrl(booking))}" target="_blank" rel="noopener noreferrer">Venue map ↗</a></div>` : ''}
+      <p id="pass-action-status" class="pass-action-status" role="status" aria-live="polite"></p></div>
+    </article><a class="text-link pass-browse" href="/explore">Find another game →</a></div>`;
 }
 
 export function bindPassActions(main, booking) {
   const status = main.querySelector('#pass-action-status');
-  const reference = main.querySelector('#pass-reference');
-  main.querySelector('#copy-pass-reference').onclick = async () => {
-    try {
-      await navigator.clipboard.writeText(booking.id);
-      status.textContent = 'Pass reference copied.';
-    } catch {
-      reference.focus(); reference.select();
-      status.textContent = 'Reference selected. Use your device’s Copy action.';
-    }
-  };
   const download = main.querySelector('#download-game-calendar');
   if (download) download.onclick = () => {
     let url;

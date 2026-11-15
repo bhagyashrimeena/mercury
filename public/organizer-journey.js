@@ -3,7 +3,7 @@ import { validateDraft } from './domain.js';
 // Keep only event-draft fields, cover and QR uploads, never auth or attendee data.
 const EVENT_FIELDS = new Set([
   'title', 'sport', 'format', 'area', 'date', 'time', 'venue',
-  'level', 'capacity', 'price', 'description', 'included', 'bring', 'cancellation', 'allowUpi', 'allowCash',
+  'capacity', 'price', 'description', 'included', 'bring', 'cancellation', 'allowUpi', 'allowCash',
   'reviewed', 'wizardStep', 'qrUploadName', 'coverUploadName', 'coverImage'
 ]);
 const RECOVERY_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
@@ -165,7 +165,7 @@ export function mountOrganizerJourney(form, {
       ['Sport & format', [values.sport, values.format].filter(Boolean).join(' · ')],
       ['When', values.date ? values.date + ' · ' + (values.time || 'time not chosen') + ' IST' : 'Date not chosen'],
       ['Where', [values.venue, values.area].filter(Boolean).join(' · ')],
-      ['Players', (values.capacity || '?') + ' places · ' + (values.level || 'All levels')],
+      ['Players', (values.capacity || '?') + ' places'],
       ['Entry', Number(values.price) === 0 ? 'Free — eligible to publish' : '₹' + (values.price || '?') + ' per player / organizer review'],
       ['Payment', Number(values.price) === 0 ? 'No payment required' : [values.allowUpi === 'on' ? 'UPI QR' : '', values.allowCash === 'on' ? 'Cash' : ''].filter(Boolean).join(' + ') || 'Choose payment options in the final step']
     ];
@@ -305,7 +305,7 @@ export function filterRosterEntries(entries, query = '', uncheckedOnly = false) 
   const needle = String(query || '').trim().toLocaleLowerCase();
   return entries.filter(entry =>
     (!uncheckedOnly || entry.status === 'confirmed') &&
-    (!needle || [entry.player_name, entry.id, entry.level].join(' ').toLocaleLowerCase().includes(needle)));
+    (!needle || [entry.player_name, entry.id].join(' ').toLocaleLowerCase().includes(needle)));
 }
 
 export function mountRosterSearch(root, { query = '', uncheckedOnly = false } = {}) {

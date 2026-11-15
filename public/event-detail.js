@@ -31,7 +31,6 @@ export function eventDetailMarkup(event, { saved = false, preview = false, polic
       <div class="event-facts">
         <div><span aria-hidden="true">&#9677;</span><p><b>${dateLabel(event)}</b><small>${timeLabel(event)} IST &middot; ${esc(event.duration)} minutes</small></p></div>
         <div><span aria-hidden="true">&#8962;</span><p><b>${esc(event.area)}, Mumbai</b><small>${esc(event.venue)}</small>${preview ? '' : `<a class="text-link venue-map-link" href="${esc(venueMapUrl(event))}" target="_blank" rel="noopener noreferrer" aria-label="Open venue in Google Maps (new tab)">Open venue map ↗</a>`}</p></div>
-        <div><span aria-hidden="true">&#9678;</span><p><b>${esc(event.level)}</b><small>Individual entry</small></p></div>
         <div><span aria-hidden="true">&#8599;</span><p><b>${esc(event.type)}</b><small>${esc(event.capacity)} players</small></p></div>
       </div>
       ${event.description?.trim() ? `<h2>A good game, a good time.</h2><p class="body-copy preserve-lines">${esc(event.description)}</p>` : ''}

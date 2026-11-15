@@ -50,6 +50,13 @@
       "when": 1794767842388,
       "tag": "0006_event_covers",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1794769877404,
+      "tag": "0007_cancellation_requests",
+      "breakpoints": true
     }
   ]
 }

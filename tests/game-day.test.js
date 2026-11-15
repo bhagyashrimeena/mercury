@@ -25,7 +25,7 @@ test('game-day controls follow registration, event and start states', () => {
     const markup = bookingPassMarkup({ ...booking, ...changed }, { now });
     assert.doesNotMatch(markup, /id="download-game-calendar"|id="cancel-pass"/);
   }
-  assert.match(bookingPassMarkup({ ...booking, status: 'event_cancelled' }, { now }), /remove it there too/);
+  assert.match(bookingPassMarkup({ ...booking, status: 'event_cancelled' }, { now }), /Cancelled by organizer/);
   assert.equal(passState(booking, booking.starts_at).canNavigate, true);
   assert.equal(passState(booking, booking.starts_at + 90 * 60000).canNavigate, false);
   assert.equal(!!passState({ ...booking, event_status: 'cancelled' }, booking.starts_at).canNavigate, false);
@@ -38,7 +38,7 @@ test('pass renders useful event facts and escapes untrusted display values', () 
   assert.match(markup, /&lt;Private&gt;/);
   assert.doesNotMatch(markup, /<img src=x|value="" onfocus=/);
   assert.match(markup, /role="status" aria-live="polite"/);
-  assert.match(markup, /label for="pass-reference"/);
+  assert.match(markup, /Pass reference/);
   assert.match(markup, /6:00 pm IST|6:00 PM IST/);
 });
 
@@ -77,17 +77,14 @@ test('calendar refuses closed registrations, unsafe origins and invalid duration
     assert.throws(() => bookingCalendar(booking, origin, now));
 });
 
-test('pass actions copy references, recover from clipboard denial and download a private-data-free calendar', async () => {
+test('pass actions download a private-data-free calendar', async () => {
   const { bindPassActions } = await import('../public/game-day.js');
-  const original = Object.fromEntries(['document', 'navigator', 'location', 'setTimeout'].map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
+  const original = Object.fromEntries(['document', 'location', 'setTimeout'].map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
   const oldCreate = URL.createObjectURL, oldRevoke = URL.revokeObjectURL;
-  const reference = { focused: false, selected: false, focus() { this.focused = true; }, select() { this.selected = true; } };
-  const status = { textContent: '' }, copy = {}, download = {};
-  const nodes = { '#pass-action-status': status, '#pass-reference': reference, '#copy-pass-reference': copy, '#download-game-calendar': download };
+  const status = {textContent:''}, download = {};
+  const nodes = {'#pass-action-status':status,'#download-game-calendar':download};
   const links = [], blobs = [], timers = [];
-  let copied, failCopy = false;
   try {
-    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { clipboard: { async writeText(value) { if (failCopy) throw Error('Clipboard unavailable'); copied = value; } } } });
     Object.defineProperty(globalThis, 'location', { configurable: true, value: { origin: 'https://www.playonmercury.com' } });
     Object.defineProperty(globalThis, 'document', { configurable: true, value: { body: { append(link) { links.push(link); } }, createElement() { return { click() { this.clicked = true; }, remove() { this.removed = true; } }; } } });
     Object.defineProperty(globalThis, 'setTimeout', { configurable: true, value(callback) { timers.push(callback); } });
@@ -95,14 +92,6 @@ test('pass actions copy references, recover from clipboard denial and download a
     URL.revokeObjectURL = () => {};
     const future = { ...booking, starts_at: Date.now() + 86400000 };
     bindPassActions({ querySelector: selector => nodes[selector] }, future);
-    await copy.onclick();
-    assert.equal(copied, booking.id);
-    assert.equal(status.textContent, 'Pass reference copied.');
-    failCopy = true;
-    await copy.onclick();
-    assert.equal(reference.focused, true);
-    assert.equal(reference.selected, true);
-    assert.match(status.textContent, /Reference selected/);
     download.onclick();
     download.onclick();
     assert.equal(links.length, 2);
@@ -128,7 +117,28 @@ test('pending and rejected paid registrations cannot create a valid entry pass o
  for (const status of ['pending','rejected']) {
  const paid={...booking,status,amount:450,payment_method:'upi',organizer_contact:'refund@example.test',review_note:'Contact us for refund'};
  const state=passState(paid); assert.equal(state.active,false); assert.equal(state.canPlan,false);
- const html=bookingPassMarkup(paid); assert.match(html,/refund@example.test/); assert.match(html,/450/); assert.match(html,/Not valid for entry/);
+ const html=bookingPassMarkup(paid); assert.match(html,/refund@example.test/); assert.match(html,/450/); assert.doesNotMatch(html,/id="download-game-calendar"/);
  assert.throws(()=>bookingCalendar(paid,'https://mercury.test'));
  }
+});
+
+
+test('compact passes keep cancellation alongside details and browsing outside the ticket', () => {
+  const html=bookingPassMarkup({...booking,amount:250,payment_method:'upi',organizer_contact:'host@example.test'}, {now});
+  assert.match(html,/class="pass-main-actions"/);
+  assert.match(html,/Cancel registration/);
+  assert.match(html,/host@example.test/);
+  assert.ok(html.indexOf('pass-browse') > html.indexOf('</article>'));
+  assert.doesNotMatch(html,/Playing level|copy-pass-reference|Copy reference|Kept for|KEEP IN MIND|pass-guide/);
+});
+
+test('cancellation pending is not an entry pass even when the organizer cancels the event', () => {
+  const cancelled={...booking,status:'cancellation_pending',event_status:'cancelled',amount:250,payment_method:'cash',organizer_contact:'refund@example.test'};
+  const state=passState(cancelled,now);
+  assert.equal(state.code,'cancellation_pending');
+  assert.equal(state.canCancel,false);
+  assert.equal(state.canPlan,false);
+  assert.equal(state.active,false);
+  assert.match(bookingPassMarkup(cancelled,{now}),/Cancellation pending/);
+  assert.throws(()=>bookingCalendar(cancelled,'https://mercury.test',now));
 });

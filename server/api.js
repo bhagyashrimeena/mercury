@@ -4,7 +4,7 @@ import { findListing, currentListings, listingStatus, indiaDay } from '../public
 import { validateDraft, newId } from '../public/domain.js';
 import { CLIENT_METRICS, recordMetric } from './metrics.js';
 const ACTIVE = "('pending','confirmed','checked_in')";
-const PUBLIC_SELECT = `SELECT e.id,e.owner_id,e.title,e.sport,e.area,e.venue,e.description,e.date,e.time,e.starts_at,e.duration,e.capacity,e.price,e.level,e.format,e.included,e.bring,e.cancellation,e.status,e.revision,e.created_at,e.payment_methods,CASE WHEN length(e.qr_image)>0 THEN 'present' ELSE '' END AS qr_image,CASE WHEN length(e.cover_image)>0 THEN 'present' ELSE '' END AS cover_image,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE}) AS registered,(SELECT COUNT(*) FROM bookings pending WHERE pending.event_id=e.id AND pending.status='pending') AS pending_count FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
+const PUBLIC_SELECT = `SELECT e.id,e.owner_id,e.title,e.sport,e.area,e.venue,e.description,e.date,e.time,e.starts_at,e.duration,e.capacity,e.price,e.format,e.included,e.bring,e.cancellation,e.status,e.revision,e.created_at,e.payment_methods,CASE WHEN length(e.qr_image)>0 THEN 'present' ELSE '' END AS qr_image,CASE WHEN length(e.cover_image)>0 THEN 'present' ELSE '' END AS cover_image,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE}) AS registered,(SELECT COUNT(*) FROM bookings pending WHERE pending.event_id=e.id AND pending.status='pending') AS pending_count,(SELECT COUNT(*) FROM bookings cancellations WHERE cancellations.event_id=e.id AND cancellations.status='cancellation_pending') AS cancellation_count FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
 export class ApiError extends Error {
     constructor(status, message, code = 'request_failed', fields = null) { super(message); this.status = status; this.code = code; this.fields = fields; }
 }
@@ -14,7 +14,7 @@ const one = (db, sql, ...values) => db.prepare(sql).bind(...values).first();
 const all = async (db, sql, ...values) => (await db.prepare(sql).bind(...values).all()).results;
 const run = (db, sql, ...values) => db.prepare(sql).bind(...values).run();
 export function publicEvent(row) { if (!row)
-    return null; return { id: row.id, title: row.title, sport: row.sport, area: row.area, venue: row.venue, description: row.description, date: row.date, time: row.time, startsAt: row.starts_at, duration: row.duration, capacity: row.capacity, price: row.price, paymentMethods: (row.payment_methods || '').split(',').filter(Boolean), qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '', coverImage: row.cover_image ? '/api/events/' + encodeURIComponent(row.id) + '/cover' : '', level: row.level, type: row.format, format: row.format + ' · individual entry', included: row.included ? row.included.split('\n').filter(Boolean) : null, bring: row.bring, cancellation: row.cancellation, status: row.status, revision: row.revision, host: row.host, hostBio: row.host_bio, hostContact: row.host_contact, spots: Math.max(0, row.capacity - Number(row.registered)), registered: Number(row.registered), pendingCount: Number(row.pending_count || 0), image: row.sport === 'Badminton' ? 'badminton.jpg' : row.sport === 'Tennis' ? 'tennis.jpg' : 'court.jpg', solo: true, isDemo: false, tag: 'YOUR NEXT GAME STARTS HERE' }; }
+    return null; return { id: row.id, title: row.title, sport: row.sport, area: row.area, venue: row.venue, description: row.description, date: row.date, time: row.time, startsAt: row.starts_at, duration: row.duration, capacity: row.capacity, price: row.price, paymentMethods: (row.payment_methods || '').split(',').filter(Boolean), qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '', coverImage: row.cover_image ? '/api/events/' + encodeURIComponent(row.id) + '/cover' : '', type: row.format, format: row.format + ' · individual entry', included: row.included ? row.included.split('\n').filter(Boolean) : null, bring: row.bring, cancellation: row.cancellation, status: row.status, revision: row.revision, host: row.host, hostBio: row.host_bio, hostContact: row.host_contact, spots: Math.max(0, row.capacity - Number(row.registered)), registered: Number(row.registered), pendingCount: Number(row.pending_count || 0), cancellationCount: Number(row.cancellation_count || 0), image: row.sport === 'Badminton' ? 'badminton.jpg' : row.sport === 'Tennis' ? 'tennis.jpg' : 'court.jpg', solo: true, isDemo: false, tag: 'YOUR NEXT GAME STARTS HERE' }; }
 function ensureUser(user) {
     if (!user?.userId || !user?.email) fail(401, 'Sign in to continue.', 'sign_in_required');
     return user.userId;
@@ -25,10 +25,12 @@ async function provisionUser(db, user, now) {
 }
 async function ownedEvent(db, id, userId) { const e = await one(db, 'SELECT * FROM events WHERE id=? AND owner_id=?', id, userId); if (!e)
     fail(404, 'This event is not available in your organizer account.', 'not_found'); return e; }
-function eventValues(d) { return [d.title, d.sport, d.area, d.venue, d.description, d.date, d.time, Date.parse(`${d.date}T${d.time}:00+05:30`), d.capacity, d.price, d.level, d.format, d.included, d.bring, d.cancellation]; }
+function eventValues(d) { return [d.title, d.sport, d.area, d.venue, d.description, d.date, d.time, Date.parse(`${d.date}T${d.time}:00+05:30`), d.capacity, d.price, d.format, d.included, d.bring, d.cancellation]; }
 function validate(input, now) { const result = validateDraft(input, new Date(now)); if (!result.valid)
     fail(422, 'Check the highlighted event details.', 'validation_failed', result.errors); return result.value; }
 const notify = (db, userId, eventId, message, now) => db.prepare('INSERT INTO notifications(id,user_id,event_id,message,created_at) VALUES(?,?,?,?,?)').bind(newId(), userId, eventId, message, now);
+const registrationNotice = (db, id, userId, eventId, message, now, bookingId, status, resolved = false) => db.prepare(`INSERT INTO notifications(id,user_id,event_id,message,created_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM bookings WHERE id=? AND status=? AND ${resolved ? 'cancellation_resolved_at' : 'cancellation_requested_at'}=?) ON CONFLICT(id) DO NOTHING`).bind(id,userId,eventId,message,now,bookingId,status,now);
+
 const PAYMENT_TERMS = '2026-11-15-direct-payments';
 function imageData(value, required = false) {
     if (!value && !required) return '';
@@ -93,7 +95,8 @@ export async function apiHandler(request, db, user, { now = Date.now(), adminEma
         const options = { request, db, user, now, path, method, body, config: { adminEmail }, onBookingCreated: statements => { bookingNotifications = statements; } };
         // PostgreSQL needs an event-row lock across the capacity check and insert.
         // The SQLite test adapter keeps its existing serial-write behavior.
-        const lockId = method === 'POST' && path[0] === 'events' && path[2] === 'register' ? path[1] : ['POST','PATCH'].includes(method) && path[0] === 'organizer' && path[1] === 'events' ? path[2] : null;
+        let lockId = method === 'POST' && path[0] === 'events' && path[2] === 'register' ? path[1] : ['POST','PATCH'].includes(method) && path[0] === 'organizer' && path[1] === 'events' ? path[2] : null;
+        if (method === 'POST' && path[0] === 'bookings' && path[2] === 'cancel') lockId = (await one(db, 'SELECT event_id FROM bookings WHERE id=? AND user_id=?', path[1], user?.userId || ''))?.event_id;
         const result = lockId && db.withEventLock
             ? await db.withEventLock(lockId, lockedDb => dispatch({ ...options, db: lockedDb }))
             : await dispatch(options);
@@ -232,7 +235,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
     }
     if (m === 'GET' && route === 'organizer/events') {
         const rows = await all(db, `${PUBLIC_SELECT} WHERE e.owner_id=? ORDER BY e.created_at DESC LIMIT 100`, uid);
-        return { events: rows.map(row => ({ ...publicEvent(row), coverImage: row.cover_image ? (row.status === 'draft' ? '/api/organizer/events/' : '/api/events/') + encodeURIComponent(row.id) + '/cover' : '', draft: { title: row.title, sport: row.sport, area: row.area, date: row.date, time: row.time, capacity: row.capacity, price: row.price, level: row.level, format: row.format, venue: row.venue, description: row.description, included: row.included, bring: row.bring, cancellation: row.cancellation, paymentMethods: row.payment_methods.split(',').filter(Boolean), coverImage: row.cover_image ? '/api/organizer/events/' + encodeURIComponent(row.id) + '/cover' : '', qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '' } })) };
+        return { events: rows.map(row => ({ ...publicEvent(row), coverImage: row.cover_image ? (row.status === 'draft' ? '/api/organizer/events/' : '/api/events/') + encodeURIComponent(row.id) + '/cover' : '', draft: { title: row.title, sport: row.sport, area: row.area, date: row.date, time: row.time, capacity: row.capacity, price: row.price, format: row.format, venue: row.venue, description: row.description, included: row.included, bring: row.bring, cancellation: row.cancellation, paymentMethods: row.payment_methods.split(',').filter(Boolean), coverImage: row.cover_image ? '/api/organizer/events/' + encodeURIComponent(row.id) + '/cover' : '', qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '' } })) };
     }
     if (m === 'POST' && route === 'organizer/events') {
         if (!await one(db, 'SELECT user_id FROM organizers WHERE user_id=?', uid))
@@ -244,7 +247,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         const status = b.publish === true ? 'published' : 'draft';
         if (b.publish === true) await validatePublication(db, { ...d, payment_methods: methods, qr_image: qr, starts_at: Date.parse(`${d.date}T${d.time}:00+05:30`) }, uid, now);
         const id = newId();
-        await run(db, 'INSERT INTO events(id,owner_id,title,sport,area,venue,description,date,time,starts_at,capacity,price,level,format,included,bring,cancellation,payment_methods,qr_image,cover_image,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', id, uid, ...eventValues(d), methods, qr, cover, status, now, now);
+        await run(db, 'INSERT INTO events(id,owner_id,title,sport,area,venue,description,date,time,starts_at,capacity,price,format,included,bring,cancellation,payment_methods,qr_image,cover_image,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', id, uid, ...eventValues(d), methods, qr, cover, status, now, now);
         return { id };
     }
     if (p[0] === 'organizer' && p[1] === 'events' && p.length >= 3) {
@@ -263,7 +266,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
             if (e.status === 'published' && d.price > 0 && !(await one(db, 'SELECT contact FROM organizers WHERE user_id=?', uid))?.contact) fail(422, 'Add a public payment contact.', 'contact_required');
             if (e.status === 'published' && d.price > 0 && (!methods || (methods.includes('upi') && !qr))) fail(422, 'Set payment options and upload a UPI QR image.', 'payments_unavailable');
             if (b.publish === true) await validatePublication(db, { ...d, payment_methods: methods, qr_image: qr, starts_at: Date.parse(`${d.date}T${d.time}:00+05:30`) }, uid, now);
-            const result = await run(db, `UPDATE events SET title=?,sport=?,area=?,venue=?,description=?,date=?,time=?,starts_at=?,capacity=?,price=?,level=?,format=?,included=?,bring=?,cancellation=?,payment_methods=?,qr_image=?,cover_image=?,status=CASE WHEN ?=1 THEN 'published' ELSE status END,revision=revision+1,updated_at=? WHERE id=? AND owner_id=? AND revision=? AND status!='cancelled' AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${ACTIVE})`, ...eventValues(d), methods, qr, cover, b.publish === true ? 1 : 0, now, id, uid, Number(b.revision), id);
+            const result = await run(db, `UPDATE events SET title=?,sport=?,area=?,venue=?,description=?,date=?,time=?,starts_at=?,capacity=?,price=?,format=?,included=?,bring=?,cancellation=?,payment_methods=?,qr_image=?,cover_image=?,status=CASE WHEN ?=1 THEN 'published' ELSE status END,revision=revision+1,updated_at=? WHERE id=? AND owner_id=? AND revision=? AND status!='cancelled' AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${ACTIVE})`, ...eventValues(d), methods, qr, cover, b.publish === true ? 1 : 0, now, id, uid, Number(b.revision), id);
             if (!result.meta.changes)
                 fail(409, 'This event changed or received a booking. Reload before editing.', 'version_conflict');
             return { ok: true };
@@ -290,7 +293,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
             return { ok: true };
         }
         if (m === 'GET' && p[3] === 'attendees') {
-            const attendees = await all(db, 'SELECT id,player_name,level,status,created_at,checked_in_at,payment_method,amount,review_note,CASE WHEN length(payment_proof)>0 THEN 1 ELSE 0 END AS has_proof,(SELECT email FROM users WHERE users.id=bookings.user_id) AS player_email FROM bookings WHERE event_id=? ORDER BY created_at', id);
+            const attendees = await all(db, 'SELECT id,player_name,status,created_at,checked_in_at,payment_method,amount,organizer_contact,cancellation_requested_at,cancellation_resolved_at,refund_resolution,review_note,CASE WHEN length(payment_proof)>0 THEN 1 ELSE 0 END AS has_proof,(SELECT email FROM users WHERE users.id=bookings.user_id) AS player_email FROM bookings WHERE event_id=? ORDER BY created_at', id);
             return { event: publicEvent(await one(db, `${PUBLIC_SELECT} WHERE e.id=?`, id)), attendees };
         }
         if (m === 'POST' && p[3] === 'review' && p.length === 4) {
@@ -307,6 +310,21 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
             onBookingCreated([notify(db,booking.user_id,id, status === 'confirmed' ? `Your registration for ${e.title} was accepted. Open My games for your pass.` : `Your registration for ${e.title} was rejected. Open My games for organizer contact and refund details.`,now)]);
             return {ok:true};
         }
+        if (m === 'POST' && p[3] === 'resolve-cancellation' && p.length === 4) {
+            if (!['refunded','not_collected'].includes(b.paymentResolution)) fail(422, 'Confirm the refund or that no payment was received.', 'validation_failed');
+            const booking = await one(db, 'SELECT * FROM bookings WHERE id=? AND event_id=?', clean(b.bookingId,100), id);
+            if (!booking) fail(404, 'Registration not found.', 'not_found');
+            if (booking.status === 'cancelled' && booking.refund_resolution) return {ok:true,status:'cancelled'};
+            if (booking.status !== 'cancellation_pending') fail(409, 'This registration has no pending cancellation.', 'booking_changed');
+            const note = clean(b.note,500);
+            const results = await db.batch([
+                db.prepare("UPDATE bookings SET status='cancelled',cancelled_at=?,cancellation_resolved_at=?,refund_resolution=?,review_note=? WHERE id=? AND event_id=? AND status='cancellation_pending'").bind(now,now,b.paymentResolution,note,booking.id,id),
+                registrationNotice(db, 'cancel-resolved-' + booking.id, booking.user_id,id,
+                    b.paymentResolution === 'refunded' ? `${e.title}: the organizer marked your cancellation complete and your refund as sent. Check your account and contact the organizer if it has not arrived.` : `${e.title}: the organizer completed your cancellation and recorded that no payment was collected. Contact the organizer if you disagree.`,now,booking.id,'cancelled',true)
+            ]);
+            if (!results[0].meta.changes) fail(409, 'This registration changed. Refresh participants.', 'booking_changed');
+            return {ok:true,status:'cancelled'};
+        }
         if (m === 'POST' && p[3] === 'check-in') {
             if (e.status !== 'published')
                 fail(409, 'Only published events can check in players.', 'event_unavailable');
@@ -322,9 +340,8 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
     if (m === 'POST' && p[0] === 'events' && p[2] === 'register') {
         if (b.rulesAccepted !== true)
             fail(422, 'Read and accept the event rules.', 'consent_required');
-        const name = clean(b.name, 80), level = clean(b.level, 30), key = clean(b.idempotencyKey, 100);
-        if (name.length < 2 || (b.level != null && typeof b.level !== 'string') || (level && !['Beginner', 'Intermediate', 'Advanced'].includes(level)))
-            fail(422, 'Enter your name and playing level.', 'validation_failed');
+        const name = clean(b.name, 80), key = clean(b.idempotencyKey, 100);
+        if (name.length < 2) fail(422, 'Enter your name.', 'validation_failed');
         if (!/^[a-zA-Z0-9-]{16,100}$/.test(key))
             fail(422, 'Refresh and try registration again.', 'invalid_request_key');
         const prior = await one(db, 'SELECT id,event_id,status FROM bookings WHERE user_id=? AND idempotency_key=?', uid, key);
@@ -346,6 +363,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         const existing = await one(db, `SELECT id FROM bookings WHERE user_id=? AND event_id=? AND status IN ${ACTIVE}`, uid, event.id);
         if (existing)
             return { id: existing.id, existing: true };
+        if (await one(db, "SELECT id FROM bookings WHERE user_id=? AND event_id=? AND status='cancellation_pending'", uid, event.id)) fail(409, 'Resolve your pending cancellation with the organizer before registering again.', 'cancellation_pending');
         const paid = event.price > 0;
         const method = paid ? b.paymentMethod : 'free';
         if (paid && (b.paymentConsentVersion !== PAYMENT_TERMS || !(event.payment_methods || '').split(',').includes(method))) fail(422, 'Choose an enabled payment method and accept the direct payment terms.', 'payment_consent_required');
@@ -355,7 +373,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         if (paid && !contact) fail(409, 'Organizer payment contact is unavailable. Contact support before paying.', 'contact_required');
         const status = paid ? 'pending' : 'confirmed';
         const id = newId();
-        const result = await run(db, `INSERT INTO bookings(id,user_id,event_id,idempotency_key,player_name,level,rules_revision,consent_at,created_at,status,payment_method,payment_proof,amount,organizer_contact,payment_consent_version) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM events e WHERE e.id=? AND e.status='published' AND e.starts_at>? AND e.revision=? AND (SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE})<e.capacity) ON CONFLICT DO NOTHING`, id, uid, event.id, key, name, level, event.revision, now, now, status, method, proof, event.price, contact || '', paid ? PAYMENT_TERMS : '', event.id, now, event.revision);
+        const result = await run(db, `INSERT INTO bookings(id,user_id,event_id,idempotency_key,player_name,rules_revision,consent_at,created_at,status,payment_method,payment_proof,amount,organizer_contact,payment_consent_version) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM events e WHERE e.id=? AND e.status='published' AND e.starts_at>? AND e.revision=? AND (SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE})<e.capacity) ON CONFLICT DO NOTHING`, id, uid, event.id, key, name, event.revision, now, now, status, method, proof, event.price, contact || '', paid ? PAYMENT_TERMS : '', event.id, now, event.revision);
         if (!result.meta.changes) {
             const duplicate = await one(db, `SELECT id FROM bookings WHERE user_id=? AND event_id=? AND status IN ${ACTIVE}`, uid, event.id);
             if (duplicate)
@@ -369,27 +387,31 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         return paid ? { id, status } : { id };
     }
     if (m === 'GET' && route === 'bookings') {
-        const rows = await all(db, 'SELECT b.id,b.event_id,b.player_name,b.level,b.status,b.rules_revision,b.consent_at,b.created_at,b.checked_in_at,b.cancelled_at,b.payment_method,b.amount,b.organizer_contact,b.review_note,b.reviewed_at,e.title,e.sport,e.area,e.venue,e.date,e.time,e.starts_at,e.duration,e.status AS event_status,e.cancellation FROM bookings b JOIN events e ON e.id=b.event_id WHERE b.user_id=? ORDER BY e.starts_at DESC LIMIT 200', uid);
+        const rows = await all(db, 'SELECT b.id,b.event_id,b.player_name,b.status,b.rules_revision,b.consent_at,b.created_at,b.checked_in_at,b.cancelled_at,b.cancellation_requested_at,b.cancellation_resolved_at,b.refund_resolution,b.payment_method,b.amount,b.organizer_contact,b.review_note,b.reviewed_at,e.title,e.sport,e.area,e.venue,e.date,e.time,e.starts_at,e.duration,e.status AS event_status,e.cancellation,o.name AS organizer_name,o.contact AS current_organizer_contact FROM bookings b JOIN events e ON e.id=b.event_id JOIN organizers o ON o.user_id=e.owner_id WHERE b.user_id=? ORDER BY e.starts_at DESC LIMIT 200', uid);
         return { bookings: rows };
     }
     if (m === 'POST' && p[0] === 'bookings' && p[2] === 'cancel') {
-        const booking = await one(db, 'SELECT b.*,e.starts_at,e.owner_id,e.title FROM bookings b JOIN events e ON e.id=b.event_id WHERE b.id=? AND b.user_id=?', p[1], uid);
-        if (!booking)
-            fail(404, 'Booking not found.', 'not_found');
-        if (booking.status === 'cancelled')
-            return { ok: true };
-        if (!['pending','confirmed'].includes(booking.status) || booking.starts_at <= now)
-            fail(409, 'This booking can no longer be cancelled online. Contact the organizer.', 'cancellation_closed');
-        const r = await run(db, "UPDATE bookings SET status='cancelled',cancelled_at=? WHERE id=? AND user_id=? AND status IN ('pending','confirmed')", now, booking.id, uid);
-        if (!r.meta.changes)
+        const booking = await one(db, 'SELECT b.*,e.starts_at,e.owner_id,e.title,o.name AS organizer_name,o.contact AS current_contact FROM bookings b JOIN events e ON e.id=b.event_id JOIN organizers o ON o.user_id=e.owner_id WHERE b.id=? AND b.user_id=?', p[1], uid);
+        if (!booking) fail(404, 'Booking not found.', 'not_found');
+        const paid = Number(booking.amount) > 0;
+        const status = paid ? 'cancellation_pending' : 'cancelled';
+        const contact = booking.organizer_contact || booking.current_contact || '';
+        if (['cancelled','cancellation_pending'].includes(booking.status)) return {ok:true,status:booking.status,organizer:{name:booking.organizer_name,contact}};
+        if (!['pending','confirmed'].includes(booking.status) || booking.starts_at <= now) fail(409, 'This booking can no longer be cancelled online. Contact the organizer.', 'cancellation_closed');
+        const statements = [
+            db.prepare("UPDATE bookings SET status=?,cancelled_at=?,cancellation_requested_at=?,cancellation_resolved_at=? WHERE id=? AND user_id=? AND status IN ('pending','confirmed')").bind(status, paid ? null : now, now, paid ? null : now, booking.id, uid),
+            registrationNotice(db, 'cancel-organizer-' + booking.id, booking.owner_id, booking.event_id,
+                paid ? `${booking.player_name} requested cancellation of ${booking.title} (${booking.amount} INR / ${booking.payment_method}). Refund any payment collected and complete the cancellation on your participants page. If no payment was collected, record that instead.` : `${booking.player_name} cancelled their place in ${booking.title}.`, now, booking.id, status),
+            registrationNotice(db, 'cancel-player-' + booking.id, uid, booking.event_id,
+                paid ? `Cancellation requested for ${booking.title}. Your place is released. Contact ${booking.organizer_name} at ${contact} to arrange any refund. The organizer must complete the cancellation.` : `Your registration for ${booking.title} is cancelled.`, now, booking.id, status)
+        ];
+        const results = await db.batch(statements);
+        if (!results[0].meta.changes) {
+            const current = await one(db, 'SELECT status FROM bookings WHERE id=? AND user_id=?', booking.id, uid);
+            if (['cancelled','cancellation_pending'].includes(current?.status)) return {ok:true,status:current.status,organizer:{name:booking.organizer_name,contact}};
             fail(409, 'This registration changed. Refresh your games.', 'booking_changed');
-        try {
-            await notify(db, booking.owner_id, booking.event_id, `${booking.player_name} cancelled their place in ${booking.title}.`, now).run();
         }
-        catch {
-            console.error('Cancellation notification unavailable');
-        }
-        return { ok: true };
+        return {ok:true,status,organizer:{name:booking.organizer_name,contact}};
     }
     if (m === 'POST' && p[0] === 'saved' && p.length === 2) {
         const e = await one(db, "SELECT id FROM events WHERE id=? AND status='published'", p[1]);

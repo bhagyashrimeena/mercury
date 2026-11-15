@@ -15,7 +15,10 @@ export function restoreBackup(backup, destination) {
     db.exec('BEGIN');
     for(const table of BACKUP_TABLES) {
       const columns=db.prepare(`PRAGMA table_info(${table})`).all().map(c=>c.name);
-      for(const row of backup.tables[table]) {
+      for(const sourceRow of backup.tables[table]) {
+        const row = sourceRow && {...sourceRow};
+        if (row && ['events','bookings'].includes(table)) delete row.level;
+        if (row && table === 'bookings') for (const [key,value] of Object.entries({cancellation_requested_at:null,cancellation_resolved_at:null,refund_resolution:''})) if (!(key in row)) row[key]=value;
         if(!row || Object.keys(row).length!==columns.length || columns.some(c=>!(c in row))) throw Error('Unexpected backup schema for '+table);
         db.prepare(`INSERT INTO ${table}(${columns.join(',')}) VALUES(${columns.map(()=>'?').join(',')})`).run(...columns.map(c=>row[c]));
       }

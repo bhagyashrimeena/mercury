@@ -62,7 +62,7 @@ test('policy round trips preserve review, step and raster QR without sharing dra
   assert.equal(readOrganizerRecovery(memory, key), null);
 });
 
-test('roster search finds name, pass reference and level without querying an API', () => {
+test('roster search finds name and pass reference without querying an API', () => {
   const entries = [
     { id: 'pass-ONE', player_name: 'Aisha Shah', status: 'confirmed', level: 'Beginner' },
     { id: 'pass-TWO', player_name: 'Kabir Mehta', status: 'checked_in', level: 'Intermediate' },
@@ -71,7 +71,7 @@ test('roster search finds name, pass reference and level without querying an API
   assert.equal(filterRosterEntries(entries).length, 3);
   assert.deepEqual(filterRosterEntries(entries, 'aisha').map(e => e.id), ['pass-ONE']);
   assert.deepEqual(filterRosterEntries(entries, 'PASS-two').map(e => e.id), ['pass-TWO']);
-  assert.deepEqual(filterRosterEntries(entries, 'advanced', true).map(e => e.id), ['pass-THREE']);
+  assert.deepEqual(filterRosterEntries(entries, 'Rhea', true).map(e => e.id), ['pass-THREE']);
   assert.deepEqual(filterRosterEntries(entries, '', true).map(e => e.id), ['pass-ONE','pass-THREE']);
   assert.equal(filterRosterEntries(entries, 'not-found').length, 0);
 });

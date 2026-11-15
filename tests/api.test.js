@@ -245,6 +245,15 @@ test('owner backups restore into a new database and refuse overwriting existing 
     const counts=restoreBackup(snapshot.data,file);
     assert.equal(counts.bookings,1); assert.equal(counts.support_requests,1); assert.equal(counts.saved_listings,1);
     const recovered=new DatabaseSync(file); assert.equal(recovered.prepare('SELECT title FROM events').get().title,draft.title);recovered.close();
+    const legacy=structuredClone(snapshot.data);
+    for (const event of legacy.tables.events) event.level='All levels';
+    for (const booking of legacy.tables.bookings) { booking.level='Beginner'; delete booking.cancellation_requested_at; delete booking.cancellation_resolved_at; delete booking.refund_resolution; }
+    const legacyFile=joinPath(dir,'legacy.sqlite');
+    assert.equal(restoreBackup(legacy,legacyFile).bookings,1);
+    const restoredLegacy=new DatabaseSync(legacyFile);
+    assert.equal(restoredLegacy.prepare('SELECT refund_resolution FROM bookings').get().refund_resolution,'');
+    assert.equal(restoredLegacy.prepare('PRAGMA table_info(bookings)').all().some(column=>column.name==='level'),false);
+    restoredLegacy.close();
     assert.throws(()=>restoreBackup(snapshot.data,file),/EEXIST/);
     assert.throws(()=>restoreBackup({...snapshot.data,tables:{}},joinPath(dir,'bad.sqlite')),/complete/);
   }finally{rmSync(dir,{recursive:true,force:true});h.sqlite.close();}
@@ -414,15 +423,16 @@ test('event covers persist separately from payment QR, stay private in drafts, a
   } finally { h.sqlite.close(); }
 });
 
-test('registration accepts no playing level without inventing one and still checks rules', async () => {
+test('registration has no playing level schema and still checks rules', async () => {
   const h = harness();
   try {
     const id = await h.publish();
     const missing = await h.join(id, 1, {level:undefined});
     assert.equal(missing.status, 200);
-    assert.equal(h.sqlite.prepare('SELECT level FROM bookings WHERE id=?').get(missing.data.id).level, '');
+    assert.equal(h.sqlite.prepare('PRAGMA table_info(bookings)').all().some(column => column.name === 'level'), false);
+    assert.equal(h.sqlite.prepare('PRAGMA table_info(events)').all().some(column => column.name === 'level'), false);
     assert.equal((await h.join(id, 2, {level:undefined,rulesAccepted:false})).status, 422);
-    assert.equal((await h.join(id, 2, {level:{}})).status, 422);
+    assert.equal((await h.join(id, 2)).status, 200);
   } finally { h.sqlite.close(); }
 });
 
@@ -438,4 +448,62 @@ test('one wizard request accepts both cover and QR within their individual uploa
     assert.equal(stored.cover_image, image);
     assert.equal(stored.qr_image, image);
   } finally { h.sqlite.close(); }
+});
+
+test('paid cancellations release capacity, retain payment records, notify once and require owner resolution', async () => {
+  const h = harness();
+  try {
+    for (const [index, method] of ['upi','cash'].entries()) {
+      const id = await h.publish({price:250,paymentMethods:[method],qrImage:method === 'upi' ? receipt : ''});
+      const booking = (await h.join(id,1,{...paidEntry(method),idempotencyKey:'paid-cancellation-'+index+'-request-player'})).data;
+      if (method === 'upi') await h.req('organizer/events/'+id+'/review',host,{bookingId:booking.id,decision:'accept'});
+      assert.equal((await h.req('bookings/'+booking.id+'/cancel',player(2),{})).status,404);
+      const result = await h.req('bookings/'+booking.id+'/cancel',player(1),{});
+      assert.equal(result.status,200);
+      assert.equal(result.data.status,'cancellation_pending');
+      assert.equal(result.data.organizer.contact,'host@example.test');
+      const row = h.sqlite.prepare('SELECT * FROM bookings WHERE id=?').get(booking.id);
+      assert.equal(row.cancellation_requested_at,now);
+      assert.equal(row.cancelled_at,null);
+      assert.equal(row.amount,250);
+      assert.equal(row.payment_proof,method === 'upi' ? receipt : '');
+      assert.equal((await h.req('events/'+id)).data.event.spots,2);
+      assert.equal((await h.req('events/'+id)).data.event.cancellationCount,1);
+      const noticeCount = h.sqlite.prepare("SELECT COUNT(*) AS n FROM notifications WHERE id LIKE 'cancel-%'").get().n;
+      assert.equal((await h.req('bookings/'+booking.id+'/cancel',player(1),{})).data.status,'cancellation_pending');
+      assert.equal(h.sqlite.prepare("SELECT COUNT(*) AS n FROM notifications WHERE id LIKE 'cancel-%'").get().n,noticeCount);
+      assert.equal((await h.join(id,1,{...paidEntry(method),idempotencyKey:'new-request-while-cancelling-'+index})).data.error.code,'cancellation_pending');
+      assert.equal((await h.req('organizer/events/'+id+'/review',host,{bookingId:booking.id,decision:'accept'})).status,409);
+      assert.equal((await h.req('organizer/events/'+id+'/check-in',host,{bookingId:booking.id})).status,409);
+      if (method === 'cash') {
+        await h.req('organizer/events/'+id+'/cancel',host,{});
+        assert.equal(h.sqlite.prepare('SELECT status FROM bookings WHERE id=?').get(booking.id).status,'cancellation_pending');
+      }
+      const resolution = {bookingId:booking.id,paymentResolution:method === 'upi' ? 'refunded' : 'not_collected',note:'Payment checked'};
+      assert.equal((await h.req('organizer/events/'+id+'/resolve-cancellation',player(2),resolution)).status,404);
+      assert.equal((await h.req('organizer/events/'+id+'/resolve-cancellation',host,{...resolution,paymentResolution:'unknown'})).status,422);
+      assert.equal((await h.req('organizer/events/'+id+'/resolve-cancellation',host,resolution)).status,200);
+      assert.equal((await h.req('organizer/events/'+id+'/resolve-cancellation',host,resolution)).status,200);
+      const history=(await h.req('bookings',player(1))).data.bookings.find(entry=>entry.id===booking.id);
+      assert.equal(history.status,'cancelled');
+      assert.equal(history.cancellation_resolved_at,now);
+      assert.equal(history.refund_resolution,resolution.paymentResolution);
+      assert.equal(history.organizer_name,'Weekend Club');
+      assert.ok((await h.req('session',host)).data.notifications.some(entry=>entry.message.includes('Refund any payment collected')));
+      assert.equal(h.sqlite.prepare('SELECT COUNT(*) AS n FROM notifications WHERE id=?').get('cancel-resolved-'+booking.id).n,1);
+    }
+  } finally {h.sqlite.close();}
+});
+
+test('cancellation state rolls back when its required notification cannot be recorded', async () => {
+  const h=harness();
+  try {
+    const id=await h.publish({price:250,paymentMethods:['cash']});
+    const booking=(await h.join(id,1,paidEntry('cash'))).data;
+    h.sqlite.exec("CREATE TRIGGER reject_cancel_notification BEFORE INSERT ON notifications WHEN NEW.id LIKE 'cancel-%' BEGIN SELECT RAISE(ABORT, 'notification unavailable'); END");
+    assert.equal((await h.req('bookings/'+booking.id+'/cancel',player(1),{})).status,500);
+    assert.equal(h.sqlite.prepare('SELECT status FROM bookings WHERE id=?').get(booking.id).status,'pending');
+    h.sqlite.exec('DROP TRIGGER reject_cancel_notification');
+    assert.equal((await h.req('bookings/'+booking.id+'/cancel',player(1),{})).data.status,'cancellation_pending');
+  } finally {h.sqlite.close();}
 });

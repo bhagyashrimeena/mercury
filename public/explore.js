@@ -4,7 +4,7 @@ import { trackMetric } from './metrics.js';
 import { arenaIntroMarkup, waveRibbonMarkup } from './kinetic-art.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-const defaults = { query: '', sport: 'All sports', when: 'Any date', area: 'All Mumbai', type: 'All formats', source: 'All listings', level: 'Any level', availability: 'All upcoming', fee: 'Any fee', sort: 'Soonest first', from: '', to: '' };
+const defaults = { query: '', sport: 'All sports', when: 'Any date', area: 'All Mumbai', type: 'All formats', source: 'All listings', availability: 'All upcoming', fee: 'Any fee', sort: 'Soonest first', from: '', to: '' };
 const blocked = new Set(['closed', 'started', 'ended', 'withdrawn', 'stale']);
 const addDays = (day, count) => new Date(Date.parse(day + 'T00:00:00Z') + count * 86400000).toISOString().slice(0, 10);
 
@@ -44,7 +44,6 @@ export function filterLineup(items, filters, now = Date.now()) {
       && (!filters.area || filters.area === 'All Mumbai' || event.area === filters.area)
       && (!filters.type || filters.type === 'All formats' || event.type === filters.type)
       && (!filters.source || filters.source === 'All listings' || (filters.source === 'External listings' ? event.external : !event.external))
-      && (!filters.level || filters.level === 'Any level' || event.level === filters.level)
       && (filters.solo !== '1' || (!event.external && event.solo))
       && (filters.fee !== 'Free' || (!event.external && Number(event.price) === 0))
       && (filters.fee !== 'Under ₹1,000' || (event.external
@@ -123,7 +122,6 @@ export function renderExplore({ main, events, listings, gameCard }) {
     ['area', 'Area', ['All Mumbai', ...new Set(items.map(event => event.area).filter(area => area && !/confirm/i.test(area)).sort())]],
     ['type', 'Format', ['All formats', ...new Set(items.map(event => event.type).filter(Boolean).sort())]],
     ['source', 'Booking route', ['All listings', 'External listings', 'Book on Mercury']],
-    ['level', 'Playing level', ['Any level', ...new Set(items.map(event => event.level).filter(Boolean).sort())]],
     ['availability', 'Entry status', ['Entry possible', 'All upcoming', 'Closed or full', 'Needs source check']],
     ['fee', 'Listed entry fee', ['Any fee', 'Free', 'Under ₹1,000']]
   ];
