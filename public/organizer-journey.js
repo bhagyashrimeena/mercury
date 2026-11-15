@@ -139,7 +139,7 @@ export function mountOrganizerJourney(form, {
       ['When', values.date ? values.date + ' · ' + (values.time || 'time not chosen') + ' IST' : 'Date not chosen'],
       ['Where', [values.venue, values.area].filter(Boolean).join(' · ')],
       ['Players', (values.capacity || '?') + ' places · ' + (values.level || 'All levels')],
-      ['Entry', Number(values.price) === 0 ? 'Free — eligible to publish' : '₹' + (values.price || '?') + ' per player — draft only']
+      ['Entry', Number(values.price) === 0 ? 'Free — eligible to publish' : '₹' + (values.price || '?') + ' per player / organizer review']
     ];
     review.innerHTML = '<p class="eyebrow blue">YOUR GAME AT A GLANCE</p>' +
       facts.map(([label, value]) =>

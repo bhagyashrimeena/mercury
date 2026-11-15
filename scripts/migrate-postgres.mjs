@@ -28,6 +28,20 @@ try {
     }
     console.log(`Applied ${file} (${statements.length} statements).`);
   }
+  await client.query('CREATE TABLE IF NOT EXISTS mercury_migrations (name text PRIMARY KEY)');
+  await client.query('ALTER TABLE mercury_migrations ENABLE ROW LEVEL SECURITY');
+  const name = '20261115000000_direct_payments.sql';
+  await client.query('BEGIN');
+  try {
+    await client.query("SELECT pg_advisory_xact_lock(15000000)");
+    if (!(await client.query('SELECT 1 FROM mercury_migrations WHERE name=$1', [name])).rowCount) {
+      const applied = await client.query("SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='bookings' AND column_name='payment_consent_version'");
+      if (!applied.rowCount) await client.query(await readFile(new URL('../supabase/migrations/' + name, import.meta.url), 'utf8'));
+      await client.query('INSERT INTO mercury_migrations(name) VALUES($1)', [name]);
+      console.log('Applied ' + name);
+    }
+    await client.query('COMMIT');
+  } catch (error) { await client.query('ROLLBACK'); throw error; }
 } finally {
   await client.end();
 }

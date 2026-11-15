@@ -123,3 +123,12 @@ test('pass actions copy references, recover from clipboard denial and download a
     URL.createObjectURL = oldCreate; URL.revokeObjectURL = oldRevoke;
   }
 });
+
+test('pending and rejected paid registrations cannot create a valid entry pass or calendar', () => {
+ for (const status of ['pending','rejected']) {
+ const paid={...booking,status,amount:450,payment_method:'upi',organizer_contact:'refund@example.test',review_note:'Contact us for refund'};
+ const state=passState(paid); assert.equal(state.active,false); assert.equal(state.canPlan,false);
+ const html=bookingPassMarkup(paid); assert.match(html,/refund@example.test/); assert.match(html,/450/); assert.match(html,/Not valid for entry/);
+ assert.throws(()=>bookingCalendar(paid,'https://mercury.test'));
+ }
+});

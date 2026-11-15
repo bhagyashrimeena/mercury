@@ -12,12 +12,12 @@ const event = {
   image: 'badminton.jpg',
 };
 
-test('native detail offers booking only for open free events', () => {
+test('native detail offers registration for open free and paid events', () => {
   const now = Date.parse('2026-11-05T12:00:00+05:30');
   assert.equal(eventState(event, now).canBook, true);
   assert.equal(eventState({ ...event, spots: 0 }, now).code, 'full');
   assert.equal(eventState({ ...event, status: 'cancelled' }, now).code, 'cancelled');
-  assert.equal(eventState({ ...event, price: 500 }, now).canBook, false);
+  assert.equal(eventState({ ...event, price: 500 }, now).canBook, true);
   assert.equal(eventState(event, event.startsAt).code, 'past');
 });
 

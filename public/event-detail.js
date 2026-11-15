@@ -9,7 +9,7 @@ export function eventState(event, now = Date.now()) {
   if (event.status === 'cancelled') return { code: 'cancelled', label: 'Cancelled by the organizer. Existing bookings are updated in My games.', canBook: false };
   if (Number(event.startsAt) <= now) return { code: 'past', label: 'This game has started. Entry is closed.', canBook: false };
   if (Number(event.spots) <= 0) return { code: 'full', label: 'This game is full.', canBook: false };
-  return { code: 'published', label: `${event.spots} of ${event.capacity} free places left`, canBook: event.status === 'published' && Number(event.price) === 0 };
+  return { code: 'published', label: `${event.spots} of ${event.capacity} places left`, canBook: event.status === 'published' };
 }
 
 export function eventDetailMarkup(event, { saved = false, preview = false, policy = '' } = {}) {
@@ -18,7 +18,7 @@ export function eventDetailMarkup(event, { saved = false, preview = false, polic
   const fee = Number(event.price) ? `&#8377;${Number(event.price).toLocaleString('en-IN')} <span>/ player</span>` : 'Free <span>/ player</span>';
   const bookingAction = preview
     ? '<button class="button outline" type="button" disabled>Booking unavailable in preview</button>'
-    : state.canBook ? link('Book free place on Mercury', '/register/' + event.id)
+    : state.canBook ? link(Number(event.price) ? 'Register for organizer review' : 'Book free place on Mercury', '/register/' + event.id)
     : link('Explore other games', '/explore', 'outline');
   const included = Array.isArray(event.included) ? event.included : String(event.included || '').split('\n').filter(Boolean);
   return `${preview ? '<div class="inline-notice"><b>Private preview.</b> These details are not saved or published. Booking controls are disabled.</div>' : ''}
@@ -42,7 +42,7 @@ export function eventDetailMarkup(event, { saved = false, preview = false, polic
       <p class="fine">The artwork is illustrative. Confirm the address above with your host.</p>
     </article><aside class="booking-panel">
       <p class="eyebrow blue">MAKE IT A PLAN</p><div class="price">${fee}</div>
-      <p class="muted">${Number(event.price) ? 'Paid booking on Mercury is unavailable' : 'No payment required'}</p>
+      <p class="muted">${Number(event.price) ? 'Pay organizer directly / approval required' : 'No payment required'}</p>
       <div class="booking-summary"><span>${dateLabel(event)}</span><b>${timeLabel(event)} IST</b><span>Entry</span><b>1 player &middot; 18+</b></div>
       <p class="spots">${esc(state.label)}</p>${bookingAction}
       ${preview ? '' : `<button class="button outline" id="live-save" ${saved === undefined ? '' : `aria-pressed="${!!saved}"`}>${saved ? '&#9829; Saved' : '&#9825; Save for later'}</button><button class="button outline" id="live-share">Share game &#8599;</button><p class="fine">A confirmed registration appears in My games.</p>`}

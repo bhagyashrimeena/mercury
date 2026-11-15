@@ -13,7 +13,7 @@ const ALL_METRICS = new Set([
 export async function recordMetric(db, metric, now = Date.now()) {
   if (!db || !ALL_METRICS.has(metric)) return false;
   try {
-    await db.prepare('INSERT INTO site_metrics(day,metric,count) VALUES(?,?,1) ON CONFLICT(day,metric) DO UPDATE SET count=count+1')
+    await db.prepare('INSERT INTO site_metrics(day,metric,count) VALUES(?,?,1) ON CONFLICT(day,metric) DO UPDATE SET count=site_metrics.count+1')
       .bind(indiaDay(now), metric).run();
     return true;
   } catch (error) {

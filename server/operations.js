@@ -12,7 +12,7 @@ async function digest(value) { return [...new Uint8Array(await crypto.subtle.dig
 export async function consumeLimit(db, key, limit, now, fail) {
   const hour = Math.floor(now / 3600000);
   const bucket = await digest(key + ':' + hour);
-  const result = await run(db, 'INSERT INTO request_limits(bucket,count,expires_at) VALUES(?,1,?) ON CONFLICT(bucket) DO UPDATE SET count=count+1 WHERE count<?', bucket, (hour + 2) * 3600000, limit);
+  const result = await run(db, 'INSERT INTO request_limits(bucket,count,expires_at) VALUES(?,1,?) ON CONFLICT(bucket) DO UPDATE SET count=request_limits.count+1 WHERE request_limits.count<?', bucket, (hour + 2) * 3600000, limit);
   if (!result.meta.changes) fail(429, 'Too many requests. Please try again later.', 'rate_limited');
   await run(db, 'DELETE FROM request_limits WHERE expires_at<?', now);
 }
@@ -44,6 +44,8 @@ export async function operations({ db, user, now, path: p, method: m, body: b, r
   }
   if (route === 'account/export' && m === 'GET') {
     if (!uid || !user.email) fail(401, 'Sign in to continue.', 'sign_in_required');
+    const images = await one(db, 'SELECT (SELECT COALESCE(SUM(length(qr_image)),0) FROM events WHERE owner_id=?) + (SELECT COALESCE(SUM(length(payment_proof)),0) FROM bookings WHERE user_id=?) AS count', uid, uid);
+    if (Number(images.count) > 8 * 1024 * 1024) fail(413, 'Your export includes a large number of payment images. Send a privacy request so support can arrange your export.', 'export_too_large');
     const tables = [['profile','users','id'],['consent','account_consents','user_id'],['organizer','organizers','user_id'],['events','events','owner_id'],['bookings','bookings','user_id'],['savedEvents','saved_events','user_id'],['savedListings','saved_listings','user_id'],['corrections','listing_reports','user_id'],['notifications','notifications','user_id'],['support','support_requests','user_id']];
     const data = {};
     // Table and column identifiers are constants, never caller input.

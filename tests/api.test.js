@@ -255,3 +255,57 @@ test('game pass includes the event duration without exposing request keys or acc
     assert.equal(data.bookings[0].idempotency_key, undefined);
   } finally { h.sqlite.close(); }
 });
+
+const paymentTerms = '2026-11-15-direct-payments';
+const receipt = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1cAAAAASUVORK5CYII=';
+const paidEntry = (method = 'upi') => ({paymentMethod:method,paymentProof:method === 'upi' ? receipt : '',paymentConsentVersion:paymentTerms});
+test('paid UPI and cash registrations reserve capacity, require review, and isolate proofs', async () => {
+ const h=harness(); try {
+ const id=await h.publish({price:450,paymentMethods:['upi','cash'],qrImage:receipt});
+ assert.equal((await h.join(id,1)).status,422);
+ assert.equal((await h.join(id,1,{...paidEntry(),paymentProof:''})).status,422);
+ assert.equal((await h.join(id,1,{...paidEntry(),paymentProof:'data:image/svg+xml;base64,PHN2Zz4='})).status,422);
+ const advertised=(await h.req('events/'+id,null)).data.event; assert.deepEqual(advertised.paymentMethods,['upi','cash']); assert.equal(advertised.qrImage,'/api/events/'+id+'/qr');
+ const a=await h.join(id,1,paidEntry()); const b=await h.join(id,2,paidEntry('cash'));
+ assert.equal(a.status,200); assert.equal(a.data.status,'pending'); assert.equal(b.status,200);
+ assert.equal((await h.join(id,3,paidEntry())).status,409);
+ assert.equal((await h.join(id,1,paidEntry())).data.id,a.data.id);
+ const bookings=(await h.req('bookings',player(1))).data.bookings;
+ assert.equal(bookings[0].status,'pending'); assert.equal(bookings[0].payment_proof,undefined); assert.equal(bookings[0].amount,450);
+ const getImage=async (path,user) => apiHandler(new Request('https://mercury.test/api/'+path),h.db,user,{now});
+ assert.equal((await getImage('bookings/'+a.data.id+'/proof',null)).status,401);
+ await h.req('session',player(3));
+ assert.equal((await getImage('bookings/'+a.data.id+'/proof',player(3))).status,404);
+ const image=await getImage('bookings/'+a.data.id+'/proof',host); assert.equal(image.status,200); assert.equal(image.headers.get('content-type'),'image/png'); assert.match(image.headers.get('cache-control'),/no-store/);
+ assert.equal((await getImage('events/'+id+'/qr',player(1))).status,200);
+ assert.equal((await h.req('organizer/events/'+id+'/check-in',host,{bookingId:a.data.id})).status,409);
+ assert.equal((await h.req('organizer/events/'+id+'/review',player(1),{bookingId:a.data.id,decision:'accept'})).status,404);
+ assert.equal((await h.req('organizer/events/'+id+'/review',host,{bookingId:a.data.id,decision:'accept'})).status,200);
+ assert.equal((await h.req('organizer/events/'+id+'/review',host,{bookingId:a.data.id,decision:'accept'})).status,200);
+ assert.equal((await h.req('organizer/events/'+id+'/review',host,{bookingId:a.data.id,decision:'reject'})).status,409);
+ assert.equal((await h.req('organizer/events/'+id+'/review',host,{bookingId:b.data.id,decision:'reject',note:'Please contact us for refund help.'})).status,200);
+ const rejected=(await h.req('bookings',player(2))).data.bookings[0]; assert.equal(rejected.status,'rejected'); assert.equal(rejected.organizer_contact,'host@example.test'); assert.match(rejected.review_note,/refund/);
+ assert.equal((await h.join(id,3,paidEntry('cash'))).status,200);
+ assert.equal((await h.req('events/'+id)).data.event.spots,0);
+ assert.equal((await h.req('organizer/events/'+id,host,{...draft,price:500,revision:1},'PATCH')).status,409);
+ await h.req('organizer/events/'+id+'/cancel',host,{});
+ assert.equal((await h.req('bookings',player(3))).data.bookings[0].status,'event_cancelled');
+ assert.equal((await h.req('organizer/events/'+id+'/review',host,{bookingId:a.data.id,decision:'accept'})).status,409);
+ } finally {h.sqlite.close();}
+});
+test('paid publication requires contact and payment setup; pending cancellation cannot be accepted',async()=>{
+ const h=harness();try {
+ const id=await h.publish({price:300,paymentMethods:['cash']});
+ assert.equal((await h.req('organizer/profile',host,{name:'Weekend Club',contact:''})).status,422);
+ const b=await h.join(id,1,paidEntry('cash'));
+ assert.equal((await h.req('bookings/'+b.data.id+'/cancel',player(1),{})).status,200);
+ assert.equal((await h.req('organizer/events/'+id+'/review',host,{bookingId:b.data.id,decision:'accept'})).status,409);
+ assert.equal((await h.req('events/'+id)).data.event.spots,2);
+ const upi=await h.create({price:100,paymentMethods:['upi']});
+ assert.equal((await h.req('organizer/events/'+upi+'/publish',host,{})).status,409);
+ const cash=await h.create({price:100,paymentMethods:['cash']});
+ await h.req('organizer/events/'+id+'/cancel',host,{});
+ await h.req('organizer/profile',host,{name:'Weekend Club',contact:''});
+ assert.equal((await h.req('organizer/events/'+cash+'/publish',host,{})).status,422);
+ }finally{h.sqlite.close();}
+});

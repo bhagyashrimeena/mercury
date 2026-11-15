@@ -9,6 +9,7 @@ test('Supabase schema applies on PostgreSQL and preserves booking constraints', 
     const migration = await readFile(new URL('../supabase/migrations/20261102_initial.sql', import.meta.url), 'utf8');
     await db.exec(migration);
     await db.exec(await readFile(new URL('../supabase/migrations/20261105132850_site_metrics.sql', import.meta.url), 'utf8'));
+    await db.exec(await readFile(new URL('../supabase/migrations/20261115000000_direct_payments.sql', import.meta.url), 'utf8'));
     const { rows: tables } = await db.query("SELECT tablename FROM pg_tables WHERE schemaname='public'");
     assert.equal(tables.length, 14);
     await db.query("INSERT INTO site_metrics(day,metric,count) VALUES('2026-11-05','home_view',1) ON CONFLICT(day,metric) DO UPDATE SET count=site_metrics.count+1");
@@ -26,6 +27,9 @@ test('Supabase schema applies on PostgreSQL and preserves booking constraints', 
       ['booking-1', 'player-1', 'event-1', 'key-1', 'Player One', 'Beginner', 1, Date.now(), Date.now()]);
     await assert.rejects(db.query('INSERT INTO bookings(id,user_id,event_id,idempotency_key,player_name,level,rules_revision,consent_at,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',
       ['booking-2', 'player-1', 'event-1', 'key-2', 'Player One', 'Beginner', 1, Date.now(), Date.now()]));
+    await db.query("UPDATE bookings SET status='pending',payment_method='cash',amount=100 WHERE id='booking-1'");
+    await assert.rejects(db.query("INSERT INTO bookings(id,user_id,event_id,idempotency_key,player_name,level,rules_revision,consent_at,created_at,status) VALUES('duplicate','player-1','event-1','another-key','Player One','Beginner',1,1,1,'pending')"));
+    await db.query("UPDATE bookings SET status='rejected' WHERE id='booking-1'");
     const { rows: indexes } = await db.query("SELECT indexname FROM pg_indexes WHERE schemaname='public' AND tablename='bookings'");
     assert.ok(indexes.some(row => row.indexname === 'booking_active_unique'));
   } finally {
