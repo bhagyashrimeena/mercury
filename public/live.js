@@ -11,8 +11,9 @@ import { trackMetric } from './metrics.js';
 import { bookingPassMarkup, bindPassActions, passState } from './game-day.js';
 import { savedGamesLoader } from './my-games.js';
 import { mountOrganizerJourney, mountRosterSearch } from './organizer-journey.js';
-let ctx, session, turn = 0;
-// Only public event responses may be reused; never cache sessions or private bookings.
+let ctx, session = null, turn = 0;
+let sessionReady = false, sessionPromise = null, sessionGeneration = 0;
+// Public inventory and UI session state live only in this tab; private data is fetched per view.
 let publicLineupCache = null;
 const PUBLIC_CACHE_MS = 30_000;
 const policy = 'Cancel your free place from My games any time before the event starts. If the organizer cancels, your registration is cancelled automatically. No payment is collected.';
@@ -56,12 +57,81 @@ async function api(path, body, method = body ? 'POST' : 'GET') {
     }
     const result = await res.json().catch(() => ({ error: { message: 'Mercury could not load this page. Try again.' } }));
     assertCurrent();
-    if (!res.ok)
+    if (!res.ok) {
+        if (res.status === 401 || res.status === 403) invalidateSession();
         throw Object.assign(Error(result.error?.message || 'Please try again.'), { status: res.status, fields: result.error?.fields });
+    }
     return result;
 }
-async function loadSession() { session = await api('session'); const a = document.querySelector('#account-link'); if (a)
-    a.textContent = session.user ? 'Account' : 'Sign in'; return session; }
+function updateAccountLink() {
+    const a = document.querySelector('#account-link');
+    if (a) a.textContent = session?.user ? 'Account' : 'Sign in';
+}
+function invalidateSession() {
+    session = null;
+    sessionReady = false;
+    sessionPromise = null;
+    sessionGeneration++;
+    updateAccountLink();
+}
+function loadSession({ refresh = false } = {}) {
+    if (refresh) { sessionReady = false; sessionPromise = null; sessionGeneration++; }
+    if (sessionReady) return Promise.resolve(session);
+    if (sessionPromise) return sessionPromise;
+    const generation = sessionGeneration;
+    const request = (async () => {
+        let response;
+        try { response = await fetch('/api/session', { credentials: 'same-origin' }); }
+        catch { throw Error('You seem to be offline. Check your connection and try again.'); }
+        const data = await response.json().catch(() => ({ error: { message: 'Mercury could not load your account. Try again.' } }));
+        if (!response.ok) {
+            if (generation === sessionGeneration && (response.status === 401 || response.status === 403)) invalidateSession();
+            throw Object.assign(Error(data.error?.message || 'Please try again.'), { status: response.status });
+        }
+        if (generation === sessionGeneration) {
+            session = data;
+            sessionReady = true;
+            updateAccountLink();
+        }
+        return data;
+    })();
+    sessionPromise = request;
+    void request.finally(() => { if (sessionPromise === request) sessionPromise = null; }).catch(() => {});
+    return request;
+}
+function hydratePublicSession(route, id, sequence) {
+    void loadSession().then(() => {
+        if (sequence !== turn) return;
+        if (route === 'event') {
+            const button = document.querySelector('#live-save');
+            if (button) {
+                const saved = !!session?.saved?.includes(id);
+                button.setAttribute('aria-pressed', String(saved));
+                button.textContent = saved ? '\u2665 Saved' : '\u2661 Save for later';
+            }
+        } else if (route === 'listing') {
+            const button = document.querySelector('#save-listing');
+            if (button) {
+                const saved = !!session?.savedListings?.includes(id);
+                button.setAttribute('aria-pressed', String(saved));
+                button.textContent = saved ? '\u2665 Saved' : '\u2661 Save for later';
+            }
+        } else if (route === 'support') {
+            const form = document.querySelector('#support-form');
+            for (const field of ['name', 'email']) {
+                const input = form?.elements?.namedItem(field);
+                if (input && !input.value && session?.user?.[field]) input.value = session.user[field];
+            }
+        }
+    }).catch(() => {});
+}
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && sessionReady) {
+        void loadSession({ refresh: true }).catch(() => {});
+        const [, route, id] = location.pathname.split('/');
+        hydratePublicSession(route, id, turn);
+    }
+});
 function requireUser() {
     if (session?.user && session.consentAccepted) return true;
     const account = '/account?return_to=' + encodeURIComponent(location.pathname + location.search);
@@ -181,15 +251,23 @@ async function detail(id) {
     const state = eventState(e);
     page(eventDetailMarkup(e, { saved: session?.saved?.includes(id), policy }));
     action('#live-save', async () => {
-        if (!session?.user || !session.consentAccepted) {
+        if (!sessionReady) await loadSession().catch(() => {});
+        if (sessionReady && (!session?.user || !session.consentAccepted)) {
             ctx.go('/account?return_to=' + encodeURIComponent(location.pathname + location.search));
             return;
         }
-        const saved = !session.saved.includes(id);
-        await api('saved/' + id, { saved });
-        await loadSession();
-        document.querySelector('#live-save').textContent = saved ? '\u2665 Saved' : '\u2661 Save for later';
-        ctx.toast(saved ? 'Saved to your account.' : 'Removed from saved games.');
+        try {
+            const button = document.querySelector('#live-save');
+            const saved = button.getAttribute('aria-pressed') !== 'true';
+            await api('saved/' + id, { saved });
+            button.setAttribute('aria-pressed', String(saved));
+            button.textContent = saved ? '\u2665 Saved' : '\u2661 Save for later';
+            await loadSession({ refresh: true }).catch(() => {});
+            ctx.toast(saved ? 'Saved to your account.' : 'Removed from saved games.');
+        } catch (error) {
+            if (error.status === 401 || error.status === 403) ctx.go('/account?return_to=' + encodeURIComponent(location.pathname + location.search));
+            else ctx.toast(error.message);
+        }
     });
     action('#live-share', async () => {
         ctx.openSheet('Bring your people.', `<label class="share-label">Game link<input readonly value="${esc(location.origin + '/event/' + id)}" onclick="this.select()"></label><p class="fine">Mercury is currently a private pilot. Only people with site access can open this link.</p>`);
@@ -203,7 +281,7 @@ async function detail(id) {
 }
 async function register(id) { if (!requireUser())
     return; const { event: e } = await api('events/' + id); if (e.status !== 'published' || e.startsAt <= Date.now() || !e.spots)
-    return detail(id); document.title = `Book free place — ${e.title} — Mercury`; page(`<a class="back" href="/event/${id}">← Back to the game</a>${heading('YOUR NEXT GAME STARTS HERE', 'Make it a <em>plan.</em>', 'One free place. A real plan to play.')}<div class="checkout-layout"><form class="form-card" id="live-registration"><div class="step-label"><span>01</span> Player details</div><label>Your name<input name="name" autocomplete="name" value="${esc(session.user.name === 'Player' ? '' : session.user.name)}" minlength="2" maxlength="80" required></label><label>Playing level<select name="level" required><option value="">Choose your level</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></label><label class="checkbox"><input type="checkbox" name="adult" required><span>I am 18 or older.</span></label><label class="checkbox"><input type="checkbox" name="rules" required><span>I have read the <a class="text-link" href="/event/${id}" target="_blank">event details and rules</a>, including the cancellation policy.</span></label>${notice('Your name and playing level are shared with this organizer for attendance. Your email is not included in the attendee list.')}<p class="fine">${policy}</p>${err}<button type="submit" class="button primary">Confirm my free place ↗</button></form><aside class="order-card"><img src="/assets/mercury-motion.svg" alt="" aria-hidden="true" width="640" height="400"><p class="eyebrow blue">YOUR GAME</p><h2>${esc(e.title)}</h2><p>${dateLabel(e)} · ${timeLabel(e)} IST</p><p>${esc(e.venue)}</p><hr><div class="total"><span>Total</span><b>₹0</b></div><p class="fine">Confirmation is saved to your account. Updates appear in My games; email and SMS are not sent.</p></aside></div>`); const key = newId(); formSubmit('#live-registration', async (d) => { const result = await api('events/' + id + '/register', { name: d.name, level: d.level, adultConfirmed: d.adult === 'on', rulesAccepted: d.rules === 'on', revision: e.revision, idempotencyKey: key }); ctx.toast(result.existing ? 'You already have a place in this game.' : 'You’re in. See you on court!'); ctx.go('/booking/' + result.id); }); }
+    return detail(id); document.title = `Book free place — ${e.title} — Mercury`; page(`<a class="back" href="/event/${id}">← Back to the game</a>${heading('YOUR NEXT GAME STARTS HERE', 'Make it a <em>plan.</em>', 'One free place. A real plan to play.')}<div class="checkout-layout"><form class="form-card" id="live-registration"><div class="step-label"><span>01</span> Player details</div><label>Your name<input name="name" autocomplete="name" value="${esc(session.user.name === 'Player' ? '' : session.user.name)}" minlength="2" maxlength="80" required></label><label>Playing level<select name="level" required><option value="">Choose your level</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></label><label class="checkbox"><input type="checkbox" name="adult" required><span>I am 18 or older.</span></label><label class="checkbox"><input type="checkbox" name="rules" required><span>I have read the <a class="text-link" href="/event/${id}" target="_blank">event details and rules</a>, including the cancellation policy.</span></label>${notice('Your name and playing level are shared with this organizer for attendance. Your email is not included in the attendee list.')}<p class="fine">${policy}</p>${err}<button type="submit" class="button primary">Confirm my free place ↗</button></form><aside class="order-card"><img src="/assets/mercury-motion.svg" alt="" aria-hidden="true" width="640" height="400"><p class="eyebrow blue">YOUR GAME</p><h2>${esc(e.title)}</h2><p>${dateLabel(e)} · ${timeLabel(e)} IST</p><p>${esc(e.venue)}</p><hr><div class="total"><span>Total</span><b>₹0</b></div><p class="fine">Confirmation is saved to your account. Updates appear in My games; email and SMS are not sent.</p></aside></div>`); const key = newId(); formSubmit('#live-registration', async (d) => { const result = await api('events/' + id + '/register', { name: d.name, level: d.level, adultConfirmed: d.adult === 'on', rulesAccepted: d.rules === 'on', revision: e.revision, idempotencyKey: key }); await loadSession({ refresh: true }).catch(() => {}); ctx.toast(result.existing ? 'You already have a place in this game.' : 'You’re in. See you on court!'); ctx.go('/booking/' + result.id); }); }
 async function myGames(bookingId) {
     if (!requireUser())
         return;
@@ -220,7 +298,7 @@ async function myGames(bookingId) {
         if (passState(b).canCancel) {
             action('#cancel-pass', () => confirmAction('Cancel your place?', 'Your place will become available to another player. No fee is charged.', 'Cancel my place', async () => {
                 await api('bookings/' + b.id + '/cancel', {});
-                await loadSession();
+                await loadSession({ refresh: true });
                 await myGames(bookingId);
                 ctx.toast('Your place was cancelled.');
             }));
@@ -234,8 +312,8 @@ async function myGames(bookingId) {
     const cancelled = bookings.filter(b => !ongoing(b));
     const bookingCard = b => `<article class="manage-card">${bookingStamp(b.status)}<h3>${esc(b.title)}</h3><p>${dateLabel(b)} · ${timeLabel(b)} IST</p><p class="muted">${esc(b.venue)}</p><div class="action-row">${btn('View pass', '/booking/' + b.id, 'outline')}${b.status === 'confirmed' && b.starts_at > Date.now() ? `<button class="text-link danger" data-cancel-booking="${b.id}">Cancel my place</button>` : ''}</div></article>`;
     page(heading('YOUR TIME TO PLAY', 'My <em>games.</em>', 'Confirmed places, bookmarks and updates in one place.') + `<div class="account-toolbar"><a class="text-link" href="/account">Your account ↗</a></div><h2>Confirmed Mercury registrations</h2><div class="manage-grid">${active.length ? active.map(bookingCard).join('') : completed.length || cancelled.length ? '<p class="muted">No upcoming confirmed games. Your earlier registrations are below.</p>' : empty('Make room for your next game.', 'Find a session and your confirmed place will appear here.', btn('Find a game', '/explore'))}</div>${completed.length ? `<details ${active.length ? '' : 'open'}><summary>Started or past Mercury games (${completed.length})</summary><div class="manage-grid">${completed.map(bookingCard).join('')}</div></details>` : ''}${cancelled.length ? `<details ${active.length || completed.length ? '' : 'open'}><summary>Cancelled registrations (${cancelled.length})</summary><div class="manage-grid">${cancelled.map(bookingCard).join('')}</div></details>` : ''}<h2 class="section-space" id="saved-mercury-heading">Saved Mercury games</h2><div class="event-grid" id="saved-mercury-games" role="group" aria-labelledby="saved-mercury-heading" aria-live="polite" tabindex="-1"></div><h2 class="section-space" id="saved-listings-heading">Saved external listings</h2><p class="fine">These are bookmarks, not registrations. Get confirmation and tickets from the organizer.</p><div class="event-grid" id="saved-external-listings" role="group" aria-labelledby="saved-listings-heading" aria-live="polite" tabindex="-1"></div><div class="section-heading section-space"><h2>Your updates</h2><button class="text-link" id="read-updates">Mark all read ✓</button></div><p class="fine">Updates appear here. Email and SMS notifications are not active.</p><div class="updates">${session.notifications.map(n => `<article class="update ${n.read_at ? '' : 'unread'}"><p>${esc(n.message)}</p><small>${new Date(n.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</small> <a href="/event/${n.event_id}" class="text-link">View game ↗</a></article>`).join('') || '<p class="muted">You’re all caught up.</p>'}</div>`);
-    action('[data-cancel-booking]', async (b) => { confirmAction('Cancel your place?', 'Your place will become available to another player. No fee is charged.', 'Cancel my place', async () => { await api('bookings/' + b.dataset.cancelBooking + '/cancel', {}); await loadSession(); await myGames(); ctx.toast('Your place was cancelled.'); }); });
-    action('#read-updates', async () => { await api('notifications/read', {}); await loadSession(); await myGames(); });
+    action('[data-cancel-booking]', async (b) => { confirmAction('Cancel your place?', 'Your place will become available to another player. No fee is charged.', 'Cancel my place', async () => { await api('bookings/' + b.dataset.cancelBooking + '/cancel', {}); await loadSession({ refresh: true }); await myGames(); ctx.toast('Your place was cancelled.'); }); });
+    action('#read-updates', async () => { await api('notifications/read', {}); await loadSession({ refresh: true }); await myGames(); });
     // Render registrations and updates first. Each bookmark section loads and
     // retries independently, so slow or failed discovery cannot hide a pass.
     const saved = new Set(session.saved);
@@ -325,7 +403,7 @@ async function host(editId) {
     const org = session.organizer;
     const d = edit?.draft || { sport: 'Badminton', area: 'Powai', level: 'All levels', format: 'Social play', capacity: 12, price: 0, cancellation: policy };
     page(heading('FOR THE GAME-MAKERS', 'Bring people<br>into <em>play.</em>', 'Your organizer studio. Draft a session, publish it, welcome your players.') + notice('Private pilot · Publish free events now. Paid events can be saved as drafts, but paid registration is not enabled.') + `<div class="studio-layout"><section><details class="profile-details" ${org ? '' : 'open'}><summary>${org ? 'Organizer profile · ' + esc(org.name) : '01 / Set up your organizer profile'}</summary><form class="form-card" id="organizer-profile">${input('name', 'Club or organizer name', org?.name || '', 'minlength="3" maxlength="80" required')}${textarea('bio', 'About your community', org?.bio || '', 0, 500)}${input('contact', 'Public contact email (optional)', org?.contact || '', 'type="email" maxlength="150"')}<p class="fine">Your name, bio and contact email appear on your events. Your account email stays private.</p>${err}<button class="button primary" type="submit">Save organizer profile ↗</button></form></details>${org ? `<form class="form-card" id="event-form"><div class="section-heading"><h2>${edit ? 'Edit your event' : 'Create your next game'}</h2>${edit ? '<a class="text-link" href="/host">New event ↗</a>' : ''}</div>${edit && edit.registered ? notice('Players have registered. Event details are locked to protect their confirmed plans. If the time or venue changes, cancel the event and contact players directly; Mercury updates are in-app only.') : ''}<fieldset ${edit && (edit.registered || edit.status === 'cancelled') ? 'disabled' : ''}><section class="editor-section"><h3>1. Basics</h3><div class="form-grid">${input('title', 'Event name', d.title || '', 'required minlength="4" maxlength="100"')}${select('sport', 'Sport', ['Badminton', 'Tennis', 'Pickleball'], d.sport)}${select('format', 'Format', ['Social play', 'Tournament'], d.format)}</div></section><section class="editor-section"><h3>2. Time and place</h3><div class="form-grid">${select('area', 'Neighbourhood', ['Powai', 'Chandivali', 'Andheri', 'Bandra', 'BKC', 'Borivali', 'Malad', 'Ghatkopar', 'Vile Parle', 'South Mumbai', 'Nerul, Navi Mumbai', 'Thane'], d.area)}${input('date', 'Date', d.date || '', `type="date" min="${indiaDate()}" required`)}${input('time', 'Start time (IST)', d.time || '', 'type="time" required')}</div>${input('venue', 'Venue name and full address', d.venue || '', 'minlength="4" maxlength="150" required')}<p class="fine">Confirm the venue, address and court permission before publishing.</p></section><section class="editor-section"><h3>3. Eligibility and capacity</h3><div class="form-grid">${select('level', 'Playing level', ['All levels', 'Beginner friendly', 'Intermediate', 'Advanced', 'Competitive'], d.level)}${input('capacity', 'Player capacity', d.capacity, 'type="number" min="2" max="500" required')}${input('price', 'Price per player (₹) · ₹0 to publish', d.price, 'type="number" min="0" max="100000" required')}</div><p class="fine">Players must be 18 or older to book on Mercury. Paid events remain drafts until payment is enabled.</p></section><section class="editor-section"><h3>4. Player instructions</h3>${textarea('description', 'What will the session be like? Include any eligibility rules.', d.description || '', 20, 1500)}${textarea('included', 'What’s included (one item per line)', d.included || '', 5, 500)}${textarea('bring', 'What should players bring?', d.bring || '', 3, 300)}${textarea('cancellation', 'Cancellation and organizer notes', d.cancellation || policy, 15, 1000)}</section><section class="editor-section editor-review"><h3>5. Review and publish</h3><p class="fine">Sessions last 90 minutes. Free places can be cancelled before start time. Preview the public page, then save a draft. Publishing happens from Your events.</p><label class="checkbox"><input type="checkbox"><span>I have checked the event details and can host this session.</span></label>${err}<div class="action-row"><button class="button primary" type="submit">Save ${edit ? 'changes' : 'draft'} ↗</button><button class="button outline" type="button" id="preview-event">Preview public page</button></div><p class="fine">A saved draft stays private until you publish it.</p></section></fieldset></form>` : notice('Save your organizer profile to create your first event.')}</section><aside><h2>Your events</h2><div class="host-event-list">${events.map(organizerCard).join('') || '<p class="muted">Your first game belongs here.</p>'}</div><p class="fine">Only your account can manage these events and their attendees.</p></aside></div>`);
-    formSubmit('#organizer-profile', async (data) => { await api('organizer/profile', data); await loadSession(); ctx.toast('Organizer profile saved.'); await host(editId); });
+    formSubmit('#organizer-profile', async (data) => { await api('organizer/profile', data); await loadSession({ refresh: true }); ctx.toast('Organizer profile saved.'); await host(editId); });
     if (org) {
         const eventForm = document.querySelector('#event-form');
         const journey = mountOrganizerJourney(eventForm, {
@@ -439,6 +517,7 @@ function info() { page(`<div class="prose">${heading('LESS PLANNING. MORE PLAY.'
 export async function liveRoute(path, context) {
     ctx = context;
     const sequence = ++turn;
+    updateAccountLink();
     if (!document.querySelector('#account-link')) {
         const a = document.createElement('a');
         a.id = 'account-link';
@@ -478,29 +557,26 @@ export async function liveRoute(path, context) {
             }
             // Account state is useful for the header, but is not a dependency of browsing.
             // A session outage cannot block public discovery.
-            void loadSession().catch(error => {
-                if (sequence !== turn || error.name === 'AbortError') return;
-                session = { user: null, saved: [], savedListings: [], notifications: [] };
-                const account = document.querySelector('#account-link');
-                if (account) account.textContent = 'Sign in';
-            });
+            hydratePublicSession('explore', null, sequence);
             if (!cached) await explore(sequence);
+            return true;
+        }
+        if (route === 'listing' || route === 'event' || route === 'support') {
+            hydratePublicSession(route, id, sequence);
+            if (route === 'listing') await renderListing(id, { ...ctx, api, getSession: () => session, loadSession, refreshSession: () => loadSession({ refresh: true }) });
+            else if (route === 'event') await detail(id);
+            else renderSupport({ ...ctx, api, session });
             return true;
         }
         try {
             await loadSession();
         } catch (error) {
             if (sequence !== turn) return true;
-            if (!['support','explore','listing'].includes(route)) throw error;
-            session = {user:null,saved:[],savedListings:[],notifications:[]};
+            throw error;
         }
         if (sequence !== turn)
             return true;
-        if (route === 'listing')
-            await renderListing(id, { ...ctx, api, session });
-        else if (route === 'event')
-            await detail(id);
-        else if (route === 'register')
+        if (route === 'register')
             await register(id);
         else if (route === 'my-games' || route === 'booking')
             await myGames(id);
@@ -509,9 +585,7 @@ export async function liveRoute(path, context) {
         else if (route === 'roster')
             await roster(id);
         else if (route === 'account')
-            await renderAccount({ ...ctx, api, session });
-        else if (route === 'support')
-            renderSupport({ ...ctx, api, session });
+            await renderAccount({ ...ctx, api, session, refreshSession: () => loadSession({ refresh: true }) });
         else if (route === 'admin')
             await renderAdmin({ ...ctx, api, session });
         else

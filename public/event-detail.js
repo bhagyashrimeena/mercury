@@ -45,6 +45,6 @@ export function eventDetailMarkup(event, { saved = false, preview = false, polic
       <p class="muted">${Number(event.price) ? 'Paid booking on Mercury is unavailable' : 'No payment required'}</p>
       <div class="booking-summary"><span>${dateLabel(event)}</span><b>${timeLabel(event)} IST</b><span>Entry</span><b>1 player &middot; 18+</b></div>
       <p class="spots">${esc(state.label)}</p>${bookingAction}
-      ${preview ? '' : `<button class="button outline" id="live-save">${saved ? '&#9829; Saved' : '&#9825; Save for later'}</button><button class="button outline" id="live-share">Share game &#8599;</button><p class="fine">A confirmed registration appears in My games.</p>`}
+      ${preview ? '' : `<button class="button outline" id="live-save" ${saved === undefined ? '' : `aria-pressed="${!!saved}"`}>${saved ? '&#9829; Saved' : '&#9825; Save for later'}</button><button class="button outline" id="live-share">Share game &#8599;</button><p class="fine">A confirmed registration appears in My games.</p>`}
     </aside></div>`;
 }

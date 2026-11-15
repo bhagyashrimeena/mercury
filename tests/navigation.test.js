@@ -2,13 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
+let fixtureNumber = 0;
 
 async function fixture(run) {
   const keys = ['document', 'location', 'fetch', 'window', 'history', 'localStorage'];
   const originals = Object.fromEntries(keys.map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
   const listeners = {}, historyCalls = [], requests = [], toasts = [], navigations = [];
   let html = '', scrolls = 0;
-  const simple = () => ({ textContent: '', focus() {}, scrollIntoView() {}, classList: { add() {}, remove() {}, toggle() {} } });
+  const simple = () => { const attrs = new Map(); return { textContent: '', focus() {}, scrollIntoView() {}, getAttribute: name => attrs.get(name), setAttribute: (name, value) => attrs.set(name, value), classList: { add() {}, remove() {}, toggle() {} } }; };
   const actionSheet = { ...simple(), children: new Map(), open: false, close() { this.open = false; }, showModal() { this.open = true; }, contains(node) { return [...this.children.values()].includes(node); }, querySelector(selector) { return this.children.get(selector); } };
   const openSheet = () => { actionSheet.children = new Map([['#confirm-action', { disabled: false }], ['[role=alert]', { textContent: '' }]]); actionSheet.showModal(); return actionSheet; };
   const locationDialog = { ...simple(), open: false, close() { this.open = false; }, showModal() { this.open = true; }, querySelector: () => simple() };
@@ -42,14 +43,14 @@ async function fixture(run) {
   };
   const globals = {
     document, location: { pathname: '/how-it-works', search: '', hash: '', origin: 'https://fixture.test' },
-    fetch: async url => { requests.push(url); const body = await replies.get(url)?.(); return { ok: true, status: 200, json: async () => body }; },
+    fetch: async url => { requests.push(url); const body = await replies.get(url)?.(); const status = body?.__status || 200; return { ok: status < 400, status, json: async () => body }; },
     window: { addEventListener(type, listener) { listeners[type] = listener; }, scrollTo() { scrolls++; } },
     history: { replaceState(...args) { historyCalls.push(['replace', ...args]); }, pushState(...args) { historyCalls.push(['push', ...args]); } },
     localStorage: { getItem: () => null },
   };
   for (const [name, value] of Object.entries(globals)) Object.defineProperty(globalThis, name, { configurable: true, value });
   try {
-    const { liveRoute } = await import('../public/live.js');
+    const { liveRoute } = await import('../public/live.js?fixture=' + ++fixtureNumber);
     const route = (path = '/my-games') => { location.pathname = path; return liveRoute(path, { main, openSheet, toast(message) { toasts.push(message); }, go(path) { navigations.push(path); } }); };
     await run({ main, requests, replies, route, session, baseBooking, baseEvent, listeners, actionSheet, locationDialog, historyCalls, scrolls: () => scrolls, toasts, nodes, openSheet, navigations });
   } finally {
@@ -119,20 +120,33 @@ test('only the newest route completion moves focus and scroll for identical URLs
   });
 });
 
-test('an obsolete public-route session failure cannot replace the active signed-in session', async () => {
-  await fixture(async ({ replies, route, session, requests, navigations, nodes }) => {
+test('public event renders while a shared session request is pending', async () => {
+  await fixture(async ({ replies, route, session, requests, main }) => {
     const pending = Promise.withResolvers();
     replies.set('/api/session', () => pending.promise);
-    const older = route('/explore');
-    await tick();
-    replies.set('/api/session', () => session);
-    replies.set('/api/saved/fixture-event', () => ({ ok: true }));
     await route('/event/fixture-event');
-    pending.reject(Error('Old session request failed'));
-    await older;
+    assert.match(main.innerHTML, /Current event details/);
+    await route('/event/fixture-event');
+    assert.equal(requests.filter(path => path === '/api/session').length, 1);
+    pending.resolve(session);
+    await tick();
+    await route('/my-games');
+    await tick();
+    assert.equal(requests.filter(path => path === '/api/session').length, 1);
+    assert.equal(requests.includes('/api/bookings'), true);
+  });
+});
+
+test('an auth error clears cached session before the next private route', async () => {
+  await fixture(async ({ replies, route, requests, navigations, nodes }) => {
+    await route('/event/fixture-event');
+    await tick();
+    replies.set('/api/saved/fixture-event', () => ({ __status: 401, error: { message: 'Sign in to continue.' } }));
     await nodes['#live-save'].onclick();
-    assert.equal(requests.includes('/api/saved/fixture-event'), true);
-    assert.deepEqual(navigations, []);
+    assert.deepEqual(navigations, ['/account?return_to=%2Fevent%2Ffixture-event']);
+    await route('/my-games');
+    await tick();
+    assert.equal(requests.filter(path => path === '/api/session').length, 2);
   });
 });
 
