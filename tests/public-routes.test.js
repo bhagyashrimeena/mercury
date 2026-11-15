@@ -20,5 +20,5 @@ test('public API classification includes only exact browse and anonymous count r
 
 test('public page classification excludes private screens', () => {
   for (const path of ['/', '/explore', '/listing/listing-1', '/event/game-1']) assert.equal(isPublicPage(path), true);
-  for (const path of ['/account', '/my-games', '/register/game-1', '/host', '/roster/game-1', '/admin']) assert.equal(isPublicPage(path), false);
+  for (const path of ['/account', '/my-games', '/register/game-1', '/host', '/host/new', '/host/profile', '/roster/game-1', '/participants/game-1', '/admin']) assert.equal(isPublicPage(path), false);
 });

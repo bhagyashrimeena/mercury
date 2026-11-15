@@ -38,8 +38,8 @@ function pass() {
     ${shape('loading-action')}${shape('loading-caption')}</div>`;
 }
 
-const content = { listing: detail, event: detail, register: form, account: form, host: dashboard, roster: dashboard, admin: dashboard, 'my-games': dashboard, booking: pass };
-const labels = { listing: 'listing', event: 'game', register: 'booking form', account: 'account', host: 'organizer studio', roster: 'attendee roster', admin: 'owner desk', 'my-games': 'your games', booking: 'game pass' };
+const content = { listing: detail, event: detail, register: form, account: form, host: dashboard, roster: dashboard, participants: dashboard, admin: dashboard, 'my-games': dashboard, booking: pass };
+const labels = { listing: 'listing', event: 'game', register: 'booking form', account: 'account', host: 'organizer studio', roster: 'participants', participants: 'participants', admin: 'owner desk', 'my-games': 'your games', booking: 'game pass' };
 
 export function routeLoadingMarkup(route) {
   const key = Object.hasOwn(content, route) ? route : 'page';

@@ -50,7 +50,7 @@ export function mountEventSubmission(main, { request = fetch, locationObject = l
       event.preventDefault();
       const selected = choice.querySelector('input[name=hostingMode]:checked');
       if (!selected || !choice.reportValidity()) return;
-      navigate(selected.value === 'native' ? '/host' : '/list-event?mode=external');
+      navigate(selected.value === 'native' ? '/host/new' : '/list-event?mode=external');
     });
     update();
     return;

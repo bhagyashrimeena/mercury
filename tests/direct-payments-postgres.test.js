@@ -68,7 +68,7 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
  const proofResponse=await apiHandler(new Request('https://mercury.test/api/bookings/'+pending.id+'/proof'),db,host);
  assert.equal(proofResponse.status,200);
  assert.equal(Buffer.from(await proofResponse.arrayBuffer()).toString('base64'),image.split(',')[1]);
- assert.ok((await req('session',host)).notifications.some(n=>n.actionPath==='/roster/'+id));
+ assert.ok((await req('session',host)).notifications.some(n=>n.actionPath==='/participants/'+id));
  await req('organizer/events/'+id+'/review',host,{bookingId:b.id,decision:'accept'});
  assert.equal((await req('bookings',player)).bookings.find(entry=>entry.id===b.id).status,'confirmed');
  await req('organizer/events/'+id+'/cancel',host,{});

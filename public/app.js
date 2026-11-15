@@ -481,6 +481,7 @@ function info() {
 
 function openSheet(title, body) {
   const sheet = document.querySelector("#action-sheet");
+  sheet.classList.remove('publication-celebration', 'organizer-menu-dialog');
   sheet.innerHTML = `<button class="close" aria-label="Close dialog">×</button><h2 id="sheet-title">${esc(title)}</h2><div>${body}</div>`;
   sheet.querySelector(".close").onclick = () => sheet.close();
   sheet
@@ -582,7 +583,7 @@ document.querySelector("#choose-mumbai").onclick = () => {
 dialog.onclick = (e) => {
   if (e.target === dialog) dialog.close();
 };
-function go(url){history.pushState(null,'',url.replace(/^#/,''));route()}
+function go(url){history.pushState(null,'',url.replace(/^#/,''));return route()}
 document.addEventListener('click',e=>{const a=e.target.closest('a');if(!a||e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||a.target||a.download)return;const href=a.getAttribute('href');if(!href||href.startsWith('/signin')||href.startsWith('/signout'))return;if(href.startsWith('/')||href.startsWith('#/')){e.preventDefault();go(href)}});
 window.addEventListener('popstate',route);
 window.addEventListener("hashchange", route);

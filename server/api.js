@@ -168,7 +168,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         const saved = await all(db, 'SELECT event_id FROM saved_events WHERE user_id=?', uid);
         const savedListings = await all(db, 'SELECT listing_id FROM saved_listings WHERE user_id=?', uid);
         const notificationRows = await all(db, 'SELECT n.id,n.event_id,n.message,n.read_at,n.created_at,(SELECT owner_id FROM events WHERE id=n.event_id) AS event_owner FROM notifications n WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 50', uid);
-        const notifications = notificationRows.map(({event_owner, ...n}) => ({...n, actionPath: n.event_id && event_owner === uid ? '/roster/' + encodeURIComponent(n.event_id) : '/my-games'}));
+        const notifications = notificationRows.map(({event_owner, ...n}) => ({...n, actionPath: n.event_id && event_owner === uid ? '/participants/' + encodeURIComponent(n.event_id) : '/my-games'}));
         return { user: { name:profile?.name || clean(user.fullName || 'Player',80), email:user.email }, organizer, saved:saved.map(x=>x.event_id), savedListings:savedListings.map(x=>x.listing_id), notifications, paymentsEnabled:false, isAdmin:isAdmin(user,config) };
     }
     const uid = ensureUser(user);
@@ -349,7 +349,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         }
         onBookingCreated([
             notify(db, uid, event.id, paid ? `Your registration for ${event.title} is pending organizer review.` : `You are registered for ${event.title}.`, now),
-            notify(db, event.owner_id, event.id, paid ? `${name} submitted a paid registration for ${event.title}. Review it in your roster.` : `${name} joined ${event.title}.`, now),
+            notify(db, event.owner_id, event.id, paid ? `${name} submitted a paid registration for ${event.title}. Review it on your participants page.` : `${name} joined ${event.title}.`, now),
         ]);
         return paid ? { id, status } : { id };
     }
