@@ -1,10 +1,10 @@
 import { validateDraft } from './domain.js';
 
-// Keep only event-draft fields and the organizer's QR, never auth or attendee data.
+// Keep only event-draft fields, cover and QR uploads, never auth or attendee data.
 const EVENT_FIELDS = new Set([
   'title', 'sport', 'format', 'area', 'date', 'time', 'venue',
   'level', 'capacity', 'price', 'description', 'included', 'bring', 'cancellation', 'allowUpi', 'allowCash',
-  'reviewed', 'wizardStep', 'qrUploadName'
+  'reviewed', 'wizardStep', 'qrUploadName', 'coverUploadName', 'coverImage'
 ]);
 const RECOVERY_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 const STEPS = [
@@ -24,7 +24,7 @@ export function organizerRecoveryKey(editId, account = '') {
 const recoveryField = ([name, value]) => typeof value === 'string' && (
   (EVENT_FIELDS.has(name) && value.length <= 2000) ||
   // Match the upload limit (750 KiB), and accept only inert raster data URLs.
-  (name === 'qrUpload' && value.length <= 1024100 &&
+  (['qrUpload', 'coverUpload'].includes(name) && value.length <= 1024100 &&
     /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value))
 );
 
@@ -78,20 +78,22 @@ export function mountOrganizerJourney(form, {
     if (field?.type === 'checkbox') field.checked = value === 'on';
     else if (field?.tagName === 'INPUT' || field?.tagName === 'SELECT' || field?.tagName === 'TEXTAREA') field.value = value;
   }
-  let qrUpload = recovered?.qrUpload || '';
-  let qrUploadName = recovered?.qrUploadName || '';
-  const qrInput = form.querySelector('#organizer-qr');
-  if (qrUpload && qrInput) {
+  const uploads = {};
+  for (const kind of ['qr', 'cover']) {
+    const input = form.querySelector('#organizer-' + kind);
+    const state = uploads[kind] = {input, data:recovered?.[kind + 'Upload'] || '', name:recovered?.[kind + 'UploadName'] || '', pending:Promise.resolve()};
+    if (!state.data || !input) continue;
     try {
-      const [header, body] = qrUpload.split(',');
+      const [header, body] = state.data.split(',');
       const bytes = Uint8Array.from(atob(body), char => char.charCodeAt(0));
-      if (bytes.length > 768000) throw Error('Oversized QR');
+      if (bytes.length > 768000) throw Error('Oversized image');
       const files = new DataTransfer();
-      files.items.add(new File([bytes], qrUploadName || 'payment-qr', { type: header.slice(5, -7) }));
-      qrInput.files = files.files;
-    } catch { qrUpload = ''; qrUploadName = ''; }
+      files.items.add(new File([bytes], state.name || kind + '-image', {type:header.slice(5, -7)}));
+      input.files = files.files;
+    } catch { state.data = ''; state.name = ''; }
   }
   void form.__paymentOptions?.refresh();
+  form.__coverOptions?.refresh();
 
   const progress = document.createElement('div');
   progress.className = 'organizer-progress';
@@ -253,8 +255,10 @@ export function mountOrganizerJourney(form, {
     values.allowCash = form.elements.allowCash.checked ? 'on' : '';
     values.reviewed = form.elements.reviewed.checked ? 'on' : '';
     values.wizardStep = String(step);
-    values.qrUpload = qrUpload;
-    values.qrUploadName = qrUploadName;
+    for (const [kind, state] of Object.entries(uploads)) {
+      values[kind + 'Upload'] = state.data;
+      values[kind + 'UploadName'] = state.name;
+    }
     const ok = writeOrganizerRecovery(storage, key, revision, values);
     saveState.textContent = ok
       ? 'Unsaved changes kept in this tab. Save draft to keep them in your account.'
@@ -263,15 +267,14 @@ export function mountOrganizerJourney(form, {
   };
   form.addEventListener('input', save);
   form.addEventListener('change', save);
-  let pendingQr = Promise.resolve();
-  qrInput?.addEventListener('change', () => {
-    const file = qrInput.files[0];
-    qrUpload = ''; qrUploadName = '';
-    pendingQr = new Promise(resolve => {
+  for (const state of Object.values(uploads)) state.input?.addEventListener('change', () => {
+    const file = state.input.files[0];
+    state.data = ''; state.name = '';
+    state.pending = new Promise(resolve => {
       if (!file || file.size > 768000 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) return resolve();
       const reader = new FileReader();
       reader.onload = () => {
-        if (qrInput.files[0] === file) { qrUpload = String(reader.result); qrUploadName = file.name; }
+        if (state.input.files[0] === file) { state.data = String(reader.result); state.name = file.name; }
         resolve();
       };
       reader.onerror = reader.onabort = () => resolve();
@@ -283,7 +286,7 @@ export function mountOrganizerJourney(form, {
     link.addEventListener('click', async event => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || !navigate) return;
       event.preventDefault();
-      await pendingQr;
+      await Promise.all(Object.values(uploads).map(state => state.pending));
       save();
       navigate(link.getAttribute('href'));
     });

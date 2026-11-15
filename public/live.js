@@ -1,4 +1,5 @@
-import { organizerDashboardMarkup, organizerMenuMarkup, publicationMarkup, studioIcon } from './organizer-studio.js';
+import { mountEventCover } from './event-cover.js';
+import { organizerDashboardMarkup, mountOrganizerMenus, publicationMarkup, studioIcon } from './organizer-studio.js';
 import { registrationFormMarkup, mountRegistrationJourney } from './registration-journey.js';
 import { mountPaymentOptions } from './payment-qr.js';
 import { renderAccount, renderSupport, renderAdmin, renderPolicy } from './service-ui.js';
@@ -16,6 +17,7 @@ import { savedGamesLoader } from './my-games.js';
 import { mountOrganizerJourney, mountRosterSearch } from './organizer-journey.js';
 import { renderRouteLoading } from './loading-ui.js';
 let ctx, session = null, turn = 0;
+let studioMenuCleanup = () => {};
 let sessionReady = false, sessionPromise = null, sessionGeneration = 0;
 // Public inventory and UI session state live only in this tab; private data is fetched per view.
 let publicLineupCache = null;
@@ -304,7 +306,7 @@ async function register(id) {
     mountRegistrationJourney(form);
     const key = newId();
     formSubmit('#live-registration', async d => {
-        const result = await api('events/' + id + '/register', {name:d.name,level:d.level,rulesAccepted:d.rules==='on',revision:e.revision,idempotencyKey:key,paymentMethod:d.paymentMethod,paymentConsentVersion:d.paymentConsent==='on' ? '2026-11-15-direct-payments' : '',paymentProof:paid && d.paymentMethod==='upi' ? await readPaymentImage(form.elements.proof.files[0]) : ''});
+        const result = await api('events/' + id + '/register', {name:d.name,rulesAccepted:d.rules==='on',revision:e.revision,idempotencyKey:key,paymentMethod:d.paymentMethod,paymentConsentVersion:d.paymentConsent==='on' ? '2026-11-15-direct-payments' : '',paymentProof:paid && d.paymentMethod==='upi' ? await readPaymentImage(form.elements.proof.files[0]) : ''});
         await loadSession({refresh:true}).catch(()=>{}); ctx.toast(paid ? 'Submitted. Check My games for organizer review.' : 'Your place is confirmed.'); ctx.go('/booking/' + result.id);
     });
 }
@@ -337,7 +339,7 @@ async function myGames(bookingId) {
     const completed = bookings.filter(b => ongoing(b) && Number(b.starts_at) <= now);
     const cancelled = bookings.filter(b => !ongoing(b) && !(b.status === 'pending' && Number(b.starts_at) > now));
     const bookingCard = b => `<article class="manage-card">${bookingStamp(b.status)}<h3>${esc(b.title)}</h3><p>${dateLabel(b)} · ${timeLabel(b)} IST</p><p class="muted">${esc(b.venue)}</p><div class="action-row">${btn(['pending','rejected'].includes(b.status) ? 'View registration' : 'View pass', '/booking/' + b.id, 'outline')}${['pending','confirmed'].includes(b.status) && b.starts_at > Date.now() ? `<button class="text-link danger" data-cancel-booking="${b.id}">Cancel my place</button>` : ''}</div></article>`;
-    page(heading('YOUR TIME TO PLAY', 'My <em>games.</em>', 'Registrations, bookmarks and updates in one place.') + `<div class="account-toolbar"><a class="text-link" href="/account">Your account ↗</a></div><h2>Mercury registrations</h2><div class="manage-grid">${active.length ? active.map(bookingCard).join('') : completed.length || cancelled.length ? '<p class="muted">No upcoming confirmed games. Your earlier registrations are below.</p>' : empty('Make room for your next game.', 'Find a session and your confirmed place will appear here.', btn('Find a game', '/explore'))}</div>${completed.length ? `<details ${active.length ? '' : 'open'}><summary>Started or past Mercury games (${completed.length})</summary><div class="manage-grid">${completed.map(bookingCard).join('')}</div></details>` : ''}${cancelled.length ? `<details ${active.length || completed.length ? '' : 'open'}><summary>Other registrations (${cancelled.length})</summary><div class="manage-grid">${cancelled.map(bookingCard).join('')}</div></details>` : ''}<h2 class="section-space" id="saved-mercury-heading">Saved Mercury games</h2><div class="event-grid" id="saved-mercury-games" role="group" aria-labelledby="saved-mercury-heading" aria-live="polite" tabindex="-1"></div><h2 class="section-space" id="saved-listings-heading">Saved external listings</h2><p class="fine">These are bookmarks, not registrations. Get confirmation and tickets from the organizer.</p><div class="event-grid" id="saved-external-listings" role="group" aria-labelledby="saved-listings-heading" aria-live="polite" tabindex="-1"></div><div class="section-heading section-space"><h2>Your updates</h2><button class="text-link" id="read-updates">Mark all read ✓</button></div><p class="fine">Updates appear here. Email and SMS notifications are not active.</p><div class="updates">${session.notifications.map(n => `<article class="update ${n.read_at ? '' : 'unread'}"><p>${esc(n.message)}</p><small>${new Date(n.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</small> <a href="${esc(n.actionPath || '/event/' + n.event_id)}" class="text-link">${n.actionPath?.startsWith('/participants/') ? 'Review registrations' : 'View game'} ↗</a></article>`).join('') || '<p class="muted">You’re all caught up.</p>'}</div>`);
+    page(heading('YOUR TIME TO PLAY', 'My <em>games.</em>', 'Registrations, bookmarks and updates in one place.') + `<div class="account-toolbar"><a class="text-link" href="/account">Your account ↗</a></div><h2>Mercury registrations</h2><div class="manage-grid">${active.length ? active.map(bookingCard).join('') : completed.length || cancelled.length ? '<p class="muted">No upcoming confirmed games. Your earlier registrations are below.</p>' : empty('Make room for your next game.', 'Find a session and your confirmed place will appear here.', btn('Find a game', '/explore'))}</div>${completed.length ? `<details ${active.length ? '' : 'open'}><summary>Started or past Mercury games (${completed.length})</summary><div class="manage-grid">${completed.map(bookingCard).join('')}</div></details>` : ''}${cancelled.length ? `<details ${active.length || completed.length ? '' : 'open'}><summary>Other registrations (${cancelled.length})</summary><div class="manage-grid">${cancelled.map(bookingCard).join('')}</div></details>` : ''}<h2 class="section-space" id="saved-mercury-heading">Saved Mercury games</h2><div class="event-grid" id="saved-mercury-games" role="group" aria-labelledby="saved-mercury-heading" aria-live="polite" tabindex="-1"></div><h2 class="section-space" id="saved-listings-heading">Saved external listings</h2><p class="fine">These are bookmarks, not registrations. Get confirmation and tickets from the organizer.</p><div class="event-grid" id="saved-external-listings" role="group" aria-labelledby="saved-listings-heading" aria-live="polite" tabindex="-1"></div><div class="section-heading section-space"><h2>Your updates</h2><button class="text-link" id="read-updates">Mark all read ✓</button></div><p class="fine">Updates appear here.</p><div class="updates">${session.notifications.map(n => `<article class="update ${n.read_at ? '' : 'unread'}"><p>${esc(n.message)}</p><small>${new Date(n.created_at).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}</small> <a href="${esc(n.actionPath || '/event/' + n.event_id)}" class="text-link">${n.actionPath?.startsWith('/participants/') ? 'Review registrations' : 'View game'} ↗</a></article>`).join('') || '<p class="muted">You’re all caught up.</p>'}</div>`);
     action('[data-cancel-booking]', async (b) => { confirmAction('Cancel your place?', 'Your place will become available to another player. For direct payments, arrange any refund with the organizer.', 'Cancel my place', async () => { await api('bookings/' + b.dataset.cancelBooking + '/cancel', {}); await loadSession({ refresh: true }); await myGames(); ctx.toast('Your place was cancelled.'); }); });
     action('#read-updates', async () => { await api('notifications/read', {}); await loadSession({ refresh: true }); await myGames(); });
     // Render registrations and updates first. Each bookmark section loads and
@@ -384,35 +386,28 @@ async function publicationComplete(id, title) {
 async function hostDashboard() {
     const { events } = await api('organizer/events');
     page(organizerDashboardMarkup(events));
-    ctx.main.querySelectorAll('[data-event-menu]').forEach(button => {
-        button.onclick = () => {
-            const event = events.find(event => event.id === button.dataset.eventMenu);
-            const sheet = ctx.openSheet(event.title, organizerMenuMarkup(event));
-            sheet.classList.add('organizer-menu-dialog');
-            const copy = sheet.querySelector('[data-studio-copy]');
-            if (copy) copy.onclick = async () => {
-                const url = location.origin + '/event/' + encodeURIComponent(event.id);
-                try { await navigator.clipboard.writeText(url); ctx.toast('Event link copied.'); }
-                catch {
-                    sheet.querySelector('.studio-event-menu').insertAdjacentHTML('beforeend', '<label class="share-label">Copy event link<input readonly value="' + esc(url) + '"></label>');
-                    const input = sheet.querySelector('input'); input.focus(); input.select();
-                }
-            };
-            sheet.querySelectorAll('[data-studio-action]').forEach(button => {
-                button.onclick = () => {
-                    const act = button.dataset.studioAction;
-                    sheet.close();
-                    const title = act === 'publish' ? 'Publish this event?' : act === 'cancel' ? 'Cancel this event?' : 'Return to draft?';
-                    const body = act === 'publish' ? 'Players can register. Confirm your venue and payment details are ready.' : act === 'cancel' ? 'All active registrations will be cancelled. Players will see an update in My games. This cannot be undone.' : 'This event will no longer appear in discovery.';
-                    confirmAction(title, body, act === 'publish' ? 'Publish event' : act === 'cancel' ? 'Cancel event' : 'Return to draft', async () => {
-                        await api('organizer/events/' + event.id + '/' + act, {});
-                        publicLineupCache = null;
-                        if (act === 'publish') await publicationComplete(event.id, event.title);
-                        else { await hostDashboard(); ctx.toast('Event updated.'); }
-                    });
-                };
+    studioMenuCleanup();
+    studioMenuCleanup = mountOrganizerMenus(ctx.main, {
+        onCopy: async (event, details) => {
+            const url = location.origin + '/event/' + encodeURIComponent(event.id);
+            try { await navigator.clipboard.writeText(url); ctx.toast('Event link copied.'); return true; }
+            catch {
+                const fallback = details.querySelector('[data-copy-fallback]');
+                fallback.hidden = false;
+                const input = fallback.querySelector('input'); input.value = url; input.focus(); input.select();
+                return false;
+            }
+        },
+        onAction: (act, event) => {
+            const title = act === 'publish' ? 'Publish this event?' : act === 'cancel' ? 'Cancel this event?' : 'Return to draft?';
+            const body = act === 'publish' ? 'Players can register. Confirm your venue and payment details are ready.' : act === 'cancel' ? 'All active registrations will be cancelled. Players will see an update in My games. This cannot be undone.' : 'This event will no longer appear in discovery.';
+            confirmAction(title, body, act === 'publish' ? 'Publish event' : act === 'cancel' ? 'Cancel event' : 'Return to draft', async () => {
+                await api('organizer/events/' + event.id + '/' + act, {});
+                publicLineupCache = null;
+                if (act === 'publish') await publicationComplete(event.id, event.title);
+                else { await hostDashboard(); ctx.toast('Event updated.'); }
             });
-        };
+        }, events
     });
 }
 async function organizerProfile(destination) {
@@ -445,7 +440,7 @@ async function hostEditor(editId) {
         throw Error('This draft is not available in your organizer account.');
     const org = session.organizer;
     const d = edit?.draft || { sport: 'Badminton', area: 'Powai', level: 'All levels', format: 'Social play', capacity: 12, price: 0, description: "Check the event details and contact the organizer for the session format and any eligibility requirements.", included: "Contact the organizer to confirm what is included with your entry.", bring: "Bring drinking water and appropriate sportswear. Check with the organizer about any equipment you may need.", cancellation: policy };
-    page('<a class="back" href="/host">← Your events</a>' + heading('MAKE YOUR NEXT MOVE', edit ? 'Your event.<br><em>Your way.</em>' : 'Make room<br>for <em>play.</em>', 'Set the details, choose how players pay, and publish when you are ready.') + `<div class="studio-layout organizer-editor"><section><form class="form-card" id="event-form"><div class="section-heading"><h2>${edit ? 'Edit your event' : 'Create your next game'}</h2>${edit ? '<a class="text-link" href="/host/new">New event ↗</a>' : ''}</div>${edit && edit.registered ? notice('Players have registered. Event details are locked to protect their confirmed plans. If the time or venue changes, cancel the event and contact players directly; Mercury updates are in-app only.') : ''}<fieldset ${edit && (edit.registered || edit.status === 'cancelled') ? 'disabled' : ''}><section class="editor-section"><h3>1. Basics</h3><div class="form-grid">${input('title', 'Event name', d.title || '', 'required minlength="4" maxlength="100"')}${select('sport', 'Sport', ['Badminton', 'Tennis', 'Pickleball'], d.sport)}${select('format', 'Format', ['Social play', 'Tournament'], d.format)}</div></section><section class="editor-section"><h3>2. Time and place</h3><div class="form-grid">${select('area', 'Neighbourhood', ['Powai', 'Chandivali', 'Andheri', 'Bandra', 'BKC', 'Borivali', 'Malad', 'Ghatkopar', 'Vile Parle', 'South Mumbai', 'Nerul, Navi Mumbai', 'Thane'], d.area)}${input('date', 'Date', d.date || '', `type="date" min="${indiaDate()}" required`)}${input('time', 'Start time (IST)', d.time || '', 'type="time" required')}</div>${input('venue', 'Venue name and full address', d.venue || '', 'minlength="4" maxlength="150" required')}<p class="fine">Confirm the venue, address and court permission before publishing.</p></section><section class="editor-section"><h3>3. Eligibility and capacity</h3><div class="form-grid">${select('level', 'Playing level', ['All levels', 'Beginner friendly', 'Intermediate', 'Advanced', 'Competitive'], d.level)}${input('capacity', 'Player capacity', d.capacity, 'type="number" min="2" max="500" required')}${input('price', 'Price per player (INR)', d.price, 'type="number" min="0" max="100000" required')}</div><p class="fine">Paid entries need organizer approval.</p></section><section class="editor-section"><h3>4. Player instructions</h3>${textarea('description', 'What will the session be like? Include any eligibility rules. (optional)', d.description || '', 0, 1500)}${textarea('included', 'What’s included (one item per line, optional)', d.included || '', 0, 500)}${textarea('bring', 'What should players bring? (optional)', d.bring || '', 0, 300)}${textarea('cancellation', 'Cancellation and organizer notes (optional)', d.cancellation || "", 0, 1000)}</section><section class="editor-section editor-review"><h3>5. Review and publish</h3><p class="fine">Sessions last 90 minutes. Free places can be cancelled before start time. Preview the public page, then publish from the final step or save a private draft.</p><label class="checkbox"><input type="checkbox" name="reviewed" required><span>I understand the <a data-event-policy href="/terms?return_to=${encodeURIComponent(edit ? "/host/" + edit.id : "/host/new")}">Terms of Service</a> and <a data-event-policy href="/privacy?return_to=${encodeURIComponent(edit ? "/host/" + edit.id : "/host/new")}">Privacy Policy</a>.</span></label>${err}<div class="action-row">${edit?.status !== "published" ? '<button class="button primary" type="submit" name="intent" value="publish">Publish event ↗</button>' : ""}<button class="button ${edit?.status === "published" ? "primary" : "outline"}" type="submit" name="intent" value="save">Save ${edit ? 'changes' : 'draft'} ↗</button><button class="button outline" type="button" id="preview-event">Preview public page</button></div><p class="fine">A saved draft stays private until you publish it.</p></section></fieldset></form></section></div>`);
+    page('<a class="back" href="/host">← Your events</a>' + heading('MAKE YOUR NEXT MOVE', edit ? 'Your event.<br><em>Your way.</em>' : 'Make room<br>for <em>play.</em>', 'Set the details, choose how players pay, and publish when you are ready.') + `<div class="studio-layout organizer-editor"><section><form class="form-card" id="event-form"><div class="section-heading"><h2>${edit ? 'Edit your event' : 'Create your next game'}</h2>${edit ? '<a class="text-link" href="/host/new">New event ↗</a>' : ''}</div>${edit && edit.registered ? notice('Players have registered. Event details are locked to protect their confirmed plans. If the time or venue changes, cancel the event and contact players directly; Mercury updates are in-app only.') : ''}<fieldset ${edit && (edit.registered || edit.status === 'cancelled') ? 'disabled' : ''}><section class="editor-section"><h3>1. Basics</h3><div class="form-grid">${input('title', 'Event name', d.title || '', 'required minlength="4" maxlength="100"')}${select('sport', 'Sport', ['Badminton', 'Tennis', 'Pickleball'], d.sport)}${select('format', 'Format', ['Social play', 'Tournament'], d.format)}</div><div class="event-cover-upload"><label>Event cover image (optional)<input type="file" id="organizer-cover" accept="image/png,image/jpeg,image/webp"><small>PNG, JPEG or WebP, up to 750 KB. Use a photo you have permission to share.</small></label><input type="hidden" name="coverImage" value="${esc(d.coverImage || '')}"><img class="event-cover-preview" id="event-cover-preview" ${d.coverImage ? `src="${esc(d.coverImage)}"` : 'hidden'} alt="Your event cover"><button type="button" class="text-link" id="remove-event-cover" ${d.coverImage ? '' : 'hidden'}>Remove cover image</button><p id="event-cover-status" class="fine" role="status"></p></div></section><section class="editor-section"><h3>2. Time and place</h3><div class="form-grid">${select('area', 'Neighbourhood', ['Powai', 'Chandivali', 'Andheri', 'Bandra', 'BKC', 'Borivali', 'Malad', 'Ghatkopar', 'Vile Parle', 'South Mumbai', 'Nerul, Navi Mumbai', 'Thane'], d.area)}${input('date', 'Date', d.date || '', `type="date" min="${indiaDate()}" required`)}${input('time', 'Start time (IST)', d.time || '', 'type="time" required')}</div>${input('venue', 'Venue name and full address', d.venue || '', 'minlength="4" maxlength="150" required')}<p class="fine">Confirm the venue, address and court permission before publishing.</p></section><section class="editor-section"><h3>3. Eligibility and capacity</h3><div class="form-grid">${select('level', 'Playing level', ['All levels', 'Beginner friendly', 'Intermediate', 'Advanced', 'Competitive'], d.level)}${input('capacity', 'Player capacity', d.capacity, 'type="number" min="2" max="500" required')}${input('price', 'Price per player (INR)', d.price, 'type="number" min="0" max="100000" required')}</div><p class="fine">Paid entries need organizer approval.</p></section><section class="editor-section"><h3>4. Player instructions</h3>${textarea('description', 'What will the session be like? Include any eligibility rules. (optional)', d.description || '', 0, 1500)}${textarea('included', 'What’s included (one item per line, optional)', d.included || '', 0, 500)}${textarea('bring', 'What should players bring? (optional)', d.bring || '', 0, 300)}${textarea('cancellation', 'Cancellation and organizer notes (optional)', d.cancellation || "", 0, 1000)}</section><section class="editor-section editor-review"><h3>5. Review and publish</h3><p class="fine">Sessions last 90 minutes. Free places can be cancelled before start time. Preview the public page, then publish from the final step or save a private draft.</p><label class="checkbox"><input type="checkbox" name="reviewed" required><span>I understand the <a data-event-policy href="/terms?return_to=${encodeURIComponent(edit ? "/host/" + edit.id : "/host/new")}">Terms of Service</a> and <a data-event-policy href="/privacy?return_to=${encodeURIComponent(edit ? "/host/" + edit.id : "/host/new")}">Privacy Policy</a>.</span></label>${err}<div class="action-row">${edit?.status !== "published" ? '<button class="button primary" type="submit" name="intent" value="publish">Publish event ↗</button>' : ""}<button class="button ${edit?.status === "published" ? "primary" : "outline"}" type="submit" name="intent" value="save">Save ${edit ? 'changes' : 'draft'} ↗</button><button class="button outline" type="button" id="preview-event">Preview public page</button></div><p class="fine">A saved draft stays private until you publish it.</p></section></fieldset></form></section></div>`);
     if (org) {
         const editor = document.querySelector('#event-form');
         const review = editor.querySelector('.editor-review');
@@ -461,6 +456,7 @@ async function hostEditor(editId) {
     }
     if (org) {
         const eventForm = document.querySelector('#event-form');
+        eventForm.__coverOptions = mountEventCover(eventForm);
         const journey = mountOrganizerJourney(eventForm, {
             editId: edit?.id || null, revision: edit?.revision ?? null,
             account: session.user.email, navigate: ctx.go,
@@ -470,8 +466,11 @@ async function hostEditor(editId) {
             const raw = Object.fromEntries(new FormData(eventForm));
             const reviewed = eventForm.querySelector('input[name="reviewed"]').checked;
             const qrFile = eventForm.querySelector('#organizer-qr').files[0];
+            const coverFile = eventForm.querySelector('#organizer-cover').files[0];
+            const coverPreview = coverFile ? URL.createObjectURL(coverFile) : '';
             const { value: draft, errors, valid } = validateDraft(raw);
             if (!valid) {
+                if (coverPreview) URL.revokeObjectURL(coverPreview);
                 const problems = Object.entries(errors).map(([field, message]) => `<li><b>${esc(field)}:</b> ${esc(message)}</li>`).join('');
                 ctx.openSheet('Check the event details', `<p>Complete these details before previewing the public page.</p><ul>${problems}</ul><button class="button outline" type="button" data-close-sheet>Back to editor</button>`);
                 return;
@@ -481,14 +480,22 @@ async function hostEditor(editId) {
                 startsAt: Date.parse(`${draft.date}T${draft.time}:00+05:30`),
                 duration: 90, spots: draft.capacity, status: 'draft',
                 host: org.name, hostBio: org.bio, hostContact: org.contact,
-                included: draft.included?.split('\n').filter(Boolean) || null,
+                included: draft.included?.split('\n').filter(Boolean) || null, coverImage: raw.coverImage || '',
             };
-            page(eventDetailMarkup(event, { preview: true, policy }));
+            page(eventDetailMarkup(event, { preview: true, policy, coverPreview }));
+            if (coverPreview) {
+                const image = ctx.main.querySelector('.detail-cover img');
+                const release = () => URL.revokeObjectURL(coverPreview);
+                image.addEventListener('load', release, {once:true});
+                image.addEventListener('error', release, {once:true});
+            }
             ctx.main.querySelector('.back').onclick = async click => {
                 click.preventDefault();
+                if (coverPreview) URL.revokeObjectURL(coverPreview);
                 await hostEditor(editId);
                 const restored = document.querySelector('#event-form');
                 restored.querySelectorAll('input[type=checkbox]').forEach(field => { field.checked = false; });
+                if (coverFile) { const files = new DataTransfer(); files.items.add(coverFile); restored.querySelector('#organizer-cover').files = files.files; }
                 if (qrFile) { const files = new DataTransfer(); files.items.add(qrFile); restored.querySelector('#organizer-qr').files = files.files; }
                 for (const [name, value] of Object.entries(raw)) {
                     const field = restored.elements.namedItem(name);
@@ -496,6 +503,7 @@ async function hostEditor(editId) {
                 }
                 restored.querySelector('input[name="reviewed"]').checked = reviewed;
                 await restored.__paymentOptions?.refresh();
+                restored.__coverOptions?.refresh();
                 restored.__mercuryWizard?.goTo(2);
                 restored.scrollIntoView({ block: 'start' });
             };
@@ -514,6 +522,7 @@ async function hostEditor(editId) {
                 ...checked.value,
                 paymentMethods: paid ? [upi ? 'upi' : '', data.allowCash === 'on' ? 'cash' : ''].filter(Boolean) : [],
                 qrImage: upi ? (qrFile ? await readPaymentImage(qrFile) : data.qrImage || '') : '',
+                coverImage: form.querySelector('#organizer-cover').files[0] ? await readPaymentImage(form.querySelector('#organizer-cover').files[0]) : data.coverImage || '',
                 revision: edit?.revision, publish
             }, edit ? 'PATCH' : 'POST');
             journey.clear();
@@ -534,8 +543,8 @@ async function roster(id, filters = {}) {
     });
     const checked = attendees.filter(b => b.status === 'checked_in').length;
     const row = b => '<article class="roster-row" data-status="' + esc(b.status) + '">' +
-        '<div><h3>' + esc(b.player_name) + '</h3><p>' + esc(b.level) +
-        ' · <code>' + esc(b.id) + '</code></p></div>' +
+        '<div><h3>' + esc(b.player_name) + '</h3><p>' + (b.level ? esc(b.level) + ' · ' : '') +
+        '<code>' + esc(b.id) + '</code></p></div>' +
         '<div class="action-row">' + stamp(b.status) +
         (b.payment_method !== 'free' ? '<span>&#8377;' + esc(b.amount) + ' / ' + esc(b.payment_method) + '</span>' : '') +
         (b.has_proof ? '<a class="button outline" href="/api/bookings/' + esc(b.id) + '/proof" target="_blank" rel="noopener">View payment proof</a>' : '') +
@@ -571,7 +580,7 @@ async function roster(id, filters = {}) {
     action('[data-review]', async b => {
         const decision = b.dataset.review;
         const attendee = attendees.find(a => a.id === b.dataset.booking);
-        const sheet = ctx.openSheet(decision === 'accept' ? 'Accept registration' : 'Reject registration', `<form id="review-registration"><h3>${esc(attendee.player_name)}</h3><p>${esc(attendee.player_email)} &middot; ${esc(attendee.level)}</p><p>Payment: ${esc(attendee.payment_method)} &middot; &#8377;${esc(attendee.amount)}</p>${attendee.has_proof ? `<a href="/api/bookings/${encodeURIComponent(attendee.id)}/proof" target="_blank" rel="noopener noreferrer"><img class="review-payment-image" src="/api/bookings/${encodeURIComponent(attendee.id)}/proof" alt="Payment screenshot submitted by ${esc(attendee.player_name)}"></a><p class="fine">Select the receipt to open it at full size.</p>` : '<p>The organizer receives payment separately. Confirm your arrangement with this player.</p>'}<p>${decision === 'accept' ? 'Verify the receipt in your own account or confirm your cash arrangement. A screenshot alone does not verify payment.' : 'The player will receive your contact for any refund. You must handle refunds directly.'}</p><label>Message to player (optional)<textarea name="note" maxlength="500"></textarea></label>${err}<button class="button primary" type="submit">${decision === 'accept' ? 'Accept and confirm place' : 'Reject registration'}</button></form>`);
+        const sheet = ctx.openSheet(decision === 'accept' ? 'Accept registration' : 'Reject registration', `<form id="review-registration"><h3>${esc(attendee.player_name)}</h3><p>${esc(attendee.player_email)}${attendee.level ? " &middot; " + esc(attendee.level) : ""}</p><p>Payment: ${esc(attendee.payment_method)} &middot; &#8377;${esc(attendee.amount)}</p>${attendee.has_proof ? `<a href="/api/bookings/${encodeURIComponent(attendee.id)}/proof" target="_blank" rel="noopener noreferrer"><img class="review-payment-image" src="/api/bookings/${encodeURIComponent(attendee.id)}/proof" alt="Payment screenshot submitted by ${esc(attendee.player_name)}"></a><p class="fine">Select the receipt to open it at full size.</p>` : '<p>The organizer receives payment separately. Confirm your arrangement with this player.</p>'}<p>${decision === 'accept' ? 'Verify the receipt in your own account or confirm your cash arrangement. A screenshot alone does not verify payment.' : 'The player will receive your contact for any refund. You must handle refunds directly.'}</p><label>Message to player (optional)<textarea name="note" maxlength="500"></textarea></label>${err}<button class="button primary" type="submit">${decision === 'accept' ? 'Accept and confirm place' : 'Reject registration'}</button></form>`);
         formSubmit('#review-registration', async d => { await api('organizer/events/' + id + '/review', {bookingId:b.dataset.booking,decision,note:d.note}); sheet.close(); await roster(id,currentFilters()); ctx.toast('Registration reviewed.'); });
     });
     action('#refresh-roster', () => roster(id, currentFilters()));
@@ -589,8 +598,10 @@ async function roster(id, filters = {}) {
     });
 }
 
-function info() { page(`<div class="prose">${heading('LESS PLANNING. MORE PLAY.','Find it. Check it.<br><em>Play it.</em>')}<h2>Discover your next game.</h2><p>Browse real events by sport, neighbourhood and format. Source links, entry units and eligibility notes help you choose.</p><h2>Register with the organizer.</h2><p>External listings open the organizer or booking provider’s website. Check current dates, category rules, fees and cancellation terms before entering. Mercury has not onboarded these organizers and does not issue their tickets. Saving a listing is a bookmark, not a booking.</p><h2>Keep your shortlist.</h2><p>Create an account to save events across devices. Check the organizer’s eligibility and entry requirements for each event.</p><h2>For free sessions booked on Mercury</h2><p>Where an event is labelled Book on Mercury, your confirmed place appears in My games. Free places can be cancelled before the start, unless already checked in. Organizer cancellations appear in My games. Email and SMS are not active; paid entries await organizer approval and payments go directly to the organizer.</p><p>Found something wrong? Use Suggest a correction or <a href="/support">contact Mercury</a>.</p>${btn('Find your game','/explore')}</div>`); }
+function info() { page(`<div class="prose">${heading('LESS PLANNING. MORE PLAY.','Find it. Check it.<br><em>Play it.</em>')}<h2>Discover your next game.</h2><p>Browse real events by sport, neighbourhood and format. Source links, entry units and eligibility notes help you choose.</p><h2>Register with the organizer.</h2><p>External listings open the organizer or booking provider’s website. Check current dates, category rules, fees and cancellation terms before entering. Mercury has not onboarded these organizers and does not issue their tickets. Saving a listing is a bookmark, not a booking.</p><h2>Keep your shortlist.</h2><p>Create an account to save events across devices. Check the organizer’s eligibility and entry requirements for each event.</p><h2>For free sessions booked on Mercury</h2><p>Where an event is labelled Book on Mercury, your confirmed place appears in My games. Free places can be cancelled before the start, unless already checked in. Organizer cancellations appear in My games. Paid entries await organizer approval and payments go directly to the organizer.</p><p>Found something wrong? Use Suggest a correction or <a href="/support">contact Mercury</a>.</p>${btn('Find your game','/explore')}</div>`); }
 export async function liveRoute(path, context) {
+    studioMenuCleanup();
+    studioMenuCleanup = () => {};
     ctx = context;
     const sequence = ++turn;
     updateAccountLink();

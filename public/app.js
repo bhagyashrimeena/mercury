@@ -481,7 +481,7 @@ function info() {
 
 function openSheet(title, body) {
   const sheet = document.querySelector("#action-sheet");
-  sheet.classList.remove('publication-celebration', 'organizer-menu-dialog');
+  sheet.classList.remove('publication-celebration');
   sheet.innerHTML = `<button class="close" aria-label="Close dialog">×</button><h2 id="sheet-title">${esc(title)}</h2><div>${body}</div>`;
   sheet.querySelector(".close").onclick = () => sheet.close();
   sheet

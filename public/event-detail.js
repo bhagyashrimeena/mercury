@@ -12,9 +12,10 @@ export function eventState(event, now = Date.now()) {
   return { code: 'published', label: `${event.spots} of ${event.capacity} places left`, canBook: event.status === 'published' };
 }
 
-export function eventDetailMarkup(event, { saved = false, preview = false, policy = '' } = {}) {
+export function eventDetailMarkup(event, { saved = false, preview = false, policy = '', coverPreview = '' } = {}) {
   const state = preview ? { code: 'draft', label: 'Private draft preview; not published', canBook: false } : eventState(event);
-  const media = sportPhoto(event);
+  const media = preview && coverPreview.startsWith('blob:')
+    ? {src:coverPreview,source:'organizer',alt:'Your event cover preview'} : sportPhoto(event);
   const fee = Number(event.price) ? `&#8377;${Number(event.price).toLocaleString('en-IN')} <span>/ player</span>` : 'Free <span>/ player</span>';
   const bookingAction = preview
     ? '<button class="button outline" type="button" disabled>Booking unavailable in preview</button>'

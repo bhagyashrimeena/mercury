@@ -380,3 +380,62 @@ test('failed wizard publication does not create an event or change an existing d
     assert.equal(h.sqlite.prepare('SELECT COUNT(*) AS n FROM events').get().n, 1);
   } finally { h.sqlite.close(); }
 });
+
+test('event covers persist separately from payment QR, stay private in drafts, and can be removed', async () => {
+  const h = harness();
+  try {
+    const image = 'data:image/png;base64,' + readFileSync(new URL('./fixtures/payment-upi.png', import.meta.url)).toString('base64');
+    const id = await h.create({coverImage:image});
+    const getImage = user => apiHandler(new Request('https://mercury.test/api/organizer/events/' + id + '/cover'), h.db, user);
+    assert.equal((await getImage(null)).status, 401);
+    assert.equal((await getImage(player(1))).status, 404);
+    const ownerImage = await getImage(host);
+    assert.equal(ownerImage.status, 200);
+    assert.equal(ownerImage.headers.get('content-type'), 'image/png');
+    assert.equal(Buffer.from(await ownerImage.arrayBuffer()).toString('base64'), image.split(',')[1]);
+    assert.equal((await h.req('events/' + id + '/cover', null)).status, 404);
+    const own = (await h.req('organizer/events')).data.events.find(event => event.id === id);
+    assert.equal(own.coverImage, '/api/organizer/events/' + id + '/cover');
+    assert.equal(own.draft.coverImage, own.coverImage);
+    const row = h.sqlite.prepare('SELECT qr_image,cover_image FROM events WHERE id=?').get(id);
+    assert.equal(row.qr_image, '');
+    assert.equal(row.cover_image, image);
+    assert.equal((await h.req('organizer/events/' + id, host, {...draft,coverImage:own.coverImage,revision:1,publish:true}, 'PATCH')).status, 200);
+    assert.equal((await h.req('events/' + id, null)).data.event.coverImage, '/api/events/' + id + '/cover');
+    const published = await apiHandler(new Request('https://mercury.test/api/events/' + id + '/cover'), h.db, null);
+    assert.equal(published.status, 200);
+    assert.equal(published.headers.get('x-content-type-options'), 'nosniff');
+    assert.equal((await h.req('organizer/events/' + id + '/unpublish', host, {})).status, 200);
+    assert.equal((await h.req('events/' + id + '/cover', null)).status, 404);
+    assert.equal((await h.req('organizer/events/' + id, host, {...draft,coverImage:'',revision:2}, 'PATCH')).status, 200);
+    assert.equal((await getImage(host)).status, 404);
+    assert.equal((await h.req('organizer/events', host, {...draft,coverImage:'https://untrusted.example/photo.png'})).status, 422);
+    assert.equal((await h.req('organizer/events', host, {...draft,coverImage:'data:image/svg+xml;base64,PHN2Zy8+'})).status, 422);
+  } finally { h.sqlite.close(); }
+});
+
+test('registration accepts no playing level without inventing one and still checks rules', async () => {
+  const h = harness();
+  try {
+    const id = await h.publish();
+    const missing = await h.join(id, 1, {level:undefined});
+    assert.equal(missing.status, 200);
+    assert.equal(h.sqlite.prepare('SELECT level FROM bookings WHERE id=?').get(missing.data.id).level, '');
+    assert.equal((await h.join(id, 2, {level:undefined,rulesAccepted:false})).status, 422);
+    assert.equal((await h.join(id, 2, {level:{}})).status, 422);
+  } finally { h.sqlite.close(); }
+});
+
+test('one wizard request accepts both cover and QR within their individual upload limits', async () => {
+  const h = harness();
+  try {
+    await h.req('organizer/profile', host, {name:'Photo Club',contact:'host@example.test'});
+    const png = readFileSync(new URL('./fixtures/payment-upi.png', import.meta.url));
+    const image = 'data:image/png;base64,' + Buffer.concat([png,Buffer.alloc(500000)]).toString('base64');
+    const result = await h.req('organizer/events', host, {...draft,price:250,paymentMethods:['upi'],qrImage:image,coverImage:image,publish:true});
+    assert.equal(result.status, 200);
+    const stored = h.sqlite.prepare('SELECT qr_image,cover_image FROM events WHERE id=?').get(result.data.id);
+    assert.equal(stored.cover_image, image);
+    assert.equal(stored.qr_image, image);
+  } finally { h.sqlite.close(); }
+});

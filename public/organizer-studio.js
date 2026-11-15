@@ -1,3 +1,4 @@
+import { sportPhoto } from './sport-media.js';
 import { dateLabel, timeLabel } from './data.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char =>
@@ -22,19 +23,70 @@ export function organizerDashboardMarkup(events) {
 export function organizerEventCard(event) {
   const state = event.status === 'cancelled' ? 'cancelled' : event.status === 'draft' ? 'draft'
     : Number(event.startsAt) <= Date.now() ? 'past' : Number(event.registered) >= Number(event.capacity) ? 'full' : 'published';
-  return `<article class="manage-card organizer-event-card"><div class="organizer-card-top"><span class="state state-${state}">${state}</span><button class="studio-icon" type="button" data-event-menu="${esc(event.id)}" aria-haspopup="dialog" aria-label="Actions for ${esc(event.title)}" title="Event actions">${studioIcon('more')}</button></div><h3 title="${esc(event.title)}">${esc(event.title)}</h3><p class="organizer-event-meta">${esc(dateLabel(event))} · ${esc(timeLabel(event))} IST</p><p class="organizer-event-meta">${esc(event.registered)} / ${esc(event.capacity)} players · ${Number(event.price) ? '₹' + esc(event.price) + ' per player' : 'Free'}</p><p class="organizer-event-hint">${event.pendingCount ? `${esc(event.pendingCount)} registration${event.pendingCount === 1 ? '' : 's'} awaiting your review` : event.status === 'draft' ? 'Private draft · publish from the event menu' : event.status === 'cancelled' ? 'Registration is closed' : 'Bring your people. Share your event.'}</p><div class="organizer-primary-action"><a class="button primary" href="/participants/${encodeURIComponent(event.id)}">Manage players ↗</a></div></article>`;
+  const media = sportPhoto(event);
+  const href = event.status === 'draft' ? '/host/' + encodeURIComponent(event.id) : '/event/' + encodeURIComponent(event.id);
+  const menuId = 'event-menu-' + encodeURIComponent(event.id);
+  return `<article class="manage-card organizer-event-card"><a class="organizer-card-visual" href="${href}" aria-label="${event.status === 'draft' ? 'Edit draft' : 'View tournament'}: ${esc(event.title)}"><img class="sport-stock-img" src="${esc(media.src)}" alt="" loading="lazy" width="560" height="440"><span class="organizer-cover-label" title="${esc(media.credit)}">${media.source === 'stock' ? 'Illustrative photo' : 'Your event photo'}</span><div class="organizer-card-copy"><div class="organizer-title-row"><h3>${esc(event.title)}</h3><span class="state state-${state}">${state}</span></div><p class="organizer-event-meta">${esc(dateLabel(event))} · ${esc(timeLabel(event))} IST</p><p class="organizer-event-meta">${esc(event.registered)} / ${esc(event.capacity)} players · ${Number(event.price) ? '₹' + esc(event.price) + ' per player' : 'Free'}</p><p class="organizer-event-hint">${event.pendingCount ? `${esc(event.pendingCount)} registration${event.pendingCount === 1 ? '' : 's'} awaiting your review` : event.status === 'draft' ? 'Private draft' : event.status === 'cancelled' ? 'Registration is closed' : 'Bring your people. Share your event.'}</p></div></a><details class="organizer-card-actions" data-event-menu="${esc(event.id)}"><summary class="studio-icon" aria-expanded="false" aria-controls="${menuId}" aria-label="Actions for ${esc(event.title)}" title="Event actions">${studioIcon('more')}</summary><div id="${menuId}" class="studio-event-menu">${organizerMenuMarkup(event)}</div></details><div class="organizer-primary-action"><a class="button primary" href="/participants/${encodeURIComponent(event.id)}">Manage players ↗</a></div></article>`;
 }
 
 export function organizerMenuMarkup(event) {
   const id = encodeURIComponent(event.id);
   const publicPage = event.status !== 'draft';
-  return `<div class="studio-event-menu">${event.status === 'draft' ? '<button type="button" data-studio-action="publish">Publish event ↗</button>' : ''}
+  return `${event.status === 'draft' ? '<button type="button" data-studio-action="publish">Publish event ↗</button>' : ''}
     ${publicPage ? `<button type="button" data-studio-copy>Copy link</button><a href="/event/${id}">View page ↗</a>` : ''}
     <a href="/host/${id}">${event.status === 'cancelled' ? 'View details' : 'Edit details'} ↗</a>
     ${event.status === 'published' && !Number(event.registered) ? '<button type="button" data-studio-action="unpublish">Return to draft</button>' : ''}
-    ${event.status !== 'cancelled' ? '<button class="danger" type="button" data-studio-action="cancel">Cancel event</button>' : ''}</div>`;
+    ${event.status !== 'cancelled' ? '<button class="danger" type="button" data-studio-action="cancel">Cancel event</button>' : ''}<label class="share-label" data-copy-fallback hidden>Copy event link<input readonly value="/event/${id}"></label>`;
 }
 
 export function publicationMarkup(id, title) {
   return `<div class="publication-body"><div class="publication-art" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><span>${studioIcon('trophy')}</span></div><p class="eyebrow blue">LET THE GAMES BEGIN</p><p><strong>${esc(title)}</strong> is ready for its first players. Share it and get your people together.</p><div class="publication-actions"><a class="button primary" href="/event/${encodeURIComponent(id)}">Go to tournament ↗</a><a class="button outline" href="/">Home</a></div></div>`;
+}
+
+export function mountOrganizerMenus(root, {events, onCopy, onAction}) {
+  const controller = new AbortController();
+  const options = {signal:controller.signal};
+  const document = root.ownerDocument;
+  const menus = [...root.querySelectorAll('details[data-event-menu]')];
+  const close = except => menus.forEach(menu => { if (menu !== except) menu.open = false; });
+  const position = details => {
+    const menu = details.querySelector('.studio-event-menu');
+    const anchor = details.querySelector('summary').getBoundingClientRect();
+    const view = document.defaultView;
+    const width = menu.offsetWidth, height = menu.offsetHeight;
+    const below = anchor.bottom + 6;
+    menu.style.position = 'fixed';
+    menu.style.right = 'auto';
+    menu.style.left = Math.max(8, Math.min(anchor.right - width, view.innerWidth - width - 8)) + 'px';
+    menu.style.top = Math.max(8, Math.min(below + height <= view.innerHeight - 8 ? below : anchor.top - height - 6, view.innerHeight - height - 8)) + 'px';
+  };
+  for (const details of menus) {
+    const event = events.find(event => event.id === details.dataset.eventMenu);
+    details.addEventListener('toggle', () => {
+      details.querySelector('summary').setAttribute('aria-expanded', String(details.open));
+      if (details.open) { close(details); position(details); }
+    }, options);
+    details.querySelector('[data-studio-copy]')?.addEventListener('click', async () => {
+      if (await onCopy(event, details)) details.open = false;
+      else if (details.isConnected && details.open) position(details);
+    }, options);
+    details.querySelectorAll('[data-studio-action]').forEach(button => button.addEventListener('click', () => {
+      details.open = false;
+      onAction(button.dataset.studioAction, event);
+    }, options));
+    details.querySelectorAll('a').forEach(link => link.addEventListener('click', () => { details.open = false; }, options));
+  }
+  document.addEventListener('pointerdown', event => {
+    for (const menu of menus) if (menu.open && !menu.contains(event.target)) menu.open = false;
+  }, options);
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    const open = menus.find(menu => menu.open);
+    if (open) { event.preventDefault(); open.open = false; open.querySelector('summary').focus(); }
+  }, options);
+  document.addEventListener('scroll', event => {
+    if (!menus.some(menu => menu.open && menu.querySelector('.studio-event-menu').contains(event.target))) close();
+  }, {...options,capture:true});
+  document.defaultView.addEventListener('resize', () => close(), options);
+  return () => { controller.abort(); close(); };
 }

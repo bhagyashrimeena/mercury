@@ -48,6 +48,14 @@ function chosenPhoto(event) {
 }
 
 export function sportPhoto(event) {
+  if (event?.coverImage && [
+    '/api/events/' + encodeURIComponent(event.id) + '/cover',
+    '/api/organizer/events/' + encodeURIComponent(event.id) + '/cover'
+  ].includes(event.coverImage)) return {
+    src: event.coverImage, source: 'organizer',
+    alt: 'Photo provided for ' + String(event.title || 'this sports event'),
+    credit: 'Organizer-supplied photograph', page: null
+  };
   if (isApprovedCover(event)) return {
     src: event.approvedCover.url, source: 'organizer',
     alt: 'Photo provided for ' + String(event.title || 'this sports event'),

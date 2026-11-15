@@ -43,6 +43,13 @@
       "when": 1794762906818,
       "tag": "0005_optional_event_instructions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1794767842388,
+      "tag": "0006_event_covers",
+      "breakpoints": true
     }
   ]
 }

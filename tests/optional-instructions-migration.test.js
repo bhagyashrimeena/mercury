@@ -9,7 +9,7 @@ test('optional instruction migration preserves existing events, bookings, saves 
     db.exec('PRAGMA foreign_keys=ON');
     const directory = new URL('../drizzle/', import.meta.url);
     const migrations = readdirSync(directory).filter(name => name.endsWith('.sql')).sort();
-    for (const name of migrations.filter(name => !name.startsWith('0005_')))
+    for (const name of migrations.filter(name => name < '0005_'))
       db.exec(readFileSync(new URL(name, directory), 'utf8'));
     db.exec(`INSERT INTO users VALUES('host','Host','host@example.test',1);
       INSERT INTO events(id,owner_id,title,sport,area,venue,description,date,time,starts_at,capacity,price,level,format,included,bring,cancellation,created_at,updated_at)

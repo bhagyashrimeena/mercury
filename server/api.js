@@ -4,7 +4,7 @@ import { findListing, currentListings, listingStatus, indiaDay } from '../public
 import { validateDraft, newId } from '../public/domain.js';
 import { CLIENT_METRICS, recordMetric } from './metrics.js';
 const ACTIVE = "('pending','confirmed','checked_in')";
-const PUBLIC_SELECT = `SELECT e.id,e.owner_id,e.title,e.sport,e.area,e.venue,e.description,e.date,e.time,e.starts_at,e.duration,e.capacity,e.price,e.level,e.format,e.included,e.bring,e.cancellation,e.status,e.revision,e.created_at,e.payment_methods,CASE WHEN length(e.qr_image)>0 THEN 'present' ELSE '' END AS qr_image,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE}) AS registered,(SELECT COUNT(*) FROM bookings pending WHERE pending.event_id=e.id AND pending.status='pending') AS pending_count FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
+const PUBLIC_SELECT = `SELECT e.id,e.owner_id,e.title,e.sport,e.area,e.venue,e.description,e.date,e.time,e.starts_at,e.duration,e.capacity,e.price,e.level,e.format,e.included,e.bring,e.cancellation,e.status,e.revision,e.created_at,e.payment_methods,CASE WHEN length(e.qr_image)>0 THEN 'present' ELSE '' END AS qr_image,CASE WHEN length(e.cover_image)>0 THEN 'present' ELSE '' END AS cover_image,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE}) AS registered,(SELECT COUNT(*) FROM bookings pending WHERE pending.event_id=e.id AND pending.status='pending') AS pending_count FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
 export class ApiError extends Error {
     constructor(status, message, code = 'request_failed', fields = null) { super(message); this.status = status; this.code = code; this.fields = fields; }
 }
@@ -14,7 +14,7 @@ const one = (db, sql, ...values) => db.prepare(sql).bind(...values).first();
 const all = async (db, sql, ...values) => (await db.prepare(sql).bind(...values).all()).results;
 const run = (db, sql, ...values) => db.prepare(sql).bind(...values).run();
 export function publicEvent(row) { if (!row)
-    return null; return { id: row.id, title: row.title, sport: row.sport, area: row.area, venue: row.venue, description: row.description, date: row.date, time: row.time, startsAt: row.starts_at, duration: row.duration, capacity: row.capacity, price: row.price, paymentMethods: (row.payment_methods || '').split(',').filter(Boolean), qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '', level: row.level, type: row.format, format: row.format + ' · individual entry', included: row.included ? row.included.split('\n').filter(Boolean) : null, bring: row.bring, cancellation: row.cancellation, status: row.status, revision: row.revision, host: row.host, hostBio: row.host_bio, hostContact: row.host_contact, spots: Math.max(0, row.capacity - Number(row.registered)), registered: Number(row.registered), pendingCount: Number(row.pending_count || 0), image: row.sport === 'Badminton' ? 'badminton.jpg' : row.sport === 'Tennis' ? 'tennis.jpg' : 'court.jpg', solo: true, isDemo: false, tag: 'YOUR NEXT GAME STARTS HERE' }; }
+    return null; return { id: row.id, title: row.title, sport: row.sport, area: row.area, venue: row.venue, description: row.description, date: row.date, time: row.time, startsAt: row.starts_at, duration: row.duration, capacity: row.capacity, price: row.price, paymentMethods: (row.payment_methods || '').split(',').filter(Boolean), qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '', coverImage: row.cover_image ? '/api/events/' + encodeURIComponent(row.id) + '/cover' : '', level: row.level, type: row.format, format: row.format + ' · individual entry', included: row.included ? row.included.split('\n').filter(Boolean) : null, bring: row.bring, cancellation: row.cancellation, status: row.status, revision: row.revision, host: row.host, hostBio: row.host_bio, hostContact: row.host_contact, spots: Math.max(0, row.capacity - Number(row.registered)), registered: Number(row.registered), pendingCount: Number(row.pending_count || 0), image: row.sport === 'Badminton' ? 'badminton.jpg' : row.sport === 'Tennis' ? 'tennis.jpg' : 'court.jpg', solo: true, isDemo: false, tag: 'YOUR NEXT GAME STARTS HERE' }; }
 function ensureUser(user) {
     if (!user?.userId || !user?.email) fail(401, 'Sign in to continue.', 'sign_in_required');
     return user.userId;
@@ -45,6 +45,14 @@ function paymentConfig(b, event) {
     if (methods.some(m => !['upi','cash'].includes(m))) fail(422, 'Choose UPI or cash.', 'validation_failed');
     return [methods.join(','), event && b.qrImage === '/api/events/' + encodeURIComponent(event.id) + '/qr' ? event.qr_image : imageData(b.qrImage)];
 }
+function coverResponse(value) {
+    if (!value) fail(404, 'This event image is not available.', 'not_found');
+    const [header, data] = value.split(',');
+    return new Response(Uint8Array.from(atob(data), c => c.charCodeAt(0)), { headers: {
+        'Content-Type': header.slice(5).split(';')[0], 'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox"
+    } });
+}
 async function validatePublication(db, event, userId, now) {
     if (event.status === 'cancelled') fail(409, 'Cancelled events cannot be published again.', 'event_cancelled');
     if (event.price > 0 && (!event.payment_methods || (event.payment_methods.includes('upi') && !event.qr_image))) fail(409, 'Choose cash or upload your UPI QR image before publishing.', 'payments_unavailable');
@@ -53,7 +61,7 @@ async function validatePublication(db, event, userId, now) {
 }
 async function parseBody(request) { if (!(request.headers.get('content-type') || '').startsWith('application/json'))
     fail(415, 'Send JSON data.', 'content_type'); const origin = request.headers.get('origin'); if (origin !== new URL(request.url).origin)
-    fail(403, 'This request must come from Mercury.', 'origin_mismatch'); const limit = /^\/api\/(organizer\/events(?:\/[^/]+)?|events\/[^/]+\/register)$/.test(new URL(request.url).pathname) ? 1100000 : 16384; if (Number(request.headers.get('content-length') || 0) > limit)
+    fail(403, 'This request must come from Mercury.', 'origin_mismatch'); const pathname = new URL(request.url).pathname; const limit = /^\/api\/organizer\/events(?:\/[^/]+)?$/.test(pathname) ? 2200000 : /^\/api\/events\/[^/]+\/register$/.test(pathname) ? 1100000 : 16384; if (Number(request.headers.get('content-length') || 0) > limit)
     fail(413, 'The request is too large.', 'body_too_large'); let raw = '';
     const reader = request.body?.getReader();
     if (reader) {
@@ -160,6 +168,10 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
             fail(404, 'This game is not available.', 'not_found');
         return { event: publicEvent(row) };
     }
+    if (m === 'GET' && p[0] === 'events' && p.length === 3 && p[2] === 'cover') {
+        const row = await one(db, "SELECT cover_image FROM events WHERE id=? AND status IN ('published','cancelled')", p[1]);
+        return coverResponse(row?.cover_image);
+    }
     if (m === 'GET' && route === 'session') {
         if (!user?.userId || !user?.email) return { user:null, organizer:null, saved:[], savedListings:[], notifications:[], paymentsEnabled:false, isAdmin:false };
         const uid = user.userId;
@@ -220,7 +232,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
     }
     if (m === 'GET' && route === 'organizer/events') {
         const rows = await all(db, `${PUBLIC_SELECT} WHERE e.owner_id=? ORDER BY e.created_at DESC LIMIT 100`, uid);
-        return { events: rows.map(row => ({ ...publicEvent(row), draft: { title: row.title, sport: row.sport, area: row.area, date: row.date, time: row.time, capacity: row.capacity, price: row.price, level: row.level, format: row.format, venue: row.venue, description: row.description, included: row.included, bring: row.bring, cancellation: row.cancellation, paymentMethods: row.payment_methods.split(',').filter(Boolean), qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '' } })) };
+        return { events: rows.map(row => ({ ...publicEvent(row), coverImage: row.cover_image ? (row.status === 'draft' ? '/api/organizer/events/' : '/api/events/') + encodeURIComponent(row.id) + '/cover' : '', draft: { title: row.title, sport: row.sport, area: row.area, date: row.date, time: row.time, capacity: row.capacity, price: row.price, level: row.level, format: row.format, venue: row.venue, description: row.description, included: row.included, bring: row.bring, cancellation: row.cancellation, paymentMethods: row.payment_methods.split(',').filter(Boolean), coverImage: row.cover_image ? '/api/organizer/events/' + encodeURIComponent(row.id) + '/cover' : '', qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '' } })) };
     }
     if (m === 'POST' && route === 'organizer/events') {
         if (!await one(db, 'SELECT user_id FROM organizers WHERE user_id=?', uid))
@@ -228,18 +240,21 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         await consumeLimit(db, 'event-create:' + uid, 20, now, fail);
         const d = validate(b, now);
         const [methods, qr] = paymentConfig(b);
+        const cover = imageData(b.coverImage);
         const status = b.publish === true ? 'published' : 'draft';
         if (b.publish === true) await validatePublication(db, { ...d, payment_methods: methods, qr_image: qr, starts_at: Date.parse(`${d.date}T${d.time}:00+05:30`) }, uid, now);
         const id = newId();
-        await run(db, 'INSERT INTO events(id,owner_id,title,sport,area,venue,description,date,time,starts_at,capacity,price,level,format,included,bring,cancellation,payment_methods,qr_image,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', id, uid, ...eventValues(d), methods, qr, status, now, now);
+        await run(db, 'INSERT INTO events(id,owner_id,title,sport,area,venue,description,date,time,starts_at,capacity,price,level,format,included,bring,cancellation,payment_methods,qr_image,cover_image,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', id, uid, ...eventValues(d), methods, qr, cover, status, now, now);
         return { id };
     }
     if (p[0] === 'organizer' && p[1] === 'events' && p.length >= 3) {
         const id = p[2];
         const e = await ownedEvent(db, id, uid);
+        if (m === 'GET' && p.length === 4 && p[3] === 'cover') return coverResponse(e.cover_image);
         if (m === 'PATCH' && p.length === 3) {
             const d = validate(b, now);
-        const [methods, qr] = paymentConfig(b, e);
+            const [methods, qr] = paymentConfig(b, e);
+            const cover = b.coverImage === undefined || b.coverImage === '/api/organizer/events/' + encodeURIComponent(e.id) + '/cover' ? e.cover_image : imageData(b.coverImage);
             if (e.status === 'cancelled')
                 fail(409, 'Cancelled events cannot be edited. Create a new event.', 'event_cancelled');
             const active = await one(db, `SELECT COUNT(*) AS count FROM bookings WHERE event_id=? AND status IN ${ACTIVE}`, id);
@@ -248,7 +263,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
             if (e.status === 'published' && d.price > 0 && !(await one(db, 'SELECT contact FROM organizers WHERE user_id=?', uid))?.contact) fail(422, 'Add a public payment contact.', 'contact_required');
             if (e.status === 'published' && d.price > 0 && (!methods || (methods.includes('upi') && !qr))) fail(422, 'Set payment options and upload a UPI QR image.', 'payments_unavailable');
             if (b.publish === true) await validatePublication(db, { ...d, payment_methods: methods, qr_image: qr, starts_at: Date.parse(`${d.date}T${d.time}:00+05:30`) }, uid, now);
-            const result = await run(db, `UPDATE events SET title=?,sport=?,area=?,venue=?,description=?,date=?,time=?,starts_at=?,capacity=?,price=?,level=?,format=?,included=?,bring=?,cancellation=?,payment_methods=?,qr_image=?,status=CASE WHEN ?=1 THEN 'published' ELSE status END,revision=revision+1,updated_at=? WHERE id=? AND owner_id=? AND revision=? AND status!='cancelled' AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${ACTIVE})`, ...eventValues(d), methods, qr, b.publish === true ? 1 : 0, now, id, uid, Number(b.revision), id);
+            const result = await run(db, `UPDATE events SET title=?,sport=?,area=?,venue=?,description=?,date=?,time=?,starts_at=?,capacity=?,price=?,level=?,format=?,included=?,bring=?,cancellation=?,payment_methods=?,qr_image=?,cover_image=?,status=CASE WHEN ?=1 THEN 'published' ELSE status END,revision=revision+1,updated_at=? WHERE id=? AND owner_id=? AND revision=? AND status!='cancelled' AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${ACTIVE})`, ...eventValues(d), methods, qr, cover, b.publish === true ? 1 : 0, now, id, uid, Number(b.revision), id);
             if (!result.meta.changes)
                 fail(409, 'This event changed or received a booking. Reload before editing.', 'version_conflict');
             return { ok: true };
@@ -308,7 +323,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         if (b.rulesAccepted !== true)
             fail(422, 'Read and accept the event rules.', 'consent_required');
         const name = clean(b.name, 80), level = clean(b.level, 30), key = clean(b.idempotencyKey, 100);
-        if (name.length < 2 || !['Beginner', 'Intermediate', 'Advanced'].includes(level))
+        if (name.length < 2 || (b.level != null && typeof b.level !== 'string') || (level && !['Beginner', 'Intermediate', 'Advanced'].includes(level)))
             fail(422, 'Enter your name and playing level.', 'validation_failed');
         if (!/^[a-zA-Z0-9-]{16,100}$/.test(key))
             fail(422, 'Refresh and try registration again.', 'invalid_request_key');

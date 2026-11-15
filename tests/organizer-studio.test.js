@@ -14,12 +14,13 @@ test('organizer dashboard separates creation and profile editing from the event 
   assert.doesNotMatch(html, /<form|<fieldset|<textarea/);
 });
 
-test('event cards contain participants access and a dialog trigger without expanding actions', () => {
+test('event cards contain participants access and an anchored menu without changing the card layout', () => {
   const html = organizerEventCard(event);
-  assert.match(html, /aria-haspopup="dialog"/);
+  assert.match(html, /<details class="organizer-card-actions"/);
+  assert.match(html, /class="organizer-card-visual" href="\/event\/club-game"/);
   assert.match(html, /href="\/participants\/club-game"/);
   assert.match(html, /&lt;Club&gt; tournament/);
-  assert.doesNotMatch(html, /<details|data-studio-action|Copy link|Return to draft|Cancel event/);
+  assert.doesNotMatch(html, /<dialog|More actions/);
 });
 
 test('event menus expose appropriate actions for published, registered, draft and cancelled events', () => {

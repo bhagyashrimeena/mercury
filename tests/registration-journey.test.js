@@ -10,7 +10,11 @@ test('UPI form prefills verified profile details and provides a separate payment
  const html=registrationFormMarkup(event,user);
  assert.match(html,/value="&lt;Player&gt;"/);
  assert.match(html,/value="player@example.test" readonly required/);
- assert.match(html,/<option selected>Intermediate/);
+ assert.doesNotMatch(html,/name="level"|Playing level|Payment questions|email and SMS|using another device|Crop unrelated/);
+ assert.match(html,/Your details are shared with this organizer/);
+ assert.ok(html.indexOf('name="paymentMethod"') < html.indexOf('name="rules"'));
+ assert.ok(html.indexOf('name="rules"') < html.indexOf('name="paymentConsent"'));
+ assert.match(html,/class="fine registration-retry-note"/);
  assert.match(html,/data-registration-panel="payment" hidden/);
  assert.match(html,/src="\/api\/events\/native-game\/qr"/);
  assert.match(html,/name="proof"/);

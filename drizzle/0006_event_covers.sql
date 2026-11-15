@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `cover_image` text DEFAULT '' NOT NULL;

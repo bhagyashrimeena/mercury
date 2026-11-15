@@ -10,7 +10,7 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
  const directory=await mkdtemp(join(tmpdir(),'mercury-registration-'));
  let pg=new PGlite(directory);
  try{
- for(const file of ['20261102_initial.sql','20261105132850_site_metrics.sql','20261115000000_direct_payments.sql','20261115010000_optional_event_instructions.sql'])await pg.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
+ for(const file of ['20261102_initial.sql','20261105132850_site_metrics.sql','20261115000000_direct_payments.sql','20261115010000_optional_event_instructions.sql','20261116000000_event_covers.sql'])await pg.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
  function adapter(runner) {
    return { async batch(statements) {
      const results=[];
@@ -48,10 +48,11 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
  assert.equal((await req('events/'+emptyId,null)).event.status,'published');
  await req('events/'+emptyId+'/register',player,{name:'Test Player',level:'Beginner',rulesAccepted:true,revision:2,idempotencyKey:'no-age-confirmation-key'});
  const image='data:image/png;base64,'+(await readFile(new URL('./fixtures/payment-upi.png',import.meta.url))).toString('base64');
- const {id}=await req('organizer/events',host,{title:'Paid PostgreSQL Rally',sport:'Badminton',area:'Powai',venue:'QA Court Mumbai',description:'A friendly paid doubles session for testing.',date:'2030-11-22',time:'18:00',capacity:2,price:250,level:'All levels',format:'Social play',included:'Court time',bring:'Racket and water',cancellation:'Contact organizer for cancellation and refunds.',paymentMethods:['upi','cash'],qrImage:image,publish:true});
+ const cover='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1cAAAAASUVORK5CYII=';
+ const {id}=await req('organizer/events',host,{title:'Paid PostgreSQL Rally',sport:'Badminton',area:'Powai',venue:'QA Court Mumbai',description:'A friendly paid doubles session for testing.',date:'2030-11-22',time:'18:00',capacity:2,price:250,level:'All levels',format:'Social play',included:'Court time',bring:'Racket and water',cancellation:'Contact organizer for cancellation and refunds.',paymentMethods:['upi','cash'],qrImage:image,coverImage:cover,publish:true});
  assert.equal((await req('events/'+id,null)).event.status,'published');
  await req('organizer/events/'+id+'/publish',host,{});
- const entry={name:'Test Player',level:'Beginner',adultConfirmed:true,rulesAccepted:true,revision:1,idempotencyKey:'postgres-paid-test-key',paymentMethod:'cash',paymentConsentVersion:'2026-11-15-direct-payments'};
+ const entry={name:'Test Player',adultConfirmed:true,rulesAccepted:true,revision:1,idempotencyKey:'postgres-paid-test-key',paymentMethod:'cash',paymentConsentVersion:'2026-11-15-direct-payments'};
  const b=await req('events/'+id+'/register',player,entry);assert.equal(b.status,'pending');
  assert.equal((await req('events/'+id+'/register',player,entry)).id,b.id);
  assert.equal((await req('events/'+id,null)).event.spots,1);
@@ -74,6 +75,7 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
  await req('organizer/events/'+id+'/cancel',host,{});
  assert.equal((await req('bookings',player)).bookings.find(entry=>entry.id===b.id).status,'event_cancelled');
  await pg.close();pg=new PGlite(directory);
+ assert.equal((await pg.query('SELECT cover_image FROM events WHERE id=$1',[id])).rows[0].cover_image,cover);
  assert.equal((await pg.query('SELECT qr_image FROM events WHERE id=$1',[id])).rows[0].qr_image,image);
  assert.equal((await pg.query('SELECT payment_proof FROM bookings WHERE id=$1',[pending.id])).rows[0].payment_proof,image);
  }finally{

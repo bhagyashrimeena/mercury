@@ -4,7 +4,7 @@ import { isPublicApiRequest, isPublicPage } from '../lib/public-routes.ts';
 
 test('public API classification includes only exact browse and anonymous count routes', () => {
   for (const [path, method] of [
-    ['/api/events', 'GET'], ['/api/events/game-1', 'GET'],
+    ['/api/events', 'GET'], ['/api/events/game-1', 'GET'], ['/api/events/game-1/cover', 'GET'],
     ['/api/listings', 'GET'], ['/api/listings/listing-1', 'GET'],
     ['/api/metrics', 'POST'], ['/api/listings/listing-1/click', 'POST'],
   ]) assert.equal(isPublicApiRequest(path, method), true, `${method} ${path}`);
@@ -14,7 +14,7 @@ test('public API classification includes only exact browse and anonymous count r
     ['/api/events/game-1/register', 'POST'], ['/api/events/game-1', 'PATCH'],
     ['/api/listings/listing-1/save', 'POST'], ['/api/listings/listing-1/report', 'POST'],
     ['/api/organizer/events', 'GET'], ['/api/metrics', 'GET'],
-    ['/api/events/game-1/attendees', 'GET'],
+    ['/api/events/game-1/attendees', 'GET'], ['/api/events/game-1/cover', 'POST'], ['/api/events/game-1/cover/proof', 'GET'], ['/api/organizer/events/game-1/cover', 'GET'], ['/api/events/game-1/qr', 'GET'],
   ]) assert.equal(isPublicApiRequest(path, method), false, `${method} ${path}`);
 });
 
