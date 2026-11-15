@@ -108,7 +108,7 @@ export async function renderListing(id, { main, api, getSession, loadSession, re
     try {
       if (!getSession()) await loadSession().catch(() => {});
       const current = getSession();
-      if (current && (!current.user || !current.consentAccepted)) { go('/account?return_to=' + encodeURIComponent(location.pathname + location.search)); return; }
+      if (current && !current.user) { go('/account?return_to=' + encodeURIComponent(location.pathname + location.search)); return; }
       const saved = save.getAttribute('aria-pressed') !== 'true';
       await api('listings/' + id + '/save', { saved });
       save.setAttribute('aria-pressed', String(saved)); save.textContent = saved ? '♥ Saved' : '♡ Save for later';
@@ -120,10 +120,10 @@ export async function renderListing(id, { main, api, getSession, loadSession, re
     }
     finally { save.disabled = false; }
   };
-  main.querySelector('#share-listing').onclick = () => openSheet('Bring your people.', `<label class="share-label">Listing link<input readonly value="${esc(location.origin + '/listing/' + id)}" onclick="this.select()"></label><p class="fine">During the private pilot, only approved accounts can open this link.</p>`);
+  main.querySelector('#share-listing').onclick = () => openSheet('Bring your people.', `<label class="share-label">Listing link<input readonly value="${esc(location.origin + '/listing/' + id)}" onclick="this.select()"></label><p class="fine">Anyone can view this listing. Sign in to save it.</p>`);
   main.querySelector('#report-listing').onclick = () => {
     const current = getSession();
-    if (current && (!current.user || !current.consentAccepted)) { go('/support?category=Listing%20correction&listing=' + encodeURIComponent(id)); return; }
+    if (current && !current.user) { go('/support?category=Listing%20correction&listing=' + encodeURIComponent(id)); return; }
     const sheet = openSheet('Help keep the details right.', '<form id="listing-correction"><label>What needs updating?<textarea name="reason" minlength="10" maxlength="500" rows="4" required placeholder="Tell us what changed and include a source link if possible."></textarea></label><p class="error" role="alert"></p><button class="button primary" type="submit">Send correction</button><p class="fine">This goes to Mercury for review. It does not contact the organizer.</p></form>');
     const form = sheet.querySelector('form');
     form.onsubmit = async event => {

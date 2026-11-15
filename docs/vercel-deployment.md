@@ -16,7 +16,7 @@ Enable **Google** in Supabase Authentication → Providers. Create a Google OAut
 
 In Supabase Authentication → URL Configuration, set the Site URL to `https://www.playonmercury.com` while the apex domain redirects there. Add `https://www.playonmercury.com/auth/callback` to allowed redirect URLs; add the apex callback only if it is deliberately used. Add exact preview callback URLs separately if preview sign-in is needed. A preview should use its own Supabase project/database if it will perform writes.
 
-Google sign-in creates a new Supabase Auth identity. The old Sites identity and sessions are not reused. Account consent, organizer ownership and other Mercury records continue to use the verified user ID provided by Supabase. No D1 records are imported in this empty start.
+Google sign-in creates a new Supabase Auth identity. The old Sites identity and sessions are not reused. Account profiles, organizer ownership and other Mercury records continue to use the verified user ID provided by Supabase. No D1 records are imported in this empty start.
 
 For email sign-in, configure the Supabase Email provider, change the Magic Link template to include `{{ .Token }}`, and set up custom SMTP before sending codes to people outside the project team. The app verifies the code on the same origin. Account signup is public; there is no email invitation list. Follow [email sign-in setup](email-signin-setup.md) and verify an actual code round trip before treating email as ready. Phone sign-in is deferred until an SMS provider and an email-compatible account model are in place.
 
@@ -45,7 +45,7 @@ Set these environment variables for **Production** before deploying:
 | `MERCURY_PUBLIC_LAUNCH` | `true` to enable search indexing; this flag does not restrict account signup |
 | `MERCURY_SITE_ORIGIN` | Final HTTPS production origin: `https://www.playonmercury.com` while the apex domain redirects there |
 
-Google and email-code signup are open to all adults with a verified identity. `MERCURY_ALLOWED_EMAILS` is obsolete and ignored. `MERCURY_ADMIN_EMAIL` grants owner operations only; it is not an account invitation setting. Private data still requires verified sign-in, consent and ownership. `MERCURY_PUBLIC_LAUNCH` controls search indexing only.
+Google and email-code signup are open to all adults with a verified identity. `MERCURY_ALLOWED_EMAILS` is obsolete and ignored. `MERCURY_ADMIN_EMAIL` grants owner operations only; it is not an account invitation setting. Private data still requires verified sign-in and ownership. `MERCURY_PUBLIC_LAUNCH` controls search indexing only.
 
 Use separate values and preferably a separate Supabase project for **Preview** and **Development**. Do not point a preview that accepts writes at the production database. `MERCURY_SITE_ORIGIN` should be the canonical URL for that environment when set. Vercel also supplies `VERCEL_URL` as a fallback.
 
@@ -55,7 +55,7 @@ After creating the project, set Vercel's **Function Region** near the Supabase r
 
 Run `npm run check`, `npm test`, `npm run typecheck`, and `npm run build` before pushing. `npm run build` must create `.next/routes-manifest.json`; `vinext build` is no longer the deployment build.
 
-After the first Vercel deployment, check `/api/health` while signed in as the owner, then test Google sign-in, account consent, saving a listing, a correction, support intake, and owner access. For native free events, follow `docs/pilot-runbook.md` with explicit test events. Avoid real invitations until those checks pass.
+After the first Vercel deployment, check `/api/health` while signed in as the owner, then test Google sign-in, automatic profile creation, saving a listing, a correction, support intake, and owner access. For native free events, follow `docs/pilot-runbook.md` with explicit test events. Avoid real invitations until those checks pass.
 
 Run `npm run links:check` before a catalogue review. It reports clear 404/410 source or registration links and labels other failures for manual review. A 200 response does not establish that the event details or entry status are correct; update `checkedOn` only after a human verifies the source.
 

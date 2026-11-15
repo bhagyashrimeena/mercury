@@ -14,7 +14,7 @@ await mkdir(output, { recursive: true });
 const event = { id: 'qa-rally', title: 'The Thursday Rally', sport: 'Badminton', area: 'Powai', venue: 'Sample Court, 1 Example Road', date: '2030-11-14', time: '18:00', startsAt: Date.parse('2030-11-14T18:00:00+05:30'), duration: 90, capacity: 12, spots: 4, price: 0, status: 'published', revision: 1, level: 'All levels', type: 'Social play', host: 'Example Club', description: 'A friendly synthetic fixture for testing the game pass.', included: ['Court time'], bring: 'Water and indoor shoes', cancellation: 'Cancel before start.' };
 const initialBooking = { id: 'qa-pass-reference-12345678', event_id: event.id, title: event.title, sport: event.sport, area: event.area, venue: event.venue, date: event.date, time: event.time, starts_at: event.startsAt, duration: event.duration, status: 'confirmed', event_status: 'published', player_name: 'Example Player', level: 'Beginner' };
 let booking = { ...initialBooking };
-const session = { user: { name: 'Example Player', email: 'fixture@example.test' }, consentAccepted: true, organizer: null, saved: [], savedListings: [], notifications: [], paymentsEnabled: false };
+const session = { user: { name: 'Example Player', email: 'fixture@example.test' }, organizer: null, saved: [], savedListings: [], notifications: [], paymentsEnabled: false };
 const requests = [];
 const server = createServer(async (req, res) => {
   try {

@@ -35,7 +35,7 @@ test('listing renders before session state and handles a save authorization race
     assert.match(main.innerHTML, /id="save-listing"(?! aria-pressed)/);
     await saved.onclick();
     assert.deepEqual(calls, ['listings/' + listing.id]);
-    session = { user: { name: 'Player' }, consentAccepted: true, savedListings: [] };
+    session = { user: { name: 'Player' }, savedListings: [] };
     await saved.onclick();
     assert.equal(calls.at(-1), 'listings/' + listing.id + '/save');
     assert.deepEqual(destinations, Array(2).fill('/account?return_to=' + encodeURIComponent(location.pathname)));

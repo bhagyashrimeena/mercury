@@ -24,7 +24,7 @@ async function fixture(run) {
     },
   };
   const nodes = { main, '#action-sheet': actionSheet, '#location-dialog': locationDialog };
-  const session = { user: { name: 'Fixture Player' }, consentAccepted: true, saved: [], savedListings: [], notifications: [] };
+  const session = { user: { name: 'Fixture Player' }, saved: [], savedListings: [], notifications: [] };
   const baseBooking = { id: 'fixture-pass', event_id: 'fixture-event', title: 'Current confirmed game', sport: 'Badminton', area: 'Powai', venue: 'Synthetic court', date: '2030-11-14', time: '18:00', starts_at: Date.parse('2030-11-14T18:00:00+05:30'), duration: 90, status: 'confirmed', event_status: 'published', player_name: 'Fixture Player', level: 'Beginner' };
   const baseEvent = { ...baseBooking, id: 'fixture-event', title: 'Current event details', status: 'published', startsAt: baseBooking.starts_at, capacity: 12, spots: 4, price: 0, type: 'Social play', host: 'Fixture host', description: 'Synthetic event details.', included: ['Court'], bring: 'Water', cancellation: 'Before the start.' };
   const replies = new Map([

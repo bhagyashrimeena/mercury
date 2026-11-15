@@ -35,7 +35,7 @@ test('PostgreSQL API persists paid review transitions and preserves pending uniq
  };
  const host={userId:'host',email:'host@example.test'}, player={userId:'player',email:'player@example.test'};
  const req=async(path,user,body)=>{const r=await apiHandler(new Request('https://mercury.test/api/'+path,{method:body?'POST':'GET',headers:{origin:'https://mercury.test','content-type':'application/json'},body:body?JSON.stringify(body):undefined}),db,user);const result=await r.json();assert.equal(r.status,200,JSON.stringify(result));return result};
- for(const user of [host,player])await req('account/consent',user,{accepted:true,adult:true,version:'2026-11-02'});
+ for(const user of [host,player])await req('session',user);
  await req('organizer/profile',host,{name:'Test Club',contact:'host@example.test'});
  const {id}=await req('organizer/events',host,{title:'Paid PostgreSQL Rally',sport:'Badminton',area:'Powai',venue:'QA Court Mumbai',description:'A friendly paid doubles session for testing.',date:'2030-11-22',time:'18:00',capacity:2,price:250,level:'All levels',format:'Social play',included:'Court time',bring:'Racket and water',cancellation:'Contact organizer for cancellation and refunds.',paymentMethods:['cash']});
  await req('organizer/events/'+id+'/publish',host,{});

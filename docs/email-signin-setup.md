@@ -16,7 +16,7 @@ The form does not use an email callback URL: users enter the code on the same Me
 ## Verify
 
 1. On `http://localhost:3000/signin`, enter an email outside the project team. Check that its inbox receives a six-digit code. Do not paste the code or session cookies into a report.
-2. Enter the code, then confirm `/api/session` shows the signed-in account and the requested page opens. For a new account, complete Mercury's consent step before saving or booking.
+2. Enter the code, then confirm `/api/session` shows the signed-in account and the requested page opens. A new verified account is created automatically and can immediately save or book without an additional account form.
 3. Check an invalid code, an expired pending attempt, an uninvited email, and a resend after Supabase's cooldown. No code should be sent to uninvited emails.
 
 Official guidance: [Supabase passwordless email](https://supabase.com/docs/guides/auth/auth-email-passwordless), [identity linking](https://supabase.com/docs/guides/auth/auth-identity-linking), [email templates](https://supabase.com/docs/guides/auth/auth-email-templates), [custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp).

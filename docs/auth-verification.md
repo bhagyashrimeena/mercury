@@ -30,7 +30,7 @@ A separate signed-out HTTP check on the local staged-browse server returned 200 
 1. Start at `http://localhost:3000/signin?return_to=%2Fmy-games`. Use a verified email not belonging to the owner to confirm signup is public.
 2. Complete Google consent. Confirm the browser returns through localhost `/auth/callback` to `/my-games`, with an authenticated `/api/session`. Do not copy an OAuth code or session cookie between hosts.
 3. Repeat with an email code after confirming the Supabase Magic Link template contains `{{ .Token }}` and delivery works for that mailbox. Check invalid, expired, and resend states.
-4. Test the guest save path in a real session: Explore → listing → Save for later → Account → Sign in → original listing. A new account should complete the adult consent step first.
+4. Test the guest save path in a real session: Explore → listing → Save for later → Account → Sign in → original listing. A new verified account should return directly to the requested listing without another account form.
 5. Try a cancelled Google attempt. The retry should preserve the intended destination without carrying an abandoned OAuth code.
 
 A hosted provider round trip and email delivery are still unverified. Do not treat an OAuth start redirect, a green build, or provider settings alone as proof of completed sign-in.

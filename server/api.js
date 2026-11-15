@@ -1,4 +1,4 @@
-import { operations, POLICY_VERSION, isAdmin, consumeLimit } from './operations.js';
+import { operations, isAdmin, consumeLimit } from './operations.js';
 import { clientIp } from './client-ip.js';
 import { findListing, currentListings, listingStatus, indiaDay } from '../public/catalogue.js';
 import { validateDraft, newId } from '../public/domain.js';
@@ -15,11 +15,13 @@ const all = async (db, sql, ...values) => (await db.prepare(sql).bind(...values)
 const run = (db, sql, ...values) => db.prepare(sql).bind(...values).run();
 export function publicEvent(row) { if (!row)
     return null; return { id: row.id, title: row.title, sport: row.sport, area: row.area, venue: row.venue, description: row.description, date: row.date, time: row.time, startsAt: row.starts_at, duration: row.duration, capacity: row.capacity, price: row.price, paymentMethods: (row.payment_methods || '').split(',').filter(Boolean), qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '', level: row.level, type: row.format, format: row.format + ' · individual entry', included: row.included.split('\n').filter(Boolean), bring: row.bring, cancellation: row.cancellation, status: row.status, revision: row.revision, host: row.host, hostBio: row.host_bio, hostContact: row.host_contact, spots: Math.max(0, row.capacity - Number(row.registered)), registered: Number(row.registered), image: row.sport === 'Badminton' ? 'badminton.jpg' : row.sport === 'Tennis' ? 'tennis.jpg' : 'court.jpg', solo: true, isDemo: false, tag: 'YOUR NEXT GAME STARTS HERE' }; }
-async function ensureUser(db, user, now) {
+function ensureUser(user) {
     if (!user?.userId || !user?.email) fail(401, 'Sign in to continue.', 'sign_in_required');
-    const consent = await one(db, 'SELECT version FROM account_consents WHERE user_id=?', user.userId);
-    if (consent?.version !== POLICY_VERSION) fail(403, 'Open Account to accept the account notice before saving or joining games.', 'consent_required');
     return user.userId;
+}
+async function provisionUser(db, user, now) {
+    if (!user?.userId || !user?.email) return;
+    await run(db, 'INSERT INTO users(id,name,email,created_at) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email WHERE users.email<>excluded.email', user.userId, clean(user.fullName || 'Player',80) || 'Player', user.email, now);
 }
 async function ownedEvent(db, id, userId) { const e = await one(db, 'SELECT * FROM events WHERE id=? AND owner_id=?', id, userId); if (!e)
     fail(404, 'This event is not available in your organizer account.', 'not_found'); return e; }
@@ -71,6 +73,8 @@ export async function apiHandler(request, db, user, { now = Date.now(), adminEma
         let body = {};
         if (!['GET', 'HEAD'].includes(method))
             body = await parseBody(request);
+        if (path[0] === 'account' && ['consent','export'].includes(path[1])) fail(404, 'This action is not available.', 'not_found');
+        await provisionUser(db, user, now);
         let bookingNotifications = null;
         const options = { request, db, user, now, path, method, body, config: { adminEmail }, onBookingCreated: statements => { bookingNotifications = statements; } };
         // PostgreSQL needs an event-row lock across the capacity check and insert.
@@ -88,8 +92,7 @@ export async function apiHandler(request, db, user, { now = Date.now(), adminEma
                 console.error('Booking notification unavailable');
             }
         }
-        const completedMetric = method === 'POST' && path[0] === 'account' && path[1] === 'consent' ? 'consent_accepted'
-            : method === 'POST' && path[0] === 'listings' && path[2] === 'save' && body.saved === true ? 'saved_external'
+        const completedMetric = method === 'POST' && path[0] === 'listings' && path[2] === 'save' && body.saved === true ? 'saved_external'
             : method === 'POST' && path[0] === 'saved' && body.saved === true ? 'saved_native'
             : method === 'POST' && path[0] === 'events' && path[2] === 'register' && !result.existing && result.status !== 'pending' ? 'booking_confirmed'
             : null;
@@ -152,17 +155,16 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         return { event: publicEvent(row) };
     }
     if (m === 'GET' && route === 'session') {
-        if (!user?.userId || !user?.email) return { user:null, organizer:null, saved:[], savedListings:[], notifications:[], paymentsEnabled:false, consentAccepted:false, policyVersion:POLICY_VERSION, isAdmin:false };
+        if (!user?.userId || !user?.email) return { user:null, organizer:null, saved:[], savedListings:[], notifications:[], paymentsEnabled:false, isAdmin:false };
         const uid = user.userId;
         const profile = await one(db, 'SELECT name,email FROM users WHERE id=?', uid);
-        const consent = await one(db, 'SELECT version FROM account_consents WHERE user_id=?', uid);
         const organizer = await one(db, 'SELECT name,bio,contact FROM organizers WHERE user_id=?', uid);
         const saved = await all(db, 'SELECT event_id FROM saved_events WHERE user_id=?', uid);
         const savedListings = await all(db, 'SELECT listing_id FROM saved_listings WHERE user_id=?', uid);
         const notifications = await all(db, 'SELECT id,event_id,message,read_at,created_at FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 50', uid);
-        return { user: { name:profile?.name || clean(user.fullName || 'Player',80), email:user.email }, organizer, saved:saved.map(x=>x.event_id), savedListings:savedListings.map(x=>x.listing_id), notifications, paymentsEnabled:false, consentAccepted:consent?.version === POLICY_VERSION, policyVersion:POLICY_VERSION, isAdmin:isAdmin(user,config) };
+        return { user: { name:profile?.name || clean(user.fullName || 'Player',80), email:user.email }, organizer, saved:saved.map(x=>x.event_id), savedListings:savedListings.map(x=>x.listing_id), notifications, paymentsEnabled:false, isAdmin:isAdmin(user,config) };
     }
-    const uid = await ensureUser(db, user, now);
+    const uid = ensureUser(user);
     if (m === 'GET' && ((p[0] === 'events' && p[2] === 'qr') || (p[0] === 'bookings' && p[2] === 'proof')) && p.length === 3) {
         const row = p[0] === 'events'
             ? await one(db, "SELECT qr_image AS image FROM events WHERE id=? AND (status='published' OR owner_id=?)", p[1], uid)

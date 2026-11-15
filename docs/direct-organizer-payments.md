@@ -25,7 +25,7 @@ The runner serializes and records the migration and recognizes it if already app
 
 Uploads accept PNG, JPEG and WebP up to 750 KB, with signature checks and bounded request streaming. SVG/remote URLs are rejected. Creation and registration are rate limited. Images are private database columns, committed with event/booking data, without orphan uploads or public buckets. Receipt authenticity requires organizer verification.
 
-Only the player and relevant owner can read a receipt through authenticated endpoints with private/no-store and nosniff headers. Lists contain receipt flags/links, not image payloads. Roster CSV excludes receipts. Account exports and provider backups contain private records. Application backups above 8 MB of image data require a provider export. Retention follows registration history and privacy review through support.
+Only the player and relevant owner can read a receipt through authenticated endpoints with private/no-store and nosniff headers. Lists contain receipt flags/links, not image payloads. Roster CSV excludes receipts. Provider backups contain private records. Application backups above 8 MB of image data require a provider export. Retention follows registration history and privacy review through support.
 
 The registration checkbox records direct payment terms version `2026-11-15-direct-payments`. Terms describe organizer payment/refund responsibility and payment risk, with liability limits subject to applicable law. Obtain legal review before public release; statutory rights are preserved. Reference: [Consumer Protection Act](https://www.indiacode.nic.in/bitstream/123456789/15256/5/A2019-35.pdf).
 

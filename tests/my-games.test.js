@@ -76,7 +76,7 @@ async function dashboardFixture(run) {
       return nodes.get(selector);
     },
   };
-  const session = { user: { name: 'Fixture Player' }, consentAccepted: true, saved: [], notifications: [{ message: 'Fixture organizer update', created_at: '2030-11-01', event_id: 'fixture-event' }] };
+  const session = { user: { name: 'Fixture Player' }, saved: [], notifications: [{ message: 'Fixture organizer update', created_at: '2030-11-01', event_id: 'fixture-event' }] };
   const booking = { id: 'fixture-pass', event_id: 'fixture-event', title: 'Fixture confirmed game', sport: 'Badminton', area: 'Powai', venue: 'Synthetic court', date: '2030-11-14', time: '18:00', starts_at: Date.parse('2030-11-14T18:00:00+05:30'), duration: 90, status: 'confirmed', event_status: 'published', player_name: 'Fixture Player', level: 'Beginner' };
   const replies = new Map([
     ['/api/session', () => session], ['/api/bookings', () => ({ bookings: [booking] })],

@@ -1,6 +1,6 @@
 # Public sign-in and Google branding
 
-Mercury accepts any verified Google or email identity, with account consent and adult eligibility required to use account features. The former application email allowlist has been removed from the proxy, callback, email actions and API identity loader. Owner permissions still use `MERCURY_ADMIN_EMAIL`; event management checks ownership. `MERCURY_PUBLIC_LAUNCH` controls indexing, not account access.
+Mercury accepts any verified Google or email identity, with automatic profile setup after verified sign-in. The former application email allowlist has been removed from the proxy, callback, email actions and API identity loader. Owner permissions still use `MERCURY_ADMIN_EMAIL`; event management checks ownership. `MERCURY_PUBLIC_LAUNCH` controls indexing, not account access.
 
 ## Configure the provider for public signup
 
@@ -34,6 +34,6 @@ No paid domain has been purchased or activated by this code change. The verified
 
 ## Verify
 
-After deploying the code and completing the provider settings, start a new Google flow using a non-owner account. Confirm Google's label, return to the initiating website origin, and accept the Mercury account notice. Verify saving/registration works while someone else's event roster and owner desk remain inaccessible. Check a real email OTP round trip with an address outside the Supabase project team. Do not paste codes, passwords or session cookies into reports.
+After deploying the code and completing the provider settings, start a new Google flow using a non-owner account. Confirm Google's label, return to the initiating website origin, and confirm that the requested page opens directly without an account confirmation form. Verify saving/registration works while someone else's event roster and owner desk remain inaccessible. Check a real email OTP round trip with an address outside the Supabase project team. Do not paste codes, passwords or session cookies into reports.
 
 References: [Supabase Google branding](https://supabase.com/docs/guides/auth/social-sign-in/auth-google#setup-consent-screen-branding), [custom domains](https://supabase.com/docs/guides/platform/custom-domains), [custom SMTP](https://supabase.com/docs/guides/auth/auth-smtp).

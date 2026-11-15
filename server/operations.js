@@ -1,7 +1,6 @@
 import { createBackup } from './backup.js';
 import { clientIp } from './client-ip.js';
 import { findListing, listings, listingStatus, indiaDay } from '../public/catalogue.js';
-export const POLICY_VERSION = '2026-11-02';
 const one = (db, sql, ...v) => db.prepare(sql).bind(...v).first();
 const all = async (db, sql, ...v) => (await db.prepare(sql).bind(...v).all()).results;
 const run = (db, sql, ...v) => db.prepare(sql).bind(...v).run();
@@ -32,27 +31,6 @@ export async function operations({ db, user, now, path: p, method: m, body: b, r
     const id = crypto.randomUUID();
     await run(db, 'INSERT INTO support_requests(id,user_id,name,email,category,message,status,created_at,updated_at) VALUES(?,?,?,?,?,?,\'open\',?,?)', id, uid || null, name, email, category, message, now, now);
     return { id, message: 'Your request is in Mercury’s support inbox. Keep this reference. Replies are handled by the team, not sent automatically.' };
-  }
-  if (route === 'account/consent' && m === 'POST') {
-    if (!uid || !user.email) fail(401, 'Sign in to continue.', 'sign_in_required');
-    if (b.accepted !== true || b.adult !== true || b.version !== POLICY_VERSION) fail(422, 'Confirm you are 18 or older and accept the current account notice and terms.', 'consent_required');
-    await db.batch([
-      db.prepare('INSERT INTO users(id,name,email,created_at) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email').bind(uid, text(user.fullName || 'Player', 80), user.email, now),
-      db.prepare('INSERT INTO account_consents(user_id,version,accepted_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET version=excluded.version,accepted_at=excluded.accepted_at').bind(uid, POLICY_VERSION, now)
-    ]);
-    return { ok: true };
-  }
-  if (route === 'account/export' && m === 'GET') {
-    if (!uid || !user.email) fail(401, 'Sign in to continue.', 'sign_in_required');
-    const images = await one(db, 'SELECT (SELECT COALESCE(SUM(length(qr_image)),0) FROM events WHERE owner_id=?) + (SELECT COALESCE(SUM(length(payment_proof)),0) FROM bookings WHERE user_id=?) AS count', uid, uid);
-    if (Number(images.count) > 8 * 1024 * 1024) fail(413, 'Your export includes a large number of payment images. Send a privacy request so support can arrange your export.', 'export_too_large');
-    const tables = [['profile','users','id'],['consent','account_consents','user_id'],['organizer','organizers','user_id'],['events','events','owner_id'],['bookings','bookings','user_id'],['savedEvents','saved_events','user_id'],['savedListings','saved_listings','user_id'],['corrections','listing_reports','user_id'],['notifications','notifications','user_id'],['support','support_requests','user_id']];
-    const data = {};
-    // Table and column identifiers are constants, never caller input.
-    for (const [key, table, col] of tables) data[key] = await all(db, `SELECT * FROM ${table} WHERE ${col}=?`, uid);
-    // Internal support review notes are not part of the self-service export.
-    data.support = data.support.map(({ internal_note, ...row }) => row);
-    return { exportedAt: new Date(now).toISOString(), data };
   }
   if (route === 'account/delete' && m === 'POST') {
     if (!uid || !user.email) fail(401, 'Sign in to continue.', 'sign_in_required');

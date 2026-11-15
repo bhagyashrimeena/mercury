@@ -5,7 +5,7 @@ export const CLIENT_METRICS = new Set([
 ]);
 
 const ALL_METRICS = new Set([
-  ...CLIENT_METRICS, 'signin_start', 'signin_error', 'consent_accepted',
+  ...CLIENT_METRICS, 'signin_start', 'signin_error',
   'saved_external', 'saved_native', 'booking_confirmed', 'booking_failed', 'api_error',
 ]);
 

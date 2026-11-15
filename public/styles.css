@@ -2625,7 +2625,7 @@ dialog .button {
 /* Launch support/account surfaces. */
 .service-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start;margin-bottom:70px}
 .service-columns .form-card{max-width:none;margin:0}
-.service-columns label:not(.checkbox),#account-consent label:not(.checkbox),.manage-grid form label{display:flex;flex-direction:column;gap:8px;margin:14px 0;font-size:13px;font-weight:600}
+.service-columns label:not(.checkbox),.manage-grid form label{display:flex;flex-direction:column;gap:8px;margin:14px 0;font-size:13px;font-weight:600}
 .service-columns input:not([type=checkbox]),.service-columns select,.service-columns textarea,.manage-grid form input,.manage-grid form textarea,.manage-grid form select{width:100%;padding:13px;background:white;border:1px solid #bfc4ce;border-radius:6px;font:inherit;min-height:44px}
 .service-columns textarea,.manage-grid form textarea{resize:vertical}
 .service-columns .checkbox{align-items:flex-start;line-height:1.6}

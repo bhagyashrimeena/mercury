@@ -134,9 +134,9 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 function requireUser() {
-    if (session?.user && session.consentAccepted) return true;
+    if (session?.user) return true;
     const account = '/account?return_to=' + encodeURIComponent(location.pathname + location.search);
-    page(heading('YOUR MERCURY ACCOUNT', 'Good games start<br>with <em>you.</em>', session?.user ? 'Finish your account notice to save and join games.' : 'Sign in to save games, reserve a place or run your next session.') + `<div class="form-card account-card">${btn(session?.user ? 'Finish account setup' : 'Open account', account)}<p class="fine">Browsing listings and following organizer links does not require a Mercury account once public access is enabled.</p>${btn('Browse events', '/explore', 'outline')}</div>`);
+    page(heading('YOUR MERCURY ACCOUNT', 'Good games start<br>with <em>you.</em>', 'Sign in to save games, reserve a place or run your next session.') + `<div class="form-card account-card">${btn('Sign in', account)}<p class="fine">Browsing listings and following organizer links does not require a Mercury account once public access is enabled.</p>${btn('Browse events', '/explore', 'outline')}</div>`);
     return false;
 }
 function formSubmit(selector, work) {
@@ -253,7 +253,7 @@ async function detail(id) {
     page(eventDetailMarkup(e, { saved: session?.saved?.includes(id), policy }));
     action('#live-save', async () => {
         if (!sessionReady) await loadSession().catch(() => {});
-        if (sessionReady && (!session?.user || !session.consentAccepted)) {
+        if (sessionReady && !session?.user) {
             ctx.go('/account?return_to=' + encodeURIComponent(location.pathname + location.search));
             return;
         }
