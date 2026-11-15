@@ -1,9 +1,10 @@
 import { validateDraft } from './domain.js';
 
-// Keep only public event-draft fields, never sessions, passwords or attendee data.
+// Keep only event-draft fields and the organizer's QR, never auth or attendee data.
 const EVENT_FIELDS = new Set([
   'title', 'sport', 'format', 'area', 'date', 'time', 'venue',
-  'level', 'capacity', 'price', 'description', 'included', 'bring', 'cancellation', 'allowUpi', 'allowCash'
+  'level', 'capacity', 'price', 'description', 'included', 'bring', 'cancellation', 'allowUpi', 'allowCash',
+  'reviewed', 'wizardStep', 'qrUploadName'
 ]);
 const RECOVERY_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 const STEPS = [
@@ -15,9 +16,17 @@ const STEPS = [
 const enc = value => String(value ?? '').replace(/[&<>"']/g, char =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
-export function organizerRecoveryKey(editId) {
-  return 'mercury:organizer-draft:' + String(editId || 'new').replace(/[^a-zA-Z0-9-]/g, '');
+export function organizerRecoveryKey(editId, account = '') {
+  return 'mercury:organizer-draft:' + (account ? encodeURIComponent(account) + ':' : '') +
+    String(editId || 'new').replace(/[^a-zA-Z0-9-]/g, '');
 }
+
+const recoveryField = ([name, value]) => typeof value === 'string' && (
+  (EVENT_FIELDS.has(name) && value.length <= 2000) ||
+  // Match the upload limit (750 KiB), and accept only inert raster data URLs.
+  (name === 'qrUpload' && value.length <= 1024100 &&
+    /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(value))
+);
 
 export function readOrganizerRecovery(store, key, revision = null, now = Date.now()) {
   try {
@@ -25,16 +34,14 @@ export function readOrganizerRecovery(store, key, revision = null, now = Date.no
     if (!item || item.version !== 1 || item.revision !== revision ||
         typeof item.savedAt !== 'number' || now - item.savedAt > RECOVERY_MAX_AGE_MS ||
         item.savedAt > now || !item.values || typeof item.values !== 'object') return null;
-    return Object.fromEntries(Object.entries(item.values).filter(([name, value]) =>
-      EVENT_FIELDS.has(name) && typeof value === 'string' && value.length <= 2000));
+    return Object.fromEntries(Object.entries(item.values).filter(recoveryField));
   } catch { return null; }
 }
 
 export function writeOrganizerRecovery(store, key, revision, values, now = Date.now()) {
   try {
     if (!store?.setItem) return false;
-    const safe = Object.fromEntries(Object.entries(values).filter(([name, value]) =>
-      EVENT_FIELDS.has(name) && typeof value === 'string' && value.length <= 2000));
+    const safe = Object.fromEntries(Object.entries(values).filter(recoveryField));
     store.setItem(key, JSON.stringify({ version: 1, revision, savedAt: now, values: safe }));
     return true;
   } catch { return false; }
@@ -53,21 +60,38 @@ function errorForStep(form, panel, errors) {
 }
 
 export function mountOrganizerJourney(form, {
-  editId = null, revision = null, locked = false,
-  storage = typeof sessionStorage === 'undefined' ? null : sessionStorage
+  editId = null, revision = null, locked = false, account = '', navigate = null,
+  storage = undefined
 } = {}) {
   if (!form || locked) return { goTo: () => {}, clear: () => {} };
   const fieldset = form.querySelector('fieldset');
   const sections = [...form.querySelectorAll('.editor-section')];
   if (!fieldset || sections.length !== 6) return { goTo: () => {}, clear: () => {} };
   const document = form.ownerDocument;
-  const key = organizerRecoveryKey(editId);
+  if (storage === undefined) {
+    try { storage = globalThis.sessionStorage; } catch { storage = null; }
+  }
+  const key = organizerRecoveryKey(editId, account);
   const recovered = readOrganizerRecovery(storage, key, revision);
   if (recovered) for (const [name, value] of Object.entries(recovered)) {
     const field = form.elements.namedItem(name);
     if (field?.type === 'checkbox') field.checked = value === 'on';
     else if (field?.tagName === 'INPUT' || field?.tagName === 'SELECT' || field?.tagName === 'TEXTAREA') field.value = value;
   }
+  let qrUpload = recovered?.qrUpload || '';
+  let qrUploadName = recovered?.qrUploadName || '';
+  const qrInput = form.querySelector('#organizer-qr');
+  if (qrUpload && qrInput) {
+    try {
+      const [header, body] = qrUpload.split(',');
+      const bytes = Uint8Array.from(atob(body), char => char.charCodeAt(0));
+      if (bytes.length > 768000) throw Error('Oversized QR');
+      const files = new DataTransfer();
+      files.items.add(new File([bytes], qrUploadName || 'payment-qr', { type: header.slice(5, -7) }));
+      qrInput.files = files.files;
+    } catch { qrUpload = ''; qrUploadName = ''; }
+  }
+  void form.__paymentOptions?.refresh();
 
   const progress = document.createElement('div');
   progress.className = 'organizer-progress';
@@ -150,7 +174,7 @@ export function mountOrganizerJourney(form, {
   };
 
   const show = (index, { focus = false, scroll = false } = {}) => {
-    step = Math.min(Math.max(0, index), STEPS.length - 1);
+    step = Number.isFinite(index) ? Math.min(Math.max(0, Math.trunc(index)), STEPS.length - 1) : 0;
     clearStepError();
     panels.forEach((panel, i) => { panel.hidden = i !== step; });
     progressItems.forEach((item, i) => {
@@ -167,6 +191,7 @@ export function mountOrganizerJourney(form, {
       heading.tabIndex = -1;
       heading.focus?.({ preventScroll: true });
     }
+    save();
   };
 
   const showFieldError = error => {
@@ -220,10 +245,16 @@ export function mountOrganizerJourney(form, {
     showFieldError(errorForStep(form, panels[firstStep], errors));
   }, true);
 
+  let cleared = false;
   const save = () => {
+    if (cleared) return;
     const values = Object.fromEntries(new FormData(form));
     values.allowUpi = form.elements.allowUpi.checked ? 'on' : '';
     values.allowCash = form.elements.allowCash.checked ? 'on' : '';
+    values.reviewed = form.elements.reviewed.checked ? 'on' : '';
+    values.wizardStep = String(step);
+    values.qrUpload = qrUpload;
+    values.qrUploadName = qrUploadName;
     const ok = writeOrganizerRecovery(storage, key, revision, values);
     saveState.textContent = ok
       ? 'Unsaved changes kept in this tab. Save draft to keep them in your account.'
@@ -232,10 +263,35 @@ export function mountOrganizerJourney(form, {
   };
   form.addEventListener('input', save);
   form.addEventListener('change', save);
-  show(0);
+  let pendingQr = Promise.resolve();
+  qrInput?.addEventListener('change', () => {
+    const file = qrInput.files[0];
+    qrUpload = ''; qrUploadName = '';
+    pendingQr = new Promise(resolve => {
+      if (!file || file.size > 768000 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) return resolve();
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (qrInput.files[0] === file) { qrUpload = String(reader.result); qrUploadName = file.name; }
+        resolve();
+      };
+      reader.onerror = reader.onabort = () => resolve();
+      reader.readAsDataURL(file);
+    }).then(save);
+    save();
+  });
+  form.querySelectorAll('[data-event-policy]').forEach(link => {
+    link.addEventListener('click', async event => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || !navigate) return;
+      event.preventDefault();
+      await pendingQr;
+      save();
+      navigate(link.getAttribute('href'));
+    });
+  });
+  show(Number(recovered?.wizardStep) || 0);
   const controller = {
     goTo: index => show(index, { focus: true, scroll: true }),
-    clear: () => clearOrganizerRecovery(storage, key),
+    clear: () => { cleared = true; clearOrganizerRecovery(storage, key); },
     get step() { return step; }
   };
   form.__mercuryWizard = controller;

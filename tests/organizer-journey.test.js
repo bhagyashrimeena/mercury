@@ -46,6 +46,22 @@ test('organizer recovery handles blocked browser storage and malformed data safe
   assert.equal(readOrganizerRecovery(memory, 'bad'), null);
 });
 
+test('policy round trips preserve review, step and raster QR without sharing drafts between accounts', () => {
+  const memory = store(), key = organizerRecoveryKey(null, 'host@example.test');
+  const values = { title: 'Weekend game', reviewed: 'on', wizardStep: '2',
+    allowUpi: 'on', allowCash: '', qrUploadName: 'upi.png', qrUpload: 'data:image/png;base64,aGVsbG8=' };
+  assert.equal(writeOrganizerRecovery(memory, key, null, values), true);
+  assert.deepEqual(readOrganizerRecovery(memory, key), values);
+  assert.equal(readOrganizerRecovery(memory, organizerRecoveryKey(null, 'another@example.test')), null);
+  for (const qrUpload of ['https://untrusted.example/qr.png', 'data:image/svg+xml;base64,aGVsbG8=',
+    'data:image/png;base64,' + 'A'.repeat(1024101)]) {
+    writeOrganizerRecovery(memory, key, null, { ...values, qrUpload });
+    assert.equal(readOrganizerRecovery(memory, key).qrUpload, undefined);
+  }
+  clearOrganizerRecovery(memory, key);
+  assert.equal(readOrganizerRecovery(memory, key), null);
+});
+
 test('roster search finds name, pass reference and level without querying an API', () => {
   const entries = [
     { id: 'pass-ONE', player_name: 'Aisha Shah', status: 'confirmed', level: 'Beginner' },
