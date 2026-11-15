@@ -50,12 +50,22 @@ export async function apiHandler(request, db, user, { now = Date.now(), adminEma
         let body = {};
         if (!['GET', 'HEAD'].includes(method))
             body = await parseBody(request);
-        const options = { request, db, user, now, path, method, body, config: { adminEmail } };
+        let bookingNotifications = null;
+        const options = { request, db, user, now, path, method, body, config: { adminEmail }, onBookingCreated: statements => { bookingNotifications = statements; } };
         // PostgreSQL needs an event-row lock across the capacity check and insert.
         // The SQLite test adapter keeps its existing serial-write behavior.
         const result = method === 'POST' && path[0] === 'events' && path[2] === 'register' && db.withEventLock
             ? await db.withEventLock(path[1], lockedDb => dispatch({ ...options, db: lockedDb }))
             : await dispatch(options);
+        // The event lock transaction has committed before best-effort notifications run.
+        if (bookingNotifications) {
+            try {
+                await db.batch(bookingNotifications);
+            }
+            catch {
+                console.error('Booking notification unavailable');
+            }
+        }
         const completedMetric = method === 'POST' && path[0] === 'account' && path[1] === 'consent' ? 'consent_accepted'
             : method === 'POST' && path[0] === 'listings' && path[2] === 'save' && body.saved === true ? 'saved_external'
             : method === 'POST' && path[0] === 'saved' && body.saved === true ? 'saved_native'
@@ -76,7 +86,7 @@ export async function apiHandler(request, db, user, { now = Date.now(), adminEma
         return Response.json({ error: { code: known ? error.code : 'server_error', message: known ? error.message : 'Something went wrong. Please try again.', fields: known ? error.fields : null } }, { status: known ? error.status : 500, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
     }
 }
-async function dispatch({ request, db, user, now, path: p, method: m, body: b, config }) {
+async function dispatch({ request, db, user, now, path: p, method: m, body: b, config, onBookingCreated }) {
     const route = p.join('/');
     const op = await operations({ db, user, now, path: p, method: m, body: b, request, config, fail });
     if (op !== undefined) return op;
@@ -274,13 +284,10 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
                 return { id: duplicate.id, existing: true };
             fail(409, 'The last spot was taken or this event changed. Please refresh.', 'capacity_changed');
         }
-        // The confirmation is already durable. Notifications are best-effort and cannot turn a successful booking into a failure.
-        try {
-            await db.batch([notify(db, uid, event.id, `You’re registered for ${event.title}.`, now), notify(db, event.owner_id, event.id, `${name} joined ${event.title}.`, now)]);
-        }
-        catch {
-            console.error('Booking notification unavailable');
-        }
+        onBookingCreated([
+            notify(db, uid, event.id, `You’re registered for ${event.title}.`, now),
+            notify(db, event.owner_id, event.id, `${name} joined ${event.title}.`, now),
+        ]);
         return { id };
     }
     if (m === 'GET' && route === 'bookings') {
