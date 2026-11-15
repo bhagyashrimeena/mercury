@@ -18,7 +18,7 @@ In Supabase Authentication → URL Configuration, set the Site URL to `https://w
 
 Google sign-in creates a new Supabase Auth identity. The old Sites identity and sessions are not reused. Account consent, organizer ownership and other Mercury records continue to use the verified user ID provided by Supabase. No D1 records are imported in this empty start.
 
-For email sign-in, configure the Supabase Email provider, change the Magic Link template to include `{{ .Token }}`, and set up custom SMTP before sending codes to people outside the project team. The app verifies the code on the same origin and keeps the private-pilot email allowlist. Follow [email sign-in setup](email-signin-setup.md) and verify an actual code round trip before treating email as ready. Phone sign-in is deferred until an SMS provider and an email-compatible account model are in place.
+For email sign-in, configure the Supabase Email provider, change the Magic Link template to include `{{ .Token }}`, and set up custom SMTP before sending codes to people outside the project team. The app verifies the code on the same origin. Account signup is public; there is no email invitation list. Follow [email sign-in setup](email-signin-setup.md) and verify an actual code round trip before treating email as ready. Phone sign-in is deferred until an SMS provider and an email-compatible account model are in place.
 
 ## 3. Fill in Vercel's New Project form
 
@@ -42,10 +42,10 @@ Set these environment variables for **Production** before deploying:
 | `SUPABASE_DB_URL` | Secret Transaction pooler PostgreSQL URI (port 6543) |
 | `SUPABASE_DB_CA` | Supabase database CA certificate PEM from SSL Configuration; keep server-side |
 | `MERCURY_ADMIN_EMAIL` | Google email of the Mercury owner; enables the owner inbox and support intake |
-| `MERCURY_PUBLIC_LAUNCH` | `false` for the private pilot; change only when deliberately launching publicly |
+| `MERCURY_PUBLIC_LAUNCH` | `true` to enable search indexing; this flag does not restrict account signup |
 | `MERCURY_SITE_ORIGIN` | Final HTTPS production origin: `https://www.playonmercury.com` while the apex domain redirects there |
 
-`MERCURY_ALLOWED_EMAILS` is optional: a comma-separated list of additional Google or email-code addresses allowed into the private pilot. `MERCURY_ADMIN_EMAIL` is always allowed. Guest discovery is public while account and organizer routes remain protected. `MERCURY_PUBLIC_LAUNCH=false` keeps search indexing off and restricts account access to the pilot list. `MERCURY_PUBLIC_LAUNCH=true` opens account signup publicly while owner operations still require sign-in and ownership checks.
+Google and email-code signup are open to all adults with a verified identity. `MERCURY_ALLOWED_EMAILS` is obsolete and ignored. `MERCURY_ADMIN_EMAIL` grants owner operations only; it is not an account invitation setting. Private data still requires verified sign-in, consent and ownership. `MERCURY_PUBLIC_LAUNCH` controls search indexing only.
 
 Use separate values and preferably a separate Supabase project for **Preview** and **Development**. Do not point a preview that accepts writes at the production database. `MERCURY_SITE_ORIGIN` should be the canonical URL for that environment when set. Vercel also supplies `VERCEL_URL` as a fallback.
 
@@ -65,4 +65,6 @@ The 9 November Supabase security advisor reports an informational “RLS enabled
 
 If `/api/health` fails, first verify the schema was applied and `SUPABASE_DB_URL` points to the Transaction pooler. If login fails, verify Supabase's Google provider, Site URL, allowed redirect URL, and the three Supabase environment variables on the deployed Vercel environment. Updating Vercel environment variables requires a redeploy.
 
-The Google consent email only confirms that Google shared the profile with Supabase; it does not confirm access to Mercury. The sign-in page reports the outcome: `error=access` means the Google email is missing from `MERCURY_ADMIN_EMAIL` or `MERCURY_ALLOWED_EMAILS` while the pilot is private; `error=callback` means the code exchange failed, so check the exact Supabase redirect allowlist and site origin; `error=configuration` means the server could not create the Supabase client; `error=start` means the Google OAuth flow could not be started. These failures return to the sign-in page with `return_to` preserved. Check the deployed URL after returning from Google, then redeploy after correcting environment variables. Keep `MERCURY_PUBLIC_LAUNCH=false` during this diagnosis.
+The Google consent email confirms that Google shared a profile with Supabase; successful code exchange establishes the Mercury session. `error=identity` means the exchanged identity lacked a required ID or email; `error=callback` means the code exchange failed; `error=configuration` means the Supabase client could not be created; `error=start` means OAuth could not be started. All preserve a safe local return destination. Redeploy code changes; changing an old pilot environment flag is not required to open signup.
+
+See [Google branding setup](google-signin-branding.md) to replace the Supabase project hostname on Google's account chooser with the official Mercury brand.

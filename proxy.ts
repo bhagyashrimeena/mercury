@@ -1,6 +1,5 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
-import { canEnterPrivatePilot } from './lib/access';
 import { publicBrowse } from './lib/site-config';
 import { isPublicApiRequest, isPublicPage } from './lib/public-routes';
 
@@ -11,7 +10,7 @@ export async function proxy(request: NextRequest) {
   if (publicBrowse() && (isPublicPage(path) || isPublicApiRequest(path, request.method))) return response;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  let email: string | undefined;
+  let authenticated = false;
   if (url && key) {
     try {
       const supabase = createServerClient(url, key, {
@@ -24,16 +23,15 @@ export async function proxy(request: NextRequest) {
           },
         },
       });
-      const { data: { user } } = await supabase.auth.getUser();
-      email = user?.email;
+      const { data: { user }, error } = await supabase.auth.getUser();
+      authenticated = !error && !!user?.id && !!user.email;
     } catch {
-      // A provider outage must never grant private-pilot access or hide the sign-in page.
+      // A provider outage must never grant access to private pages.
       response = NextResponse.next({ request });
     }
   }
-  if (process.env.MERCURY_PUBLIC_LAUNCH === 'true') return response;
   if (path === '/api/session' || (path === '/api/support' && request.method === 'POST')) return response;
-  if (canEnterPrivatePilot(email)) return response;
+  if (authenticated) return response;
   if (path.startsWith('/api/')) return Response.json({ error: { code: 'sign_in_required', message: 'Sign in to continue.' } }, { status: 401 });
   const destination = new URL('/signin', request.nextUrl.origin);
   destination.searchParams.set('return_to', path + request.nextUrl.search);

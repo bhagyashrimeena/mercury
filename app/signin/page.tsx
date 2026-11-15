@@ -12,7 +12,7 @@ import { getDatabase } from '../../db/vercel';
 import { recordMetric } from '../../server/metrics.js';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Sign in — Mercury', description: 'Sign in to Mercury to save games and manage free bookings.' };
+export const metadata = { title: 'Sign in — Mercury', description: 'Sign in to Mercury to save games and manage bookings.' };
 
 type Search = { return_to?: string; error?: string; step?: string; email_state?: string };
 
@@ -20,8 +20,8 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
   const { return_to, error, step, email_state } = await searchParams;
   const destination = safeReturnPath(return_to, '/account');
   const pendingEmail = step === 'email' ? (await cookies()).get(EMAIL_PENDING_COOKIE)?.value : null;
-  const message = error === 'access'
-    ? 'This Google account is not on the private pilot list yet. Ask the Mercury owner to add it, or choose a different Google account.'
+  const message = (error === 'access' || error === 'identity')
+    ? 'Sign-in could not be completed. Please try again; Mercury accounts are open to everyone aged 18 or older.'
     : error === 'callback'
       ? 'Google sign-in could not be completed. Please try again. If it keeps happening, contact Mercury support.'
       : error === 'start'
@@ -30,7 +30,8 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
         ? 'Sign-in is temporarily unavailable. Please contact Mercury support.'
         : ({
           'email-invalid': 'Enter a valid email address.',
-          'email-access': 'This email is not on the private pilot list yet. Ask the Mercury owner to add it, or use a different email.',
+          'email-access': 'Please request a new code and try again. Accounts are open to everyone aged 18 or older.',
+          'email-identity': 'The verified email did not match. Please request a new code and try again.',
           'email-send': 'We could not send a code. Please try again in a minute or contact Mercury support.',
           'email-code': 'That code did not work. Check the latest email and try again.',
           'email-expired': 'Start again to get a new email code.',
@@ -75,7 +76,7 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
           </Link>
           <p className="eyebrow">MUMBAI, IN PLAY</p>
           <h1>Keep your next game <em>close.</em></h1>
-          <p>Explore games without an account. Sign in when you want to save a game or book a free Mercury place. External event entries are confirmed by the organizer.</p>
+          <p>Explore games without an account. Sign in when you want to save a game or register for a Mercury event. External event entries are confirmed by the organizer.</p>
         </section>
         <section className="signin-panel" aria-labelledby="signin-title">
           <p className="eyebrow blue">YOUR MERCURY ACCOUNT</p>

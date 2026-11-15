@@ -6,7 +6,7 @@ The current sign-in page offers Google, email code, and Continue as guest. Guest
 
 ## Local setup
 
-1. Use the project's pinned Node and pnpm versions and an ignored `.env.local` with `MERCURY_SITE_ORIGIN=http://localhost:3000`, the Mercury Supabase URL and publishable key, and the private-pilot allowlist.
+1. Use the project's pinned Node and pnpm versions and an ignored `.env.local` with `MERCURY_SITE_ORIGIN=http://localhost:3000`, the Mercury Supabase URL and publishable key, with no account allowlist.
 2. In Supabase **Authentication → URL Configuration → Redirect URLs**, allow `http://localhost:3000/auth/callback`. Keep the production Site URL and production redirects in place.
 3. Run `npm run dev` and use `localhost` consistently, rather than switching to `127.0.0.1` during a sign-in.
 4. For email code testing, follow [the email setup guide](email-signin-setup.md). The Email provider being enabled does not prove that the Magic Link template or SMTP delivery is ready.
@@ -27,7 +27,7 @@ A separate signed-out HTTP check on the local staged-browse server returned 200 
 
 ## Real provider acceptance
 
-1. Start at `http://localhost:3000/signin?return_to=%2Fmy-games`. Use an email on the private-pilot allowlist.
+1. Start at `http://localhost:3000/signin?return_to=%2Fmy-games`. Use a verified email not belonging to the owner to confirm signup is public.
 2. Complete Google consent. Confirm the browser returns through localhost `/auth/callback` to `/my-games`, with an authenticated `/api/session`. Do not copy an OAuth code or session cookie between hosts.
 3. Repeat with an email code after confirming the Supabase Magic Link template contains `{{ .Token }}` and delivery works for that mailbox. Check invalid, expired, and resend states.
 4. Test the guest save path in a real session: Explore → listing → Save for later → Account → Sign in → original listing. A new account should complete the adult consent step first.

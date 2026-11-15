@@ -49,7 +49,7 @@ function startHarness({ destination = '/account', origin = 'http://localhost:300
   };
   return { jar, calls, begin: loadBody(actionSource, 'beginSignIn', dependencies) };
 }
-function callbackHarness(t, { failure, allowed = true, configured = true, metricFailure = false } = {}) {
+function callbackHarness(t, { failure, configured = true, metricFailure = false, identity = { id: 'ordinary-player', email: 'player@example.test' } } = {}) {
   const previous = { url: process.env.SUPABASE_URL, key: process.env.SUPABASE_PUBLISHABLE_KEY };
   process.env.SUPABASE_URL = configured ? 'https://auth.example.test' : '';
   process.env.SUPABASE_PUBLISHABLE_KEY = configured ? 'mock-publishable-key' : '';
@@ -60,7 +60,7 @@ function callbackHarness(t, { failure, allowed = true, configured = true, metric
   const exchanges = [];
   const dependencies = {
     NextResponse: MockResponse, safeReturnPath, OAUTH_RETURN_COOKIE, oauthReturnCookieOptions,
-    canEnterPrivatePilot: () => allowed, getDatabase: () => null,
+    getDatabase: () => null,
     recordMetric: async () => { if (metricFailure) throw new Error('offline'); },
     createServerClient: (_url, _key, { cookies }) => {
       if (failure === 'configuration') throw new Error('invalid config');
@@ -69,7 +69,7 @@ function callbackHarness(t, { failure, allowed = true, configured = true, metric
         if (failure === 'throw') throw new Error('offline');
         if (failure === 'exchange') return { error: new Error('invalid or reused code'), data: { user: null } };
         cookies.setAll([{ name: 'mock-session', value: 'mock-session-value', options: { path: '/', httpOnly: true } }]);
-        return { error: null, data: { user: { email: 'player@example.test' } } };
+        return { error: null, data: { user: identity } };
       } } };
     },
   };
@@ -180,12 +180,22 @@ for (const failure of ['exchange', 'throw', 'configuration']) {
   });
 }
 
-test('private-pilot denial never issues the exchanged session cookies', async t => {
-  const { request } = callbackHarness(t, { allowed: false });
+test('an ordinary verified Google account receives its session without a pilot invitation', async t => {
+  const { request } = callbackHarness(t);
   const response = await request(undefined, '/my-games');
-  assert.equal(new URL(response.url).searchParams.get('error'), 'access');
-  assert.equal(response.cookies.get('mock-session'), undefined);
+  assert.equal(response.url, 'http://localhost:3000/my-games');
+  assert.equal(response.cookies.get('mock-session').value, 'mock-session-value');
   assertCleared(response);
+});
+
+test('an exchanged identity missing its ID or email cannot issue session cookies', async t => {
+  for (const identity of [{ id: 'user-without-email' }, { email: 'player@example.test' }]) {
+    const { request } = callbackHarness(t, { identity });
+    const response = await request(undefined, '/my-games');
+    assert.equal(new URL(response.url).searchParams.get('error'), 'identity');
+    assert.equal(response.cookies.get('mock-session'), undefined);
+    assertCleared(response);
+  }
 });
 
 test('missing server config stays a configuration error', async t => {

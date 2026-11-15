@@ -11,7 +11,7 @@ class Redirect extends Error {
   constructor(path) { super('redirect'); this.path = path; }
 }
 
-function harness({ allowed = true, sendError = false, verifyError = false, verifiedEmail = 'player@example.test' } = {}) {
+function harness({ sendError = false, verifyError = false, verifiedEmail = 'player@example.test' } = {}) {
   const values = new Map();
   const jar = {
     get: name => values.has(name) ? { value: values.get(name) } : undefined,
@@ -26,7 +26,6 @@ function harness({ allowed = true, sendError = false, verifyError = false, verif
   const dependencies = {
     cookies: async () => jar,
     redirect: path => { throw new Redirect(path); },
-    canEnterPrivatePilot: email => allowed && email === 'player@example.test',
     EMAIL_PENDING_COOKIE: 'mercury_email_pending',
     emailCookieOptions: maxAge => ({ maxAge }),
     formReturnPath: value => typeof value === 'string' ? value : null,
@@ -41,7 +40,7 @@ async function redirected(action, path) {
   await assert.rejects(action, error => error instanceof Redirect && error.path === path);
 }
 
-test('email sign-in sends a code only to an allowed address and preserves the destination', async () => {
+test('email sign-in sends a code to any valid address and preserves the destination', async () => {
   const flow = harness();
   await redirected(flow.requestEmailCode(new FormData()), '/signin?return_to=%2Faccount&email_state=email-invalid');
   assert.equal(flow.calls.length, 0);
@@ -53,12 +52,12 @@ test('email sign-in sends a code only to an allowed address and preserves the de
   assert.equal(flow.values.get('mercury_email_pending'), 'player@example.test');
 });
 
-test('email sign-in rejects uninvited addresses before contacting Supabase', async () => {
-  const flow = harness({ allowed: false });
+test('email sign-in accepts a new address without a pilot invitation', async () => {
+  const flow = harness();
   const data = new FormData();
-  data.set('email', 'player@example.test');
-  await redirected(flow.requestEmailCode(data), '/signin?return_to=%2Faccount&email_state=email-access');
-  assert.equal(flow.calls.length, 0);
+  data.set('email', 'new-player@example.test');
+  await redirected(flow.requestEmailCode(data), '/signin?return_to=%2Faccount&email_state=email-sent&step=email');
+  assert.equal(flow.calls[0][1].email, 'new-player@example.test');
 });
 
 test('verified email code establishes the same session and returns to the requested page', async () => {

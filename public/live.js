@@ -271,7 +271,7 @@ async function detail(id) {
         }
     });
     action('#live-share', async () => {
-        ctx.openSheet('Bring your people.', `<label class="share-label">Game link<input readonly value="${esc(location.origin + '/event/' + id)}" onclick="this.select()"></label><p class="fine">Mercury is currently a private pilot. Only people with site access can open this link.</p>`);
+        ctx.openSheet('Bring your people.', `<label class="share-label">Game link<input readonly value="${esc(location.origin + '/event/' + id)}" onclick="this.select()"></label><p class="fine">Anyone can view this game. Sign in to register.</p>`);
     });
     if (state.canBook) {
         ctx.main.insertAdjacentHTML('beforeend', `<div class="mobile-event-cta"><div><b>${Number(e.price) ? '&#8377;' + esc(e.price) : 'Free'}</b><small>1 player</small></div>${btn('Register', '/register/' + id)}</div>`);
@@ -490,7 +490,7 @@ async function host(editId) {
             ctx.toast('Game link copied.');
         } catch {
             ctx.openSheet('Share your game', '<label class="share-label">Game link<input readonly value="' + esc(url) +
-                '" onclick="this.select()"></label><p class="fine">If access is restricted to the private pilot, only approved accounts can open this link.</p>');
+                '" onclick="this.select()"></label><p class="fine">Anyone can view this game. Sign in to register.</p>');
         }
     });
     action('[data-event-action]', async (b) => { const act = b.dataset.eventAction; const title = act === 'publish' ? 'Publish this game?' : act === 'cancel' ? 'Cancel this event?' : 'Return to draft?'; const body = act === 'publish' ? 'Players can register. Paid entries require your review. Confirm your venue is ready.' : act === 'cancel' ? 'All active registrations will be cancelled. Players will see an update in My games. This cannot be undone.' : 'This event will no longer appear in discovery.'; confirmAction(title, body, act === 'publish' ? 'Publish game' : act === 'cancel' ? 'Cancel event' : 'Return to draft', async () => { await api('organizer/events/' + b.dataset.id + '/' + act, {}); await host(); ctx.toast(act === 'publish' ? 'Your game is published.' : 'Event updated.'); }); });

@@ -1,3 +1,5 @@
+> Historical pilot rehearsal: account invitations were removed in November 2026. Signup is public; `MERCURY_ALLOWED_EMAILS` no longer has an effect. `MERCURY_PUBLIC_LAUNCH` now controls search indexing only. Use the current [authentication guide](auth-verification.md) and [Google branding setup](google-signin-branding.md).
+
 # Mercury private pilot rehearsal
 
 Use this runbook for the current Next.js site on Vercel, with Google sign-in through Supabase Auth and application records in Supabase PostgreSQL. It is a test plan for approved pilot accounts, not a record that the hosted journeys have passed. The [deployment guide](vercel-deployment.md) has the current configuration steps; the [design review index](../artifacts/design-review/README.md) records local captures and their limits.

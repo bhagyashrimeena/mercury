@@ -6,7 +6,7 @@ export function safeReturnPath(value: string | null | undefined, fallback = '/')
     // result too, before it is resolved again against the callback origin.
     if (url.origin !== 'https://mercury.invalid' || url.pathname.startsWith('//')) return fallback;
     if (['/signin', '/signout', '/auth/callback'].includes(url.pathname)) return fallback;
-    // A provider fallback can land at /?code=... before the pilot gate sends the
+    // A provider fallback can land at /?code=... before authentication sends the
     // browser to /signin. Never carry those credentials into a retry destination.
     const authParameters = ['code', 'access_token', 'refresh_token', 'provider_token', 'provider_refresh_token', 'id_token', 'token_hash'];
     for (const key of authParameters) {

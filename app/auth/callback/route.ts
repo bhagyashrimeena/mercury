@@ -2,7 +2,6 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { safeReturnPath } from '../../../lib/return-path';
 import { OAUTH_RETURN_COOKIE, oauthReturnCookieOptions } from '../../../lib/oauth-redirect';
-import { canEnterPrivatePilot } from '../../../lib/access';
 import { getDatabase } from '../../../db/vercel';
 import { recordMetric } from '../../../server/metrics.js';
 
@@ -18,7 +17,7 @@ export async function GET(request: NextRequest) {
     return response;
   };
   const signInError = async (reason: string) => {
-    if (reason === 'access' || (['callback', 'configuration'].includes(reason) && url.searchParams.has('code'))) {
+    if (reason === 'identity' || (['callback', 'configuration'].includes(reason) && url.searchParams.has('code'))) {
       try { await recordMetric(getDatabase(), 'signin_error'); } catch { /* Analytics never blocks the return path. */ }
     }
     const target = new URL('/signin', url.origin);
@@ -45,6 +44,6 @@ export async function GET(request: NextRequest) {
   try { exchange = await client.auth.exchangeCodeForSession(code); }
   catch { return signInError('callback'); }
   if (exchange.error || !exchange.data.user) return signInError('callback');
-  if (!canEnterPrivatePilot(exchange.data.user.email)) return signInError('access');
+  if (!exchange.data.user.id || !exchange.data.user.email) return signInError('identity');
   return clearReturnCookie(response);
 }
