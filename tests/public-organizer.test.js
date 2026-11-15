@@ -16,7 +16,7 @@ test('organizers see the benefit and submission link without a sign-in gate', ()
 });
 
 test('event submission is clear about manual review and respects privacy', () => {
-  const html = eventSubmissionMarkup();
+  const html = eventSubmissionMarkup('external');
   assert.match(html, /id="public-event-submission"/);
   assert.match(html, /name="registrationUrl"/);
   assert.match(html, /name="flyerUrl"/);
@@ -24,6 +24,15 @@ test('event submission is clear about manual review and respects privacy', () =>
   assert.match(html, /not published/i);
   assert.match(html, /File uploads aren't enabled/);
   assert.doesNotMatch(html, /Publish now|Upload completed/);
+});
+
+test('organizers choose native hosting or external promotion before entering details', () => {
+  const html = eventSubmissionMarkup();
+  assert.match(html, /Host exclusively on Mercury/);
+  assert.match(html, /Promote an event hosted elsewhere/);
+  assert.match(html, /href="\/host"/);
+  assert.match(html, /href="\/list-event\?mode=external"/);
+  assert.doesNotMatch(html, /id="public-event-submission"/);
 });
 
 test('How it Works is fully readable HTML even when JavaScript is unavailable', () => {

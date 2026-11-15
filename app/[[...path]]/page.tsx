@@ -10,7 +10,7 @@ import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: Promise<{ path?: string[] }> };
+type Props = { params: Promise<{ path?: string[] }>; searchParams: Promise<{ mode?: string; claim?: string }> };
 type EventSummary = {
   id: string; title: string; description: string; sport: string; area: string;
   venue: string; date: string; time: string; price: number; status: string;
@@ -78,7 +78,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     : segment === 'for-organizers'
     ? 'Bring your sports tournament, run or academy event to Mercury and keep your existing registration system. Request a reviewed listing.'
     : segment === 'list-event'
-    ? 'Submit your sports event link to Mercury for manual review without creating an account first.'
+    ? 'Host your event on Mercury or promote an event registered on another platform.'
     : 'Find sports tournaments, leagues and free sessions around Mumbai. Check the details and choose where to register.';
   const index = publicLaunch() && ['', 'explore', 'about', 'how-it-works', 'for-organizers'].includes(segment);
   return {
@@ -88,8 +88,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function Page({ params }: Props) {
+export default async function Page({ params, searchParams }: Props) {
   const { path = [] } = await params;
+  const search = await searchParams;
   const event = await eventFor(path);
   const listing = path[0] === 'listing' ? findListing(path[1]) : null;
   const fallback = listing
@@ -99,7 +100,7 @@ export default async function Page({ params }: Props) {
       : path[0] === 'for-organizers'
         ? organizerLandingMarkup()
         : path[0] === 'list-event'
-          ? eventSubmissionMarkup()
+          ? eventSubmissionMarkup(search.mode === 'external' || search.claim ? 'external' : '')
           : path[0] === 'how-it-works'
             ? howItWorksMarkup()
             : path.length === 0 || path[0] === 'explore'

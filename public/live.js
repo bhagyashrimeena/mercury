@@ -1,3 +1,4 @@
+import { mountPaymentOptions } from './payment-qr.js';
 import { renderAccount, renderSupport, renderAdmin, renderPolicy } from './service-ui.js';
 import { listingCard, renderListing } from './discovery.js';
 import { organizerLandingMarkup, eventSubmissionMarkup, howItWorksMarkup, mountEventSubmission } from './organizer-public.js';
@@ -437,7 +438,16 @@ async function host(editId) {
     formSubmit('#organizer-profile', async (data) => { await api('organizer/profile', data); await loadSession({ refresh: true }); ctx.toast('Organizer profile saved.'); await host(editId); });
     if (org) {
         const editor = document.querySelector('#event-form');
-        editor.querySelectorAll('.editor-section')[2].insertAdjacentHTML('beforeend', `<div class="payment-settings"><h3>Payment options for paid events</h3><label class="checkbox"><input type="checkbox" name="allowUpi" ${d.paymentMethods?.includes('upi') ? 'checked' : ''}><span>Accept UPI directly</span></label><label class="checkbox"><input type="checkbox" name="allowCash" ${d.paymentMethods?.includes('cash') ? 'checked' : ''}><span>Allow cash arranged with you</span></label><label>Your UPI QR (PNG, JPEG or WebP, max 750 KB)<input type="file" id="organizer-qr" accept="image/png,image/jpeg,image/webp"></label><input type="hidden" name="qrImage" value="${esc(d.qrImage || '')}"><p class="fine">${d.qrImage ? 'QR saved. Choose a file to replace it.' : 'Upload your QR before publishing UPI events.'} Add a public contact email. Verify receipts, review entries promptly, and handle refunds for rejected or cancelled entries.</p></div>`);
+        const review = editor.querySelector('.editor-review');
+        const payment = document.createElement('section');
+        payment.className = 'editor-section editor-payment';
+        payment.innerHTML = `<h3>Payment and save</h3><p id="free-payment-note">This is a free event. No payment method or QR image is needed.</p><div id="paid-payment-options"><p>Payments go directly to you. Choose one or both options. Players can only use the methods you enable.</p><label class="checkbox"><input type="checkbox" name="allowUpi" ${d.paymentMethods?.includes('upi') ? 'checked' : ''}><span>UPI QR / receive payments directly</span></label><label class="checkbox"><input type="checkbox" name="allowCash" ${d.paymentMethods?.includes('cash') ? 'checked' : ''}><span>Collect payment externally (cash)</span></label><div id="upi-setup"><label>Your UPI QR (PNG, JPEG or WebP, max 750 KB)<input type="file" id="organizer-qr" accept="image/png,image/jpeg,image/webp"></label><input type="hidden" name="qrImage" value="${esc(d.qrImage || '')}"><img id="organizer-qr-preview" class="payment-image" ${d.qrImage ? `src="${esc(d.qrImage)}"` : 'hidden'} alt="Your uploaded payment QR code"><p id="qr-check-status" class="qr-check-status" role="status" aria-live="polite">${d.qrImage ? 'Saved QR image. Check it in your payment app before publishing.' : 'Readability is checked on your device after upload. The destination is never opened.'}</p></div><p class="fine">Cash does not require a QR image. Provide a public contact email in your organizer profile. Verify receipts yourself and handle any refunds directly.</p></div>`;
+        review.after(payment);
+        payment.append(editor.querySelector('#event-form-error') || review.querySelector('[role=alert]'), review.querySelector('.action-row'));
+        review.querySelector('p.fine:last-child')?.remove();
+        const paymentOptions = mountPaymentOptions(editor);
+        editor.__paymentOptions = paymentOptions;
+
     }
     if (org) {
         const eventForm = document.querySelector('#event-form');
@@ -474,13 +484,14 @@ async function host(editId) {
                     if (field && field.type !== 'file') { if (field.type === 'checkbox') field.checked = value === 'on'; else field.value = value; }
                 }
                 restored.querySelector('input[name="reviewed"]').checked = reviewed;
+                await restored.__paymentOptions?.refresh();
                 restored.__mercuryWizard?.goTo(2);
                 restored.scrollIntoView({ block: 'start' });
             };
             window.scrollTo(0, 0);
         };
         formSubmit('#event-form', async (data) => { const checked = validateDraft(data); if (!checked.valid)
-            throw Object.assign(Error('Check the highlighted event details.'), { fields: checked.errors }); await api('organizer/events' + (edit ? '/' + edit.id : ''), { ...checked.value, paymentMethods: [data.allowUpi === 'on' ? 'upi' : '',data.allowCash === 'on' ? 'cash' : ''].filter(Boolean), qrImage: document.querySelector('#organizer-qr').files[0] ? await readPaymentImage(document.querySelector('#organizer-qr').files[0]) : data.qrImage || '', revision: edit?.revision }, edit ? 'PATCH' : 'POST'); journey.clear(); ctx.toast('Draft saved to your account.'); ctx.go('/host'); });
+            throw Object.assign(Error('Check the highlighted event details.'), { fields: checked.errors }); if (checked.value.price > 0 && data.allowUpi !== 'on' && data.allowCash !== 'on') throw Error('Choose UPI, cash, or both for a paid event.'); if (checked.value.price > 0 && data.allowUpi === 'on' && !document.querySelector('#organizer-qr').files[0] && !data.qrImage) throw Error('Upload your UPI QR image, or choose cash.'); await api('organizer/events' + (edit ? '/' + edit.id : ''), { ...checked.value, paymentMethods: checked.value.price > 0 ? [data.allowUpi === 'on' ? 'upi' : '',data.allowCash === 'on' ? 'cash' : ''].filter(Boolean) : [], qrImage: checked.value.price > 0 && data.allowUpi === 'on' ? (document.querySelector('#organizer-qr').files[0] ? await readPaymentImage(document.querySelector('#organizer-qr').files[0]) : data.qrImage || '') : '', revision: edit?.revision }, edit ? 'PATCH' : 'POST'); journey.clear(); ctx.toast('Draft saved to your account.'); ctx.go('/host'); });
     }
     action('[data-copy-event]', async b => {
         const url = location.origin + '/event/' + encodeURIComponent(b.dataset.copyEvent);
@@ -590,7 +601,7 @@ export async function liveRoute(path, context) {
         if (route === 'privacy' || route === 'terms') { renderPolicy(path, ctx); return true; }
         if (route === 'how-it-works') { ctx.main.innerHTML = howItWorksMarkup(); return true; }
         if (route === 'for-organizers') { ctx.main.innerHTML = organizerLandingMarkup(); return true; }
-        if (route === 'list-event') { ctx.main.innerHTML = eventSubmissionMarkup(); mountEventSubmission(ctx.main); return true; }
+        if (route === 'list-event') { ctx.main.innerHTML = eventSubmissionMarkup(new URLSearchParams(location.search).get('mode') === 'external' || new URLSearchParams(location.search).has('claim') ? 'external' : ''); mountEventSubmission(ctx.main); return true; }
         if (route === 'explore') {
             const cached = publicLineupCache && Date.now() - publicLineupCache.savedAt < PUBLIC_CACHE_MS
                 ? publicLineupCache : null;

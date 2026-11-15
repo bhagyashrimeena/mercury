@@ -46,3 +46,7 @@ yarn-error.log*
 
 # OS metadata
 .DS_Store
+
+# Generated from the pinned jsqr dependency before dev/build
+/public/vendor/jsQR.js
+/public/vendor/jsQR.LICENSE.txt

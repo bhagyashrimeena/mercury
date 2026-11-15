@@ -4065,6 +4065,18 @@ body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top
 
 /* Direct organizer payments */
 .payment-step{min-width:0;border:1px solid var(--line,#ddd);border-radius:12px;padding:16px;margin:24px 0;display:grid;gap:16px}
+.event-route-choice{padding-block:32px 64px}
+.event-route-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:32px}
+.event-route-card{display:flex;flex-direction:column;gap:16px;min-width:0;text-decoration:none;color:var(--text,#111);border:2px solid var(--border,#ddd)}
+.event-route-card:hover,.event-route-card:focus-visible{border-color:var(--blue,#4d4dff)}
+.event-route-card h2{font-size:clamp(24px,3vw,36px);line-height:1.15;margin:0}
+.event-route-card .text-link{margin-top:auto}
+#event-form .organizer-progress{grid-template-columns:repeat(4,minmax(0,1fr))}
+#paid-payment-options[hidden],#free-payment-note[hidden],#upi-setup[hidden],#organizer-qr-preview[hidden]{display:none!important}
+.qr-check-status{font-size:13px;line-height:1.6;padding:12px;border-radius:8px;background:#f1f2f8;overflow-wrap:anywhere}
+.qr-check-status[data-kind=warning]{background:#fff1cf;color:#624600}
+.qr-check-status[data-kind=recognized]{background:#e6f4e9;color:#18502a}
+@media(max-width:600px){.event-route-grid{grid-template-columns:1fr;gap:16px}#event-form .organizer-progress{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .payment-image{display:block;width:min(100%,320px);height:auto;object-fit:contain;background:white;border-radius:8px;margin:16px auto}
 .payment-settings,.payment-status{min-width:0;overflow-wrap:anywhere;padding-block:16px}
 .payment-step [hidden]{display:none!important}

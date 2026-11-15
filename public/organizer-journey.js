@@ -3,13 +3,14 @@ import { validateDraft } from './domain.js';
 // Keep only public event-draft fields, never sessions, passwords or attendee data.
 const EVENT_FIELDS = new Set([
   'title', 'sport', 'format', 'area', 'date', 'time', 'venue',
-  'level', 'capacity', 'price', 'description', 'included', 'bring', 'cancellation'
+  'level', 'capacity', 'price', 'description', 'included', 'bring', 'cancellation', 'allowUpi', 'allowCash'
 ]);
 const RECOVERY_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 const STEPS = [
   { label: 'The essentials', indices: [0, 1] },
   { label: 'Player details', indices: [2, 3] },
-  { label: 'Review & save', indices: [4] }
+  { label: 'Review event', indices: [4] },
+  { label: 'Payment & save', indices: [5] }
 ];
 const enc = value => String(value ?? '').replace(/[&<>"']/g, char =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -58,14 +59,14 @@ export function mountOrganizerJourney(form, {
   if (!form || locked) return { goTo: () => {}, clear: () => {} };
   const fieldset = form.querySelector('fieldset');
   const sections = [...form.querySelectorAll('.editor-section')];
-  if (!fieldset || sections.length !== 5) return { goTo: () => {}, clear: () => {} };
+  if (!fieldset || sections.length !== 6) return { goTo: () => {}, clear: () => {} };
   const document = form.ownerDocument;
   const key = organizerRecoveryKey(editId);
   const recovered = readOrganizerRecovery(storage, key, revision);
   if (recovered) for (const [name, value] of Object.entries(recovered)) {
     const field = form.elements.namedItem(name);
-    if (field?.tagName === 'INPUT' || field?.tagName === 'SELECT' || field?.tagName === 'TEXTAREA')
-      field.value = value;
+    if (field?.type === 'checkbox') field.checked = value === 'on';
+    else if (field?.tagName === 'INPUT' || field?.tagName === 'SELECT' || field?.tagName === 'TEXTAREA') field.value = value;
   }
 
   const progress = document.createElement('div');
@@ -139,7 +140,8 @@ export function mountOrganizerJourney(form, {
       ['When', values.date ? values.date + ' · ' + (values.time || 'time not chosen') + ' IST' : 'Date not chosen'],
       ['Where', [values.venue, values.area].filter(Boolean).join(' · ')],
       ['Players', (values.capacity || '?') + ' places · ' + (values.level || 'All levels')],
-      ['Entry', Number(values.price) === 0 ? 'Free — eligible to publish' : '₹' + (values.price || '?') + ' per player / organizer review']
+      ['Entry', Number(values.price) === 0 ? 'Free — eligible to publish' : '₹' + (values.price || '?') + ' per player / organizer review'],
+      ['Payment', Number(values.price) === 0 ? 'No payment required' : [values.allowUpi === 'on' ? 'UPI QR' : '', values.allowCash === 'on' ? 'Cash' : ''].filter(Boolean).join(' + ') || 'Choose payment options in the final step']
     ];
     review.innerHTML = '<p class="eyebrow blue">YOUR GAME AT A GLANCE</p>' +
       facts.map(([label, value]) =>
@@ -158,7 +160,7 @@ export function mountOrganizerJourney(form, {
     });
     back.hidden = step === 0;
     next.hidden = step === STEPS.length - 1;
-    if (step === STEPS.length - 1) renderReview();
+    if (step >= 2) renderReview();
     if (scroll) form.scrollIntoView?.({ block: 'start', behavior: 'auto' });
     if (focus) {
       const heading = panels[step].querySelector('h3') || panels[step];
@@ -220,11 +222,13 @@ export function mountOrganizerJourney(form, {
 
   const save = () => {
     const values = Object.fromEntries(new FormData(form));
+    values.allowUpi = form.elements.allowUpi.checked ? 'on' : '';
+    values.allowCash = form.elements.allowCash.checked ? 'on' : '';
     const ok = writeOrganizerRecovery(storage, key, revision, values);
     saveState.textContent = ok
       ? 'Unsaved changes kept in this tab. Save draft to keep them in your account.'
       : 'Changes are not saved on this device. Use Save draft when your details are ready.';
-    if (step === STEPS.length - 1) renderReview();
+    if (step >= 2) renderReview();
   };
   form.addEventListener('input', save);
   form.addEventListener('change', save);
