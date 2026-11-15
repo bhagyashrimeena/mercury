@@ -3302,6 +3302,107 @@ body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top
 }
 @media(max-width:400px){.explore-pending .explore-skeleton-card{grid-template-columns:100px minmax(0,1fr)}}
 
+/* Route shaped placeholders keep the page structure visible until its data arrives. */
+@keyframes mercury-shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+.loading-view{padding-top:22px;max-width:1336px}
+.loading-view,.loading-view *{box-sizing:border-box}
+.loading-shape,
+.explore-pending .explore-skeleton-searchbar,
+.explore-pending .explore-skeleton-pills span,
+.explore-pending .explore-skeleton-photo,
+.explore-pending .explore-skeleton-lines span,
+.explore-pending .explore-skeleton-results-title,
+.explore-pending .explore-skeleton-heading{
+  display:block;background:#e9ece7 linear-gradient(100deg,#e9ece7 15%,#f8faf6 35%,#e9ece7 55%);
+  background-size:200% 100%;animation:mercury-shimmer 1.7s ease-in-out infinite
+}
+.loading-shape{border-radius:7px;max-width:100%}
+.loading-back{width:108px;height:15px;margin:0 0 18px}
+.loading-cover{width:100%;height:clamp(230px,34vw,385px);border-radius:17px}
+.loading-detail-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,340px);gap:30px;margin-top:25px;align-items:start}
+.loading-panel{background:#fff;border:1px solid #e5e7df;border-radius:16px;padding:25px;min-width:0}
+.loading-detail-copy{min-height:440px}
+.loading-pills{display:flex;gap:9px;min-width:0}
+.loading-pill{width:76px;height:26px;border-radius:30px}
+.loading-pill:nth-child(2){width:103px}.loading-pill:nth-child(3){width:61px}
+.loading-heading{width:72%;height:43px;margin:22px 0 12px}
+.loading-byline{width:35%;height:13px;margin-bottom:23px}
+.loading-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:22px 0 28px}
+.loading-fact{display:flex;gap:11px;align-items:flex-start;padding:15px;border:1px solid #e9ebe5;border-radius:10px;min-width:0}
+.loading-fact-icon{width:22px;height:22px;flex:none;border-radius:50%}
+.loading-fact .loading-lines{flex:1;min-width:0;gap:8px}
+.loading-lines{display:flex;flex-direction:column;gap:11px;min-width:0}
+.loading-line{width:100%;height:13px}.loading-line.medium{width:72%}.loading-line.short{width:44%}
+.loading-section-title{width:42%;height:23px;margin:23px 0 16px}
+.loading-eyebrow{width:105px;height:11px}
+.loading-price{width:48%;height:39px;margin:18px 0}
+.loading-side .loading-lines{margin:13px 0 22px}
+.loading-action{width:100%;height:47px;border-radius:9px;margin-top:11px}
+.loading-caption{width:74%;height:12px;margin-top:20px}
+.loading-intro{padding:15px 0 25px;max-width:750px}
+.loading-title{width:min(550px,80%);height:52px;margin:15px 0 12px}
+.loading-subtitle{width:68%;height:15px}
+.loading-form-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(250px,.85fr);gap:28px;align-items:start}
+.loading-form{max-width:750px}.loading-form .loading-section-title{margin-top:0}
+.loading-field{margin:18px 0}.loading-label{width:25%;height:12px;margin-bottom:9px}.loading-input{width:100%;height:47px;border-radius:7px}
+.loading-field-tall{width:100%;height:90px;margin:20px 0}
+.loading-form-aside .loading-card-image{height:145px;margin-bottom:20px}
+.loading-dashboard-toolbar{display:flex;align-items:center;gap:17px;margin-bottom:22px}
+.loading-dashboard-toolbar .loading-input{max-width:380px}.loading-dashboard-toolbar .loading-pills{flex:none}
+.loading-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-bottom:34px}
+.loading-card{overflow:hidden;min-width:0;border:1px solid #e5e7df;border-radius:14px;background:#fff}
+.loading-card-image{width:100%;height:135px;border-radius:0}
+.loading-card-copy{padding:20px}.loading-card-copy .loading-lines{gap:16px}
+.loading-pass{max-width:700px}.loading-pass .loading-facts{margin-top:30px}.loading-pass .loading-action{max-width:240px}
+.saved-games-pending{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;grid-column:1/-1}
+.explore-pending .explore-skeleton-hero{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:216px;padding:30px 34px;border-radius:19px 19px 33px 12px;background:#18204d}
+.explore-pending .explore-skeleton-hero .loading-shape{background:#39436f linear-gradient(100deg,#39436f 15%,#6572a4 35%,#39436f 55%);background-size:200% 100%}
+.explore-pending .explore-skeleton-hero .loading-title{width:min(480px,78%);height:46px}
+.explore-pending .explore-skeleton-hero .loading-subtitle{width:min(360px,65%)}
+.explore-pending .explore-skeleton-results-title{width:210px;height:24px;border-radius:6px}
+.explore-pending .explore-skeleton-heading{height:15px;width:165px;margin-top:8px;border-radius:5px}
+@media(max-width:800px){
+  .loading-detail-grid,.loading-form-grid{grid-template-columns:1fr;gap:18px}
+  .loading-detail-grid .loading-side{grid-row:1}
+  .loading-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:600px){
+  .loading-view{padding-top:13px}
+  .loading-cover{height:205px;border-radius:12px}
+  .loading-detail-grid{margin-top:13px}
+  .loading-panel{padding:18px;border-radius:12px}
+  .loading-detail-copy{min-height:0}
+  .loading-heading{height:32px;width:88%}
+  .loading-facts{gap:8px}
+  .loading-fact{padding:10px;gap:7px}
+  .loading-fact-icon{width:17px;height:17px}
+  .loading-title{height:39px;width:85%}
+  .loading-subtitle{width:85%}
+  .loading-card-grid{grid-template-columns:1fr;gap:12px}
+  .saved-games-pending{grid-template-columns:1fr;gap:12px}
+  .loading-card{display:grid;grid-template-columns:115px minmax(0,1fr);min-height:130px}
+  .loading-card-image{height:100%}
+  .loading-card-copy{padding:17px 12px}
+  .loading-dashboard-toolbar{gap:8px;overflow:hidden}
+  .loading-dashboard-toolbar .loading-pills{display:none}
+  .loading-form-aside .loading-card-image{height:105px}
+  .explore-pending .explore-skeleton-hero{min-height:160px;padding:22px}
+  .explore-pending .explore-skeleton-hero .loading-title{height:34px}
+}
+@media(max-width:400px){
+  .loading-facts{grid-template-columns:1fr}
+  .loading-card{grid-template-columns:100px minmax(0,1fr)}
+}
+@media(prefers-reduced-motion:reduce){
+  .loading-shape,
+  .explore-pending .explore-skeleton-searchbar,
+  .explore-pending .explore-skeleton-pills span,
+  .explore-pending .explore-skeleton-photo,
+  .explore-pending .explore-skeleton-lines span,
+  .explore-pending .explore-skeleton-results-title,
+  .explore-pending .explore-skeleton-heading{animation:none}
+}
+
 
 /* MERCURY / KINETIC COURT — original CSS + vector graphics, no AI imagery.
    Movement reinforces sport and discovery without changing booking semantics. */

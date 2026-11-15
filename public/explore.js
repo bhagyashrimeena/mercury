@@ -93,15 +93,15 @@ export function sortForDiscovery(items, mode = 'Soonest first', now = Date.now()
 // replacing the page with a generic full-page spinner. Initial SSR cards are
 // preserved by the router and never overwritten with these placeholders.
 export function renderExploreLoading(main) {
-  main.innerHTML = '<div class="page-width explore-page explore-pending" aria-busy="true">' +
-    arenaIntroMarkup() +
+  main.innerHTML = '<span class="sr-only" role="status">Loading events.</span><div class="page-width explore-page explore-pending" aria-hidden="true">' +
+    '<div class="explore-skeleton-hero"><span class="loading-shape loading-eyebrow"></span><span class="loading-shape loading-title"></span><span class="loading-shape loading-subtitle"></span></div>' +
     '<section class="explore-skeleton-search" aria-label="Loading search and filters">' +
     '<div class="explore-skeleton-searchbar" aria-hidden="true"></div>' +
     '<div class="explore-skeleton-pills" aria-hidden="true">' +
       Array.from({ length: 6 }, () => '<span></span>').join('') +
     '</div></section>' +
-    '<div class="results-heading"><div><h2>Explore events</h2>' +
-    '<p role="status">Loading upcoming sports opportunities…</p></div></div>' +
+    '<div class="results-heading"><div><div class="explore-skeleton-results-title"></div>' +
+    '<div class="explore-skeleton-heading"></div></div></div>' +
     '<div class="event-grid explore-skeleton-results" aria-hidden="true">' +
       Array.from({ length: 4 }, () =>
         '<div class="explore-skeleton-card"><div class="explore-skeleton-photo"></div>' +

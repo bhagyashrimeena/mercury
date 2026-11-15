@@ -40,6 +40,8 @@ test('retry loads only its own section and ignores repeated clicks while pending
   assert.equal(calls, 2);
   assert.equal(node.focused, true);
   assert.equal(node.attributes['aria-busy'], 'true');
+  assert.match(node.innerHTML, /saved-games-pending/);
+  assert.match(node.innerHTML, /class="loading-shape/);
   response.resolve({ listings: ['Recovered bookmark'] });
   await pending;
   assert.equal(node.innerHTML, 'Recovered bookmark');

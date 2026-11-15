@@ -19,6 +19,8 @@ next-env.d.ts
 
 # Test output
 /coverage/
+/.playwright-cli/
+/output/playwright/
 
 # Package-manager logs
 npm-debug.log*

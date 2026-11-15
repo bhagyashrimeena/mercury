@@ -11,6 +11,7 @@ import { trackMetric } from './metrics.js';
 import { bookingPassMarkup, bindPassActions, passState } from './game-day.js';
 import { savedGamesLoader } from './my-games.js';
 import { mountOrganizerJourney, mountRosterSearch } from './organizer-journey.js';
+import { renderRouteLoading } from './loading-ui.js';
 let ctx, session = null, turn = 0;
 let sessionReady = false, sessionPromise = null, sessionGeneration = 0;
 // Public inventory and UI session state live only in this tab; private data is fetched per view.
@@ -537,10 +538,9 @@ export async function liveRoute(path, context) {
     const initialFallback = ['explore', 'listing', 'event', 'how-it-works', 'for-organizers', 'list-event'].includes(route)
         && ctx.main.querySelector('[data-server-path]')?.getAttribute?.('data-server-path') === path
         ? ctx.main.innerHTML : null;
-    // Keep useful server-rendered public content visible while session/API data loads.
-    // Never trade a real event card for an empty loading screen on first paint.
-    if (!initialFallback)
-        page('<section class="page-intro"><p class="eyebrow blue">MERCURY</p><h1>Getting your game ready.</h1><p role="status">Just a moment…</p></section>');
+    // Keep useful server-rendered public content visible; pending routes use their own layout.
+    if (!initialFallback && !['explore', 'support', 'privacy', 'terms', 'how-it-works', 'for-organizers', 'list-event'].includes(route))
+        renderRouteLoading(ctx.main, route);
     try {
         if (route === 'privacy' || route === 'terms') { renderPolicy(path, ctx); return true; }
         if (route === 'how-it-works') { ctx.main.innerHTML = howItWorksMarkup(); return true; }

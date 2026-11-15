@@ -4,6 +4,7 @@ import { discoveryFallback, listingFallback } from '../server-fallback';
 import { organizerLandingMarkup, eventSubmissionMarkup, howItWorksMarkup } from '../../public/organizer-public.js';
 import { getDatabase } from '../../db/vercel';
 import { shell } from '../shell';
+import { routeLoadingMarkup } from '../../public/loading-ui.js';
 import Script from 'next/script';
 import type { Metadata } from 'next';
 
@@ -103,7 +104,7 @@ export default async function Page({ params }: Props) {
             ? howItWorksMarkup()
             : path.length === 0 || path[0] === 'explore'
               ? await discoveryFallback(path[0] === 'explore' ? 'explore' : 'home')
-        : '<section class="page-width page-intro"><p class="eyebrow blue">MERCURY</p><h1>Your next game starts here.</h1><p role="status">Loading your page…</p><noscript>JavaScript is needed to manage your account and bookings.</noscript></section>';
+        : routeLoadingMarkup(path[0] || 'page') + '<noscript>JavaScript is needed to manage your account and bookings.</noscript>';
   const routePath = '/' + path.join('/');
   const markedFallback = `<div data-server-path="${esc(routePath)}">${fallback}</div>`;
   return <><div dangerouslySetInnerHTML={{ __html: shell.replace('__SERVER_CONTENT__', markedFallback) }}/><Script src="/app.js" type="module" strategy="afterInteractive"/></>;

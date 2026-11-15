@@ -1,3 +1,4 @@
+import { savedLoadingMarkup } from './loading-ui.js';
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 
 // Saved games are optional on the dashboard. Their loading and retries must not
@@ -8,7 +9,7 @@ export function savedGamesLoader({ container, label, load, render, isCurrent }) 
     if (pending || !isCurrent()) return;
     pending = true;
     container.setAttribute('aria-busy', 'true');
-    container.innerHTML = `<p class="muted" role="status">Loading ${esc(label.toLowerCase())}…</p>`;
+    container.innerHTML = savedLoadingMarkup(label.toLowerCase());
     if (retry) container.focus({ preventScroll: true });
     try {
       const result = await load();

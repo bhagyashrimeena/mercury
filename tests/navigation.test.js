@@ -93,6 +93,30 @@ test('refreshing the same URL rejects an older response even without a path chan
   });
 });
 
+test('event and private screens show their own skeleton while data is pending', async () => {
+  await fixture(async ({ main, replies, route, baseEvent, baseBooking }) => {
+    const pendingEvent = Promise.withResolvers();
+    replies.set('/api/events/fixture-event', () => pendingEvent.promise);
+    const eventRoute = route('/event/fixture-event');
+    await tick();
+    assert.match(main.innerHTML, /loading-view loading-event/);
+    assert.match(main.innerHTML, /loading-detail-grid/);
+    assert.doesNotMatch(main.innerHTML, /Getting your game ready|Just a moment/);
+    pendingEvent.resolve({ event: baseEvent });
+    await eventRoute;
+    await tick();
+    const pendingBookings = Promise.withResolvers();
+    replies.set('/api/bookings', () => pendingBookings.promise);
+    const privateRoute = route('/my-games');
+    await tick();
+    assert.match(main.innerHTML, /loading-view loading-my-games/);
+    assert.match(main.innerHTML, /loading-card-grid/);
+    pendingBookings.resolve({ bookings: [baseBooking] });
+    await privateRoute;
+    await tick();
+  });
+});
+
 test('Back and Forward route handling dismisses old dialogs without adding history entries', async () => {
   await fixture(async ({ listeners, actionSheet, locationDialog, historyCalls }) => {
     await import('../public/app.js?navigation-dialog-test');
@@ -204,6 +228,20 @@ test('Explore keeps server-rendered listings visible while public inventory is s
     assert.equal(main.innerHTML, serverView);
     pendingInventory.resolve({ listings: [] });
     pendingSession.resolve(session);
+    await navigation;
+  });
+});
+
+test('Explore shows a shimmer layout on in-app navigation while inventory loads', async () => {
+  await fixture(async ({ main, replies, route }) => {
+    const pending = Promise.withResolvers();
+    replies.set('/api/listings', () => pending.promise);
+    const navigation = route('/explore');
+    await tick();
+    assert.match(main.innerHTML, /explore-skeleton-hero/);
+    assert.match(main.innerHTML, /explore-skeleton-results/);
+    assert.doesNotMatch(main.innerHTML, /Getting your game ready|Just a moment/);
+    pending.resolve({ listings: [] });
     await navigation;
   });
 });
