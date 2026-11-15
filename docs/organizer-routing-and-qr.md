@@ -1,6 +1,6 @@
 # Organizer event routes and payment QR checks
 
-`/list-event` starts with two choices:
+`/list-event` starts with two compact radio selectors. Selecting an option highlights it in light blue; navigation happens only after **Next**. The button stays disabled until a choice is selected:
 
 - **Host exclusively on Mercury** opens `/host`. Players register on Mercury and organizers manage their registrations here.
 - **Promote an event hosted elsewhere** opens `/list-event?mode=external`. The existing submission form sends the external event link for manual review. Approved external listings continue to send registration traffic to the organizer's external website; submitting the form does not automatically publish a listing. Existing `?claim=` links open this external form directly.

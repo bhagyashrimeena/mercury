@@ -593,7 +593,7 @@ export async function liveRoute(path, context) {
         if (route === 'privacy' || route === 'terms') { renderPolicy(path, ctx); return true; }
         if (route === 'how-it-works') { ctx.main.innerHTML = howItWorksMarkup(); return true; }
         if (route === 'for-organizers') { ctx.main.innerHTML = organizerLandingMarkup(); return true; }
-        if (route === 'list-event') { ctx.main.innerHTML = eventSubmissionMarkup(new URLSearchParams(location.search).get('mode') === 'external' || new URLSearchParams(location.search).has('claim') ? 'external' : ''); mountEventSubmission(ctx.main); return true; }
+        if (route === 'list-event') { ctx.main.innerHTML = eventSubmissionMarkup(new URLSearchParams(location.search).get('mode') === 'external' || new URLSearchParams(location.search).has('claim') ? 'external' : ''); mountEventSubmission(ctx.main, { navigate: ctx.go }); return true; }
         if (route === 'explore') {
             const cached = publicLineupCache && Date.now() - publicLineupCache.savedAt < PUBLIC_CACHE_MS
                 ? publicLineupCache : null;

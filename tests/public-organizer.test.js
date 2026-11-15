@@ -30,8 +30,9 @@ test('organizers choose native hosting or external promotion before entering det
   const html = eventSubmissionMarkup();
   assert.match(html, /Host exclusively on Mercury/);
   assert.match(html, /Promote an event hosted elsewhere/);
-  assert.match(html, /href="\/host"/);
-  assert.match(html, /href="\/list-event\?mode=external"/);
+  assert.match(html, /type="radio" name="hostingMode" value="native" required/);
+  assert.match(html, /type="radio" name="hostingMode" value="external" required/);
+  assert.match(html, /disabled>Next/);
   assert.doesNotMatch(html, /id="public-event-submission"/);
 });
 

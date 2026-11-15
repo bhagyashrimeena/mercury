@@ -5,7 +5,7 @@ const HOW = "<div class=\"page-width public-how-page\">\n<section class=\"public
 
 export function organizerLandingMarkup() { return LANDING; }
 export function eventSubmissionMarkup(mode = '') {
-  const choices = `<div class="page-width event-route-choice"><a class="back" href="/for-organizers">Back to organizers</a><p class="eyebrow blue">BRING YOUR EVENT TO MERCURY</p><h1>How would you like to <em>host?</em></h1><div class="event-route-grid"><a class="form-card event-route-card" href="/host"><span class="eyebrow blue">01 / HOST HERE</span><h2>Host exclusively on Mercury</h2><p>Create your event, collect player registrations and manage approvals here. Choose free entry, direct UPI payments or cash.</p><span class="text-link">Create a Mercury event &#8599;</span></a><a class="form-card event-route-card" href="/list-event?mode=external"><span class="eyebrow blue">02 / SHARE YOUR EXISTING EVENT</span><h2>Promote an event hosted elsewhere</h2><p>Already listed on another platform? Share your event here. Players follow your registration link and complete their entry on the external site.</p><span class="text-link">Add your external event &#8599;</span></a></div></div>`;
+  const choices = `<div class="page-width event-route-choice"><a class="back" href="/for-organizers">Back to organizers</a><p class="eyebrow blue">BRING YOUR EVENT TO MERCURY</p><h1 id="event-route-title">How would you like to <em>host?</em></h1><form id="event-route-selection"><fieldset class="event-route-grid" aria-labelledby="event-route-title"><label class="event-route-card"><input type="radio" name="hostingMode" value="native" required><span class="event-route-content"><strong>Host exclusively on Mercury</strong><span class="event-route-copy">Manage registrations here. Offer free entry, UPI or cash.</span></span></label><label class="event-route-card"><input type="radio" name="hostingMode" value="external" required><span class="event-route-content"><strong>Promote an event hosted elsewhere</strong><span class="event-route-copy">Share your existing event. Players register on your external site.</span></span></label></fieldset><div class="event-route-actions"><button type="submit" class="button primary" disabled>Next &#8594;</button></div></form></div>`;
   return mode === 'external' ? SUBMISSION.replace(/<a class="back" href="\/for-organizers">[^<]*<\/a>/, '<a class="back" href="/list-event">Back to hosting options</a>').replace('Already taking entries elsewhere? Submit the link.', 'Promote an event hosted elsewhere. Submit your registration link.') : choices;
 }
 export function howItWorksMarkup() { return HOW; }
@@ -36,7 +36,25 @@ export function buildOrganizerMessage(fields) {
   ].filter(Boolean).join('\n');
 }
 
-export function mountEventSubmission(main, { request = fetch, locationObject = location } = {}) {
+export function mountEventSubmission(main, { request = fetch, locationObject = location, navigate = path => locationObject.assign(path) } = {}) {
+  const choice = main.querySelector('#event-route-selection');
+  if (choice) {
+    const next = choice.querySelector('button[type=submit]');
+    const update = () => {
+      const selected = choice.querySelector('input[name=hostingMode]:checked');
+      next.disabled = !selected;
+      choice.querySelectorAll('.event-route-card').forEach(card => card.classList.toggle('is-selected', card.querySelector('input').checked));
+    };
+    choice.addEventListener('change', update);
+    choice.addEventListener('submit', event => {
+      event.preventDefault();
+      const selected = choice.querySelector('input[name=hostingMode]:checked');
+      if (!selected || !choice.reportValidity()) return;
+      navigate(selected.value === 'native' ? '/host' : '/list-event?mode=external');
+    });
+    update();
+    return;
+  }
   const form = main.querySelector('#public-event-submission');
   if (!form) return;
   const search = new URLSearchParams(locationObject.search);
