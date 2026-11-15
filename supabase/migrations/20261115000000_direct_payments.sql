@@ -1,0 +1,13 @@
+ALTER TABLE public.events ADD COLUMN payment_methods text NOT NULL DEFAULT '';
+ALTER TABLE public.events ADD COLUMN qr_image text NOT NULL DEFAULT '';
+ALTER TABLE public.bookings ADD COLUMN payment_method text NOT NULL DEFAULT 'free';
+ALTER TABLE public.bookings ADD COLUMN payment_proof text NOT NULL DEFAULT '';
+ALTER TABLE public.bookings ADD COLUMN amount integer NOT NULL DEFAULT 0;
+ALTER TABLE public.bookings ADD COLUMN organizer_contact text NOT NULL DEFAULT '';
+ALTER TABLE public.bookings ADD COLUMN review_note text NOT NULL DEFAULT '';
+ALTER TABLE public.bookings ADD COLUMN reviewed_at double precision;
+ALTER TABLE public.bookings ADD COLUMN payment_consent_version text NOT NULL DEFAULT '';
+ALTER TABLE public.bookings DROP CONSTRAINT booking_status_valid;
+ALTER TABLE public.bookings ADD CONSTRAINT booking_status_valid CHECK(status IN ('pending','rejected','confirmed','checked_in','cancelled','event_cancelled'));
+DROP INDEX public.booking_active_unique;
+CREATE UNIQUE INDEX booking_active_unique ON public.bookings(user_id,event_id) WHERE status IN ('pending','confirmed','checked_in');
