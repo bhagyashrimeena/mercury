@@ -11,7 +11,6 @@ export function registrationFormMarkup(event, user) {
       <label>Your name<input name="name" autocomplete="name" value="${esc(user.name === 'Player' ? '' : user.name)}" minlength="2" maxlength="80" required></label>
       <label>Email<input name="email" type="email" autocomplete="email" value="${esc(user.email)}" readonly required><small>From your verified sign-in account.</small></label>
       <label>Playing level<select name="level" required><option value="">Choose your level</option>${['Beginner','Intermediate','Advanced'].map(level => `<option ${user.level === level ? 'selected' : ''}>${level}</option>`).join('')}</select></label>
-      <label class="checkbox"><input type="checkbox" name="adult" required><span>I am 18 or older.</span></label>
       <label class="checkbox"><input type="checkbox" name="rules" required><span>I accept the <a href="/event/${encodeURIComponent(event.id)}" target="_blank" rel="noopener">event rules and cancellation policy</a>.</span></label>
       ${paid ? `<label>Payment method<select name="paymentMethod" required>${methods.length > 1 ? '<option value="">Choose how to pay</option>' : ''}${methods.map(m => `<option value="${m}" ${selected === m ? 'selected' : ''}>${m === 'upi' ? 'UPI / scan organizer QR' : 'Cash / pay organizer separately'}</option>`).join('')}</select></label>
         <p data-cash-registration-note ${selected === 'cash' ? '' : 'hidden'}>The organizer will receive payment separately. Register now to send your request for approval. Choosing cash does not mean you have paid.</p>

@@ -117,15 +117,11 @@ export function validateDraft(input, now = new Date()) {
     d.capacity > 500
   )
     errors.capacity = "Capacity must be a whole number from 2 to 500.";
-  for (const [key, min, max, label] of [
-    ["venue", 4, 150, "venue name and address"],
-    ["description", 20, 1500, "event description"],
-    ["included", 5, 500, "what is included"],
-    ["bring", 3, 300, "what players should bring"],
-    ["cancellation", 15, 1000, "cancellation policy"],
-  ]) {
-    if (d[key].length < min || d[key].length > max)
-      errors[key] = `Add ${label} (${min}–${max} characters).`;
+  if (d.venue.length < 4 || d.venue.length > 150)
+    errors.venue = 'Add venue name and address (4–150 characters).';
+  for (const [key, max] of [['description', 1500], ['included', 500], ['bring', 300], ['cancellation', 1000]]) {
+    if (d[key].length > max) errors[key] = `Use no more than ${max} characters.`;
+    d[key] = d[key] || null;
   }
   return { value: d, errors, valid: Object.keys(errors).length === 0 };
 }

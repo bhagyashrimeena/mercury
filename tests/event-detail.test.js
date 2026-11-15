@@ -29,3 +29,11 @@ test('organizer preview uses public layout while keeping booking disabled and da
   assert.doesNotMatch(preview, /href="\/register\//);
   assert.doesNotMatch(preview, /id="live-save"/);
 });
+
+test('missing instructions render no empty sections or blanket age restriction', () => {
+  for (const empty of [null, undefined, '', '  ']) {
+    const html = eventDetailMarkup({ ...event, description: empty, included: empty,
+      bring: empty, cancellation: empty }, { preview: true, policy: 'Platform rules' });
+    assert.doesNotMatch(html, /A good game, a good time|What's included|What to bring|<summary>Cancellation|18\+|18 or older|>null</);
+  }
+});

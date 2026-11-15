@@ -60,7 +60,7 @@ test('booking notifications run after commit and cannot undo a confirmed place',
     assert.equal(notificationAttempts, 1);
   } finally { h.sqlite.close(); }
 });
-test('consent, event revision and start time are checked server-side', async () => { const h = harness(); const id = await h.publish(); assert.equal((await h.join(id, 1, { adultConfirmed: false })).status, 422); assert.equal((await h.join(id, 1, { rulesAccepted: false })).status, 422); assert.equal((await h.join(id, 1, { revision: 0 })).data.error.code, 'event_changed'); const updated = await h.req('organizer/events/' + id, host, { ...draft, title: 'Changed session name', revision: 1 }, 'PATCH'); assert.equal(updated.status, 200); assert.equal((await h.join(id, 1)).status, 409); assert.equal((await h.join(id, 1, { revision: 2 })).status, 200); const expired = await h.req('events/' + id + '/register', player(2), { name: 'Player Two', level: 'Beginner', adultConfirmed: true, rulesAccepted: true, idempotencyKey: 'expired-test-key-2', revision: 2 }, 'POST', { now: Date.parse('2026-11-09') }); assert.equal(expired.data.error.code, 'event_started'); h.sqlite.close(); });
+test('consent, event revision and start time are checked server-side', async () => { const h = harness(); const id = await h.publish(); assert.equal((await h.join(id, 1, { rulesAccepted: false })).status, 422); assert.equal((await h.join(id, 1, { revision: 0 })).data.error.code, 'event_changed'); const updated = await h.req('organizer/events/' + id, host, { ...draft, title: 'Changed session name', revision: 1 }, 'PATCH'); assert.equal(updated.status, 200); assert.equal((await h.join(id, 1)).status, 409); assert.equal((await h.join(id, 1, { revision: 2 })).status, 200); const expired = await h.req('events/' + id + '/register', player(2), { name: 'Player Two', level: 'Beginner', adultConfirmed: true, rulesAccepted: true, idempotencyKey: 'expired-test-key-2', revision: 2 }, 'POST', { now: Date.parse('2026-11-09') }); assert.equal(expired.data.error.code, 'event_started'); h.sqlite.close(); });
 test('registered events lock editing and unpublishing; stale edits fail', async () => { const h = harness(); const id = await h.publish(); assert.equal((await h.req('organizer/events/' + id, host, { ...draft, revision: 0 }, 'PATCH')).status, 409); await h.join(id, 1); assert.equal((await h.req('organizer/events/' + id, host, { ...draft, revision: 1 }, 'PATCH')).data.error.code, 'has_registrations'); assert.equal((await h.req('organizer/events/' + id + '/unpublish', host, {})).status, 409); h.sqlite.close(); });
 test('cancellation releases capacity and cancelled request keys cannot resurrect passes', async () => { const h = harness(); const id = await h.publish(); const { data: b } = await h.join(id, 1); await h.join(id, 2); assert.equal((await h.req('bookings/' + b.id + '/cancel', player(2), {})).status, 404); assert.equal((await h.req('bookings/' + b.id + '/cancel', player(1), {})).status, 200); assert.equal((await h.req('events/' + id)).data.event.spots, 1); assert.equal((await h.join(id, 1)).data.error.code, 'request_cancelled'); assert.equal((await h.join(id, 3)).status, 200); assert.ok((await h.req('session', host)).data.notifications.some(n => n.message.includes('cancelled their place'))); h.sqlite.close(); });
 test('attendance is owner-only, idempotent, and blocks subsequent player cancellation', async () => { const h = harness(); const id = await h.publish(); const { data: b } = await h.join(id, 1); assert.equal((await h.req('organizer/events/' + id + '/check-in', player(1), { bookingId: b.id })).status, 404); assert.equal((await h.req('organizer/events/' + id + '/check-in', host, { bookingId: b.id })).status, 200); assert.equal((await h.req('organizer/events/' + id + '/check-in', host, { bookingId: b.id })).status, 200); assert.equal((await h.req('bookings/' + b.id + '/cancel', player(1), {})).status, 409); const roster = (await h.req('organizer/events/' + id + '/attendees')).data.attendees; assert.equal(roster[0].status, 'checked_in'); assert.equal(roster[0].email, undefined); h.sqlite.close(); });
@@ -315,4 +315,21 @@ test('paid publication requires contact and payment setup; pending cancellation 
  await h.req('organizer/profile',host,{name:'Weekend Club',contact:''});
  assert.equal((await h.req('organizer/events/'+cash+'/publish',host,{})).status,422);
  }finally{h.sqlite.close();}
+});
+
+
+test('optional instructions persist as null, survive edits, and registration needs no age confirmation', async () => {
+  const h = harness();
+  const fields = { description: '', included: null, bring: '  ', cancellation: undefined };
+  const id = await h.create(fields);
+  const stored = h.sqlite.prepare('SELECT description,included,bring,cancellation FROM events WHERE id=?').get(id);
+  for (const value of Object.values(stored)) assert.equal(value, null);
+  assert.equal((await h.req('organizer/events/' + id, host, { ...draft, ...fields, revision: 1 }, 'PATCH')).status, 200);
+  const own = (await h.req('organizer/events')).data.events.find(e => e.id === id);
+  for (const field of Object.keys(fields)) assert.equal(own.draft[field], null);
+  assert.equal((await h.req('organizer/events/' + id + '/publish', host, {})).status, 200);
+  const detail = (await h.req('events/' + id)).data.event;
+  for (const field of Object.keys(fields)) assert.equal(detail[field], null);
+  assert.equal((await h.join(id, 1, { adultConfirmed: undefined, revision: 2 })).status, 200);
+  h.sqlite.close();
 });

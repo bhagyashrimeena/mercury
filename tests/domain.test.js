@@ -67,14 +67,26 @@ test("validates full organizer draft and accepts a free event", () => {
   assert.equal(r.value.price, 0);
   assert.equal(r.value.capacity, 12);
 });
-test("rejects incomplete policies, whitespace names, non-integer capacity and blank prices", () => {
+test("rejects whitespace names, non-integer capacity and blank prices", () => {
   const r = validateDraft(
     { ...valid, title: "   ", price: "", capacity: "2.5", cancellation: "" },
     now,
   );
   assert.equal(r.valid, false);
-  for (const key of ["title", "price", "capacity", "cancellation"])
+  for (const key of ["title", "price", "capacity"])
     assert.ok(r.errors[key]);
+});
+
+test('optional event instructions accept blank, omitted, null and short text while retaining size limits', () => {
+  for (const field of ['description', 'included', 'bring', 'cancellation']) {
+    for (const value of [undefined, null, '', '  ']) {
+      const result = validateDraft({ ...valid, [field]: value }, now);
+      assert.equal(result.valid, true);
+      assert.equal(result.value[field], null);
+    }
+    assert.equal(validateDraft({ ...valid, [field]: 'Hi' }, now).valid, true);
+    assert.ok(validateDraft({ ...valid, [field]: 'x'.repeat(1501) }, now).errors[field]);
+  }
 });
 test("compares organizer event start time in IST, including same-day and invalid dates", () => {
   assert.ok(

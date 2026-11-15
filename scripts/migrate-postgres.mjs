@@ -42,6 +42,17 @@ try {
     }
     await client.query('COMMIT');
   } catch (error) { await client.query('ROLLBACK'); throw error; }
+  const optionalInstructions = '20261115010000_optional_event_instructions.sql';
+  await client.query('BEGIN');
+  try {
+    await client.query('SELECT pg_advisory_xact_lock(15000000)');
+    if (!(await client.query('SELECT 1 FROM mercury_migrations WHERE name=$1', [optionalInstructions])).rowCount) {
+      await client.query(await readFile(new URL('../supabase/migrations/' + optionalInstructions, import.meta.url), 'utf8'));
+      await client.query('INSERT INTO mercury_migrations(name) VALUES($1)', [optionalInstructions]);
+      console.log('Applied ' + optionalInstructions);
+    }
+    await client.query('COMMIT');
+  } catch (error) { await client.query('ROLLBACK'); throw error; }
 } finally {
   await client.end();
 }

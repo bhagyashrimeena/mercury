@@ -91,5 +91,5 @@ test('hosted games can use supported MMR areas and more useful player levels wit
   assert.equal(validateDraft({ ...base, area: 'Nerul, Navi Mumbai', level: 'Competitive' }, now).valid, true);
   assert.ok(validateDraft({ ...base, area: 'Not a verified area' }, now).errors.area);
   assert.ok(validateDraft({ ...base, date: '2026-11-01' }, now).errors.date);
-  assert.ok(validateDraft({ ...base, description: '' }, now).errors.description);
+  assert.equal(validateDraft({ ...base, description: '' }, now).value.description, null);
 });

@@ -1,0 +1,5 @@
+ALTER TABLE public.events
+  ALTER COLUMN description DROP NOT NULL,
+  ALTER COLUMN included DROP NOT NULL,
+  ALTER COLUMN bring DROP NOT NULL,
+  ALTER COLUMN cancellation DROP NOT NULL;

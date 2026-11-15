@@ -36,6 +36,13 @@
       "when": 1794748800000,
       "tag": "0004_direct_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1794762906818,
+      "tag": "0005_optional_event_instructions",
+      "breakpoints": true
     }
   ]
 }

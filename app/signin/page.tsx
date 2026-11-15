@@ -21,7 +21,7 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
   const destination = safeReturnPath(return_to, '/account');
   const pendingEmail = step === 'email' ? (await cookies()).get(EMAIL_PENDING_COOKIE)?.value : null;
   const message = (error === 'access' || error === 'identity')
-    ? 'Sign-in could not be completed. Please try again; Mercury accounts are open to everyone aged 18 or older.'
+    ? 'Sign-in could not be completed. Please try again; Mercury accounts are open to everyone.'
     : error === 'callback'
       ? 'Google sign-in could not be completed. Please try again. If it keeps happening, contact Mercury support.'
       : error === 'start'
@@ -30,7 +30,7 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
         ? 'Sign-in is temporarily unavailable. Please contact Mercury support.'
         : ({
           'email-invalid': 'Enter a valid email address.',
-          'email-access': 'Please request a new code and try again. Accounts are open to everyone aged 18 or older.',
+          'email-access': 'Please request a new code and try again. Accounts are open to everyone.',
           'email-identity': 'The verified email did not match. Please request a new code and try again.',
           'email-send': 'We could not send a code. Please try again in a minute or contact Mercury support.',
           'email-code': 'That code did not work. Check the latest email and try again.',
@@ -112,7 +112,7 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
             <Link className="button outline" href="/explore">Continue as guest</Link>
             <p className="fine">Browse without signing in. We’ll ask you to sign in if you save a game or book a place.</p>
           </>}
-          <p className="fine">Mercury accounts are for adults 18 or older. A parent or guardian can browse junior events and check entry rules with the organizer.</p>
+          <p className="fine">Check each organizer’s event eligibility and entry requirements before registering.</p>
           <div className="signin-links">
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>

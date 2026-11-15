@@ -14,7 +14,7 @@ const one = (db, sql, ...values) => db.prepare(sql).bind(...values).first();
 const all = async (db, sql, ...values) => (await db.prepare(sql).bind(...values).all()).results;
 const run = (db, sql, ...values) => db.prepare(sql).bind(...values).run();
 export function publicEvent(row) { if (!row)
-    return null; return { id: row.id, title: row.title, sport: row.sport, area: row.area, venue: row.venue, description: row.description, date: row.date, time: row.time, startsAt: row.starts_at, duration: row.duration, capacity: row.capacity, price: row.price, paymentMethods: (row.payment_methods || '').split(',').filter(Boolean), qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '', level: row.level, type: row.format, format: row.format + ' · individual entry', included: row.included.split('\n').filter(Boolean), bring: row.bring, cancellation: row.cancellation, status: row.status, revision: row.revision, host: row.host, hostBio: row.host_bio, hostContact: row.host_contact, spots: Math.max(0, row.capacity - Number(row.registered)), registered: Number(row.registered), pendingCount: Number(row.pending_count || 0), image: row.sport === 'Badminton' ? 'badminton.jpg' : row.sport === 'Tennis' ? 'tennis.jpg' : 'court.jpg', solo: true, isDemo: false, tag: 'YOUR NEXT GAME STARTS HERE' }; }
+    return null; return { id: row.id, title: row.title, sport: row.sport, area: row.area, venue: row.venue, description: row.description, date: row.date, time: row.time, startsAt: row.starts_at, duration: row.duration, capacity: row.capacity, price: row.price, paymentMethods: (row.payment_methods || '').split(',').filter(Boolean), qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '', level: row.level, type: row.format, format: row.format + ' · individual entry', included: row.included ? row.included.split('\n').filter(Boolean) : null, bring: row.bring, cancellation: row.cancellation, status: row.status, revision: row.revision, host: row.host, hostBio: row.host_bio, hostContact: row.host_contact, spots: Math.max(0, row.capacity - Number(row.registered)), registered: Number(row.registered), pendingCount: Number(row.pending_count || 0), image: row.sport === 'Badminton' ? 'badminton.jpg' : row.sport === 'Tennis' ? 'tennis.jpg' : 'court.jpg', solo: true, isDemo: false, tag: 'YOUR NEXT GAME STARTS HERE' }; }
 function ensureUser(user) {
     if (!user?.userId || !user?.email) fail(401, 'Sign in to continue.', 'sign_in_required');
     return user.userId;
@@ -301,8 +301,8 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         }
     }
     if (m === 'POST' && p[0] === 'events' && p[2] === 'register') {
-        if (b.rulesAccepted !== true || b.adultConfirmed !== true)
-            fail(422, 'Read the rules and confirm you are at least 18.', 'consent_required');
+        if (b.rulesAccepted !== true)
+            fail(422, 'Read and accept the event rules.', 'consent_required');
         const name = clean(b.name, 80), level = clean(b.level, 30), key = clean(b.idempotencyKey, 100);
         if (name.length < 2 || !['Beginner', 'Intermediate', 'Advanced'].includes(level))
             fail(422, 'Enter your name and playing level.', 'validation_failed');

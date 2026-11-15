@@ -10,7 +10,7 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
  const directory=await mkdtemp(join(tmpdir(),'mercury-registration-'));
  let pg=new PGlite(directory);
  try{
- for(const file of ['20261102_initial.sql','20261105132850_site_metrics.sql','20261115000000_direct_payments.sql'])await pg.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
+ for(const file of ['20261102_initial.sql','20261105132850_site_metrics.sql','20261115000000_direct_payments.sql','20261115010000_optional_event_instructions.sql'])await pg.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
  function adapter(runner) {
    return { async batch(statements) {
      const results=[];
@@ -40,6 +40,11 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
  const req=async(path,user,body)=>{const r=await apiHandler(new Request('https://mercury.test/api/'+path,{method:body?'POST':'GET',headers:{origin:'https://mercury.test','content-type':'application/json'},body:body?JSON.stringify(body):undefined}),db,user);const result=await r.json();assert.equal(r.status,200,JSON.stringify(result));return result};
  for(const user of [host,player])await req('session',user);
  await req('organizer/profile',host,{name:'Test Club',contact:'host@example.test'});
+ const {id:emptyId}=await req('organizer/events',host,{title:'Optional instructions',sport:'Badminton',area:'Powai',venue:'QA Court Mumbai',date:'2030-11-22',time:'18:00',capacity:2,price:0,level:'All levels',format:'Social play'});
+ const emptyRow=(await pg.query('SELECT description,included,bring,cancellation FROM events WHERE id=$1',[emptyId])).rows[0];
+ for(const value of Object.values(emptyRow))assert.equal(value,null);
+ await req('organizer/events/'+emptyId+'/publish',host,{});
+ await req('events/'+emptyId+'/register',player,{name:'Test Player',level:'Beginner',rulesAccepted:true,revision:1,idempotencyKey:'no-age-confirmation-key'});
  const image='data:image/png;base64,'+(await readFile(new URL('./fixtures/payment-upi.png',import.meta.url))).toString('base64');
  const {id}=await req('organizer/events',host,{title:'Paid PostgreSQL Rally',sport:'Badminton',area:'Powai',venue:'QA Court Mumbai',description:'A friendly paid doubles session for testing.',date:'2030-11-22',time:'18:00',capacity:2,price:250,level:'All levels',format:'Social play',included:'Court time',bring:'Racket and water',cancellation:'Contact organizer for cancellation and refunds.',paymentMethods:['upi','cash'],qrImage:image});
  await req('organizer/events/'+id+'/publish',host,{});
@@ -62,9 +67,9 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
  assert.equal(Buffer.from(await proofResponse.arrayBuffer()).toString('base64'),image.split(',')[1]);
  assert.ok((await req('session',host)).notifications.some(n=>n.actionPath==='/roster/'+id));
  await req('organizer/events/'+id+'/review',host,{bookingId:b.id,decision:'accept'});
- assert.equal((await req('bookings',player)).bookings[0].status,'confirmed');
+ assert.equal((await req('bookings',player)).bookings.find(entry=>entry.id===b.id).status,'confirmed');
  await req('organizer/events/'+id+'/cancel',host,{});
- assert.equal((await req('bookings',player)).bookings[0].status,'event_cancelled');
+ assert.equal((await req('bookings',player)).bookings.find(entry=>entry.id===b.id).status,'event_cancelled');
  await pg.close();pg=new PGlite(directory);
  assert.equal((await pg.query('SELECT qr_image FROM events WHERE id=$1',[id])).rows[0].qr_image,image);
  assert.equal((await pg.query('SELECT payment_proof FROM bookings WHERE id=$1',[pending.id])).rows[0].payment_proof,image);
