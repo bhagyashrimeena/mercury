@@ -11,7 +11,7 @@ const STEPS = [
   { label: 'The essentials', indices: [0, 1] },
   { label: 'Player details', indices: [2, 3] },
   { label: 'Review event', indices: [4] },
-  { label: 'Payment & save', indices: [5] }
+  { label: 'Payment & publish', indices: [5] }
 ];
 const enc = value => String(value ?? '').replace(/[&<>"']/g, char =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -109,7 +109,7 @@ export function mountOrganizerJourney(form, {
   saveState.setAttribute('role', 'status');
   saveState.textContent = recovered
     ? 'Your unsaved edits were restored from this tab.'
-    : 'Unsaved changes stay in this tab. Nothing is published until you publish a saved event.';
+    : 'Unsaved changes stay in this tab. Choose Publish event when you are ready, or save a private draft.';
 
   const panels = STEPS.map(({ indices }, step) => {
     const panel = document.createElement('div');

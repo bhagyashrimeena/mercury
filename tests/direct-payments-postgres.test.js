@@ -37,16 +37,19 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
    }); }
  };
  const host={userId:'host',email:'host@example.test'}, player={userId:'player',email:'player@example.test'};
- const req=async(path,user,body)=>{const r=await apiHandler(new Request('https://mercury.test/api/'+path,{method:body?'POST':'GET',headers:{origin:'https://mercury.test','content-type':'application/json'},body:body?JSON.stringify(body):undefined}),db,user);const result=await r.json();assert.equal(r.status,200,JSON.stringify(result));return result};
+ const req=async(path,user,body,method=body?'POST':'GET')=>{const r=await apiHandler(new Request('https://mercury.test/api/'+path,{method,headers:{origin:'https://mercury.test','content-type':'application/json'},body:body?JSON.stringify(body):undefined}),db,user);const result=await r.json();assert.equal(r.status,200,JSON.stringify(result));return result};
  for(const user of [host,player])await req('session',user);
  await req('organizer/profile',host,{name:'Test Club',contact:'host@example.test'});
  const {id:emptyId}=await req('organizer/events',host,{title:'Optional instructions',sport:'Badminton',area:'Powai',venue:'QA Court Mumbai',date:'2030-11-22',time:'18:00',capacity:2,price:0,level:'All levels',format:'Social play'});
  const emptyRow=(await pg.query('SELECT description,included,bring,cancellation FROM events WHERE id=$1',[emptyId])).rows[0];
  for(const value of Object.values(emptyRow))assert.equal(value,null);
- await req('organizer/events/'+emptyId+'/publish',host,{});
- await req('events/'+emptyId+'/register',player,{name:'Test Player',level:'Beginner',rulesAccepted:true,revision:1,idempotencyKey:'no-age-confirmation-key'});
+ const savedEmpty=(await req('organizer/events',host)).events.find(event=>event.id===emptyId);
+ await req('organizer/events/'+emptyId,host,{...savedEmpty.draft,revision:savedEmpty.revision,publish:true},'PATCH');
+ assert.equal((await req('events/'+emptyId,null)).event.status,'published');
+ await req('events/'+emptyId+'/register',player,{name:'Test Player',level:'Beginner',rulesAccepted:true,revision:2,idempotencyKey:'no-age-confirmation-key'});
  const image='data:image/png;base64,'+(await readFile(new URL('./fixtures/payment-upi.png',import.meta.url))).toString('base64');
- const {id}=await req('organizer/events',host,{title:'Paid PostgreSQL Rally',sport:'Badminton',area:'Powai',venue:'QA Court Mumbai',description:'A friendly paid doubles session for testing.',date:'2030-11-22',time:'18:00',capacity:2,price:250,level:'All levels',format:'Social play',included:'Court time',bring:'Racket and water',cancellation:'Contact organizer for cancellation and refunds.',paymentMethods:['upi','cash'],qrImage:image});
+ const {id}=await req('organizer/events',host,{title:'Paid PostgreSQL Rally',sport:'Badminton',area:'Powai',venue:'QA Court Mumbai',description:'A friendly paid doubles session for testing.',date:'2030-11-22',time:'18:00',capacity:2,price:250,level:'All levels',format:'Social play',included:'Court time',bring:'Racket and water',cancellation:'Contact organizer for cancellation and refunds.',paymentMethods:['upi','cash'],qrImage:image,publish:true});
+ assert.equal((await req('events/'+id,null)).event.status,'published');
  await req('organizer/events/'+id+'/publish',host,{});
  const entry={name:'Test Player',level:'Beginner',adultConfirmed:true,rulesAccepted:true,revision:1,idempotencyKey:'postgres-paid-test-key',paymentMethod:'cash',paymentConsentVersion:'2026-11-15-direct-payments'};
  const b=await req('events/'+id+'/register',player,entry);assert.equal(b.status,'pending');

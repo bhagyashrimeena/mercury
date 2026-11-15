@@ -333,3 +333,50 @@ test('optional instructions persist as null, survive edits, and registration nee
   assert.equal((await h.join(id, 1, { adultConfirmed: undefined, revision: 2 })).status, 200);
   h.sqlite.close();
 });
+
+test('wizard publishes new free and paid events atomically with their latest details', async () => {
+  const h = harness();
+  try {
+    await h.req('organizer/profile', host, { name: 'Direct Publish Club', contact: 'host@example.test' });
+    const qr = 'data:image/png;base64,' + readFileSync(new URL('./fixtures/payment-upi.png', import.meta.url)).toString('base64');
+    for (const payment of [{price:0}, {price:150,paymentMethods:['cash']}, {price:250,paymentMethods:['upi'],qrImage:qr}]) {
+      const result = await h.req('organizer/events', host, { ...draft, ...payment, publish:true });
+      assert.equal(result.status, 200);
+      const row = h.sqlite.prepare('SELECT * FROM events WHERE id=?').get(result.data.id);
+      assert.equal(row.status, 'published');
+      assert.equal(row.price, payment.price);
+      assert.equal(row.qr_image, payment.qrImage || '');
+      assert.equal((await h.req('events/' + row.id, null)).status, 200);
+    }
+    const id = await h.create();
+    const edited = {...draft,title:'Updated and published',price:300,paymentMethods:['upi'],qrImage:qr,revision:1,publish:true};
+    assert.equal((await h.req('organizer/events/' + id, host, edited, 'PATCH')).status, 200);
+    const row = h.sqlite.prepare('SELECT * FROM events WHERE id=?').get(id);
+    assert.equal(row.title, edited.title);
+    assert.equal(row.status, 'published');
+    assert.equal(row.price, 300);
+    assert.equal(row.qr_image, qr);
+    assert.equal(row.revision, 2);
+    assert.equal((await h.req('organizer/events/' + id, host, edited, 'PATCH')).status, 409);
+    assert.equal((await h.req('organizer/events/' + id, player(1), {...edited,revision:2}, 'PATCH')).status, 404);
+  } finally { h.sqlite.close(); }
+});
+
+test('failed wizard publication does not create an event or change an existing draft', async () => {
+  const h = harness();
+  try {
+    const id = await h.create();
+    const missingQr = {...draft,price:200,paymentMethods:['upi'],publish:true};
+    assert.equal((await h.req('organizer/events', host, missingQr)).data.error.code, 'payments_unavailable');
+    assert.equal((await h.req('organizer/events/' + id, host, {...missingQr,revision:1}, 'PATCH')).status, 409);
+    await h.req('organizer/profile', host, {name:'Club without contact',contact:''});
+    const missingContact = {...draft,price:200,paymentMethods:['cash'],publish:true};
+    assert.equal((await h.req('organizer/events', host, missingContact)).data.error.code, 'contact_required');
+    assert.equal((await h.req('organizer/events/' + id, host, {...missingContact,revision:1}, 'PATCH')).status, 422);
+    const row = h.sqlite.prepare('SELECT * FROM events WHERE id=?').get(id);
+    assert.equal(row.status, 'draft');
+    assert.equal(row.revision, 1);
+    assert.equal(row.price, 0);
+    assert.equal(h.sqlite.prepare('SELECT COUNT(*) AS n FROM events').get().n, 1);
+  } finally { h.sqlite.close(); }
+});

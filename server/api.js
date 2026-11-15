@@ -45,6 +45,12 @@ function paymentConfig(b, event) {
     if (methods.some(m => !['upi','cash'].includes(m))) fail(422, 'Choose UPI or cash.', 'validation_failed');
     return [methods.join(','), event && b.qrImage === '/api/events/' + encodeURIComponent(event.id) + '/qr' ? event.qr_image : imageData(b.qrImage)];
 }
+async function validatePublication(db, event, userId, now) {
+    if (event.status === 'cancelled') fail(409, 'Cancelled events cannot be published again.', 'event_cancelled');
+    if (event.price > 0 && (!event.payment_methods || (event.payment_methods.includes('upi') && !event.qr_image))) fail(409, 'Choose cash or upload your UPI QR image before publishing.', 'payments_unavailable');
+    if (event.price > 0 && !(await one(db, 'SELECT contact FROM organizers WHERE user_id=?', userId))?.contact) fail(422, 'Add a public organizer contact email for payment and refund queries.', 'contact_required');
+    if (event.starts_at <= now) fail(409, 'Choose a future event date before publishing.', 'event_started');
+}
 async function parseBody(request) { if (!(request.headers.get('content-type') || '').startsWith('application/json'))
     fail(415, 'Send JSON data.', 'content_type'); const origin = request.headers.get('origin'); if (origin !== new URL(request.url).origin)
     fail(403, 'This request must come from Mercury.', 'origin_mismatch'); const limit = /^\/api\/(organizer\/events(?:\/[^/]+)?|events\/[^/]+\/register)$/.test(new URL(request.url).pathname) ? 1100000 : 16384; if (Number(request.headers.get('content-length') || 0) > limit)
@@ -222,8 +228,10 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         await consumeLimit(db, 'event-create:' + uid, 20, now, fail);
         const d = validate(b, now);
         const [methods, qr] = paymentConfig(b);
+        const status = b.publish === true ? 'published' : 'draft';
+        if (b.publish === true) await validatePublication(db, { ...d, payment_methods: methods, qr_image: qr, starts_at: Date.parse(`${d.date}T${d.time}:00+05:30`) }, uid, now);
         const id = newId();
-        await run(db, 'INSERT INTO events(id,owner_id,title,sport,area,venue,description,date,time,starts_at,capacity,price,level,format,included,bring,cancellation,payment_methods,qr_image,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', id, uid, ...eventValues(d), methods, qr, now, now);
+        await run(db, 'INSERT INTO events(id,owner_id,title,sport,area,venue,description,date,time,starts_at,capacity,price,level,format,included,bring,cancellation,payment_methods,qr_image,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', id, uid, ...eventValues(d), methods, qr, status, now, now);
         return { id };
     }
     if (p[0] === 'organizer' && p[1] === 'events' && p.length >= 3) {
@@ -239,18 +247,14 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
                 fail(409, 'This event has registrations. Cancel it before changing the advertised details.', 'has_registrations');
             if (e.status === 'published' && d.price > 0 && !(await one(db, 'SELECT contact FROM organizers WHERE user_id=?', uid))?.contact) fail(422, 'Add a public payment contact.', 'contact_required');
             if (e.status === 'published' && d.price > 0 && (!methods || (methods.includes('upi') && !qr))) fail(422, 'Set payment options and upload a UPI QR image.', 'payments_unavailable');
-            const result = await run(db, `UPDATE events SET title=?,sport=?,area=?,venue=?,description=?,date=?,time=?,starts_at=?,capacity=?,price=?,level=?,format=?,included=?,bring=?,cancellation=?,payment_methods=?,qr_image=?,revision=revision+1,updated_at=? WHERE id=? AND owner_id=? AND revision=? AND status!='cancelled' AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${ACTIVE})`, ...eventValues(d), methods, qr, now, id, uid, Number(b.revision), id);
+            if (b.publish === true) await validatePublication(db, { ...d, payment_methods: methods, qr_image: qr, starts_at: Date.parse(`${d.date}T${d.time}:00+05:30`) }, uid, now);
+            const result = await run(db, `UPDATE events SET title=?,sport=?,area=?,venue=?,description=?,date=?,time=?,starts_at=?,capacity=?,price=?,level=?,format=?,included=?,bring=?,cancellation=?,payment_methods=?,qr_image=?,status=CASE WHEN ?=1 THEN 'published' ELSE status END,revision=revision+1,updated_at=? WHERE id=? AND owner_id=? AND revision=? AND status!='cancelled' AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${ACTIVE})`, ...eventValues(d), methods, qr, b.publish === true ? 1 : 0, now, id, uid, Number(b.revision), id);
             if (!result.meta.changes)
                 fail(409, 'This event changed or received a booking. Reload before editing.', 'version_conflict');
             return { ok: true };
         }
         if (m === 'POST' && p[3] === 'publish') {
-            if (e.status === 'cancelled')
-                fail(409, 'Cancelled events cannot be published again.', 'event_cancelled');
-            if (e.price > 0 && (!e.payment_methods || (e.payment_methods.includes('upi') && !e.qr_image))) fail(409, 'Choose cash or upload your UPI QR image before publishing.', 'payments_unavailable');
-            if (e.price > 0 && !(await one(db, 'SELECT contact FROM organizers WHERE user_id=?', uid))?.contact) fail(422, 'Add a public organizer contact email for payment and refund queries.', 'contact_required');
-            if (e.starts_at <= now)
-                fail(409, 'Choose a future event date before publishing.', 'event_started');
+            await validatePublication(db, e, uid, now);
             if (e.status === 'published')
                 return { ok: true };
             const r = await run(db, "UPDATE events SET status='published',updated_at=? WHERE id=? AND owner_id=? AND status='draft' AND starts_at>? AND revision=?", now, id, uid, now, e.revision);
