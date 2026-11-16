@@ -237,3 +237,63 @@ previous public listing → structure-only draft → applicant supplies fresh de
 This deliberately avoids the dangerous failure previously identified in the Mumbai Pickleball Cup Season 2→Season 3 venue conflict. Repeating an event must never blindly copy last edition's venue or fee.
 
 **Verification:** \`tests/repeat-edition.test.js\` covers known source rows, explicit vs conflicting units, blank fees/eligibility, maximum category count, and omitted stale data. A real-Chrome mobile fixture opens the new-edition URL with Rotary's four public categories, asserts only structure is prefilled, and verifies blank contact, title, date, venue, fee and checkout.
+
+
+## Increment 9: owner export → offline publication proposal gate
+
+The owner review worksheet now has an **Export unpublished catalogue review packet (JSON)** action. It works only for a legitimate, owner-visible \`Organizer enquiry\` request and downloads a local packet using the existing browser download helper. It does not call a publication API, change request status, mutate the database, or send an email.
+
+### Where each piece belongs
+
+- \`public/organizer-publication-proposal.js\`: creates a privacy-minimized, editable draft packet. Applicant-provided event facts stay under \`unverifiedSuggestions\`. The \`record\` for eventual public publication contains null required fields, an empty categories list and a null deadline; the reviewer must independently fill it.
+- \`public/organizer-review.js\`: renders owner-only review checklist and export action; the support request is retrieved from the in-memory owner-only admin response. Submission text is untrusted data.
+- \`public/service-ui.js\`: uses the existing download helper to export a JSON file; includes no personal email or private contact values.
+- \`server/catalogue-proposal-review.js\`: **pure offline validator**, checks source evidence, reviewer identity, reviewed date, all eight human-confirmed tasks, actual catalogue fields, source/checkedOn consistency, category entry units, duplicates and existing records.
+- \`scripts/verify-catalogue-proposal.mjs\`: local read-only CLI; it **does not write** to \`public/catalogue-data.js\`, support requests, or the public website.
+
+### Publication preparation journey
+
+\`\`\`mermaid
+flowchart TD
+  A[External organizer submits request] --> B[Existing private owner support inbox]
+  B --> C[Owner exports unpublished review packet]
+  C --> D[Human independently checks official source and organizer authority]
+  D --> E[Fill verified record and human evidence in JSON]
+  E --> F[Offline catalogue proposal validator]
+  F -->|Fails| D
+  F -->|Structurally valid| G[Open a separate catalogue PR with evidence]
+  G --> H[Human source, rights, policy and product review]
+  H --> I[Normal CI, browser checks and controlled deployment]
+\`\`\`
+
+### Step-by-step owner workflow
+
+1. Sign into the existing Mercury owner desk and find an \`Organizer enquiry\`. The owner worksheet and source link remain private.
+2. Inspect the supplied source **without assuming the event URL proves organizer ownership**. Check with the organizer where authorization, categories, fees, images, deadlines or venue are ambiguous.
+3. Select **Export unpublished catalogue review packet (JSON)**. No acceptance or publication occurs.
+4. Open the packet in a private editor. Read \`unverifiedSuggestions\` as claims only. Enter verified facts under \`record\`, including a unique slug, true event type, Mumbai area, event and end dates, venue, time note, categories, specific fee units, public HTTPS source/registration URLs, source checked-on date, and truthful eligibility.
+5. Enter \`review.verifiedBy\`, \`review.verifiedAt\` (real source-check date), \`review.officialSourceUrl\`, and detailed evidence notes. Set each check flag to true **only after real verification**. Set \`state\` to \`reviewed_for_pr\` as a manual workflow marker, not an automatic approval.
+6. Run the **read-only** check on the developer's local machine:
+
+\`\`\`sh
+node scripts/verify-catalogue-proposal.mjs /absolute/path/to/unpublished-review.json
+\`\`\`
+
+7. If a gate fails, correct the underlying verified facts; never change a checkbox merely to satisfy a test. A green result means only *structural readiness for PR review*.
+8. Prepare a separate PR updating the source-controlled catalogue using existing review/import procedures. A different authorized person should review the source evidence, identity, media permissions, public eligibility and potential conflicts before merge.
+9. Deploy through the normal controlled release process. Never derive live availability, confirmed registrations, payment status or partnership endorsement from an approved listing alone.
+
+### Explicit security constraints
+
+- The exported packet excludes the support contact name/email, raw support text, account identifiers and private review notes. A \`sourceRequestId\` is kept for private audit traceability.
+- The review packet is **not an event catalogue format** and must never be committed as public data. A manually completed public \`record\` must be separately reviewed.
+- The CLI rejects duplicate IDs and proposals whose official source URL or verified date disagrees with the public record; it also rejects unreviewed categories, mismatched fee units and incomplete human checks.
+- Even all-checked boxes plus a technically valid record **do not prove** the organizer is legitimate or that the event will actually happen. Human judgment and source verification remain necessary.
+- Source freshness is changed only through an actual recorded human check; the export action never updates \`checkedOn\`.
+- This version supports **new catalogue additions only**. Editing an existing listing requires an explicit old/new diff and a separate review path; no silent overwriting or reusing a prior edition's venue/fees.
+
+### Verification
+
+\`tests/catalogue-proposal-review.test.js\` covers PII omission, completely blank unpublished records, duplicate IDs, source/evidence/date checks, reviewed state, reviewer attestation, entry-unit conflicts, unverified category rejection and a fully synthetic structurally valid packet. The Chrome owner fixture intercepts the local download, parses its actual JSON bytes and checks that the exported proposal has no private contact email, no verified facts, no checked boxes, and leaves the organizer support request open.
+
+**Not implemented:** automated event publication, paid native checkout, organizer-ownership grants, AI-written review attestations, remote packet storage, real event availability checks, or a server-side arbitrary-URL scraper. These remain deliberately outside this independent branch's current release gate.
