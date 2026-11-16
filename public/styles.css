@@ -4037,3 +4037,13 @@ body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top
 .organizer-category-preview li small{display:block;font-size:.82rem;color:#566273}
 @media(max-width:850px){.organizer-category-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 @media(max-width:520px){.organizer-category-fields{grid-template-columns:minmax(0,1fr)}.organizer-category-edit{padding:12px}.organizer-category-draft{padding:14px}}
+
+
+/* Optional sport category starters — editable shortcuts, never a fee or eligibility promise. */
+.organizer-category-presets{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;padding:12px 0 4px}
+.organizer-category-presets label{display:grid;gap:7px;min-width:0;font-size:.84rem;font-weight:750}
+.organizer-category-presets select{display:block;min-height:44px;width:100%;min-width:0;border:1px solid #bfc9d6;border-radius:9px;padding:8px 10px;background:white;color:#10131a;font:inherit;font-weight:500}
+.organizer-category-presets select:focus-visible{outline:2px solid #3156f5;outline-offset:2px}
+.organizer-category-presets button{min-height:44px;white-space:normal;text-align:center}
+.organizer-category-presets button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:560px){.organizer-category-presets{grid-template-columns:1fr}.organizer-category-presets button{width:100%}}
