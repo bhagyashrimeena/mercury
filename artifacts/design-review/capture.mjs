@@ -462,12 +462,17 @@ try {
     const reset = JSON.parse(await evaluate('JSON.stringify({url:location.search,availability:document.querySelector("#directory-filters [name=availability]").value,clearHidden:document.querySelector("#clear-filters").hidden})'));
     if (reset.url || reset.availability !== 'All upcoming' || !reset.clearHidden) throw new Error(`Filter reset failed: ${JSON.stringify(reset)}`);
     await evaluate('document.querySelector("#directory-filters [name=area]").value="Andheri";document.querySelector("#directory-filters [name=area]").dispatchEvent(new Event("change",{bubbles:true}));document.querySelector("#directory-filters [name=when]").value="Next 7 days";document.querySelector("#directory-filters [name=when]").dispatchEvent(new Event("change",{bubbles:true}))');
-    const timeAndArea = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,areas:[...document.querySelectorAll("#directory-results .directory-card .photo-area")].map(element=>element.textContent)})'));
-    if (!timeAndArea.url.includes('area=Andheri') || !timeAndArea.url.includes('when=Next+7+days') || !timeAndArea.cards || timeAndArea.cards >= initial.cards || timeAndArea.areas.some(area=>!area.includes('Andheri'))) throw new Error(`Date and area filters failed: ${JSON.stringify(timeAndArea)}`);
+    const timeAndArea = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,areas:[...document.querySelectorAll("#directory-results .directory-card .photo-area")].map(element=>element.textContent),empty:!!document.querySelector(".explore-empty"),reset:!!document.querySelector("#empty-reset")})'));
+    // The fixture contains dated events: after they finish, the valid filtered result is empty.
+    // Require the correct URL and an honest recovery state instead of inventing events.
+    if (!timeAndArea.url.includes('area=Andheri') || !timeAndArea.url.includes('when=Next+7+days') ||
+      timeAndArea.cards >= initial.cards || timeAndArea.areas.some(area=>!area.includes('Andheri')) ||
+      (!timeAndArea.cards && (!timeAndArea.empty || !timeAndArea.reset)))
+      throw new Error(`Date and area filters failed: ${JSON.stringify(timeAndArea)}`);
     await evaluate('document.querySelector("#clear-filters").click()');
     await evaluate('document.querySelector("#directory-filters [name=query]").value="no-such-game";document.querySelector("#directory-filters [name=query]").dispatchEvent(new Event("input",{bubbles:true}))');
-    const empty = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,empty:!!document.querySelector(".explore-empty"),url:location.search})'));
-    if (empty.cards || !empty.empty || !empty.url.includes('query=no-such-game')) throw new Error(`Empty search failed: ${JSON.stringify(empty)}`);
+    const empty = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,empty:!!document.querySelector(".explore-empty"),reset:!!document.querySelector("#empty-reset"),url:location.search})'));
+    if (empty.cards || !empty.empty || !empty.reset || !empty.url.includes('query=no-such-game')) throw new Error(`Empty search failed: ${JSON.stringify(empty)}`);
     await evaluate('document.querySelector("#clear-filters").click();document.querySelector("#filter-toggle").click()');
     const advanced = JSON.parse(await evaluate('JSON.stringify({expanded:document.querySelector("#filter-toggle").getAttribute("aria-expanded"),focus:document.activeElement?.name,hidden:document.querySelector("#directory-more-panel").hidden,cards:document.querySelectorAll("#directory-results .directory-card").length})'));
     if (advanced.expanded !== 'true' || advanced.hidden || advanced.focus !== 'sport' || advanced.cards !== initial.cards) throw new Error(`Advanced filters failed: ${JSON.stringify(advanced)}`);
@@ -478,7 +483,7 @@ try {
     await evaluate('document.querySelector("#clear-filters").click()');
     await evaluate('document.querySelectorAll("[data-quick-name=fee]")[0].click()');
     const budget=JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length})'));
-    if(!budget.url.includes('fee=Under')||budget.cards>=initial.cards||!budget.cards)throw new Error('Quick fee filter failed: '+JSON.stringify(budget));
+    if(!budget.url.includes('fee=Under')||budget.cards>=initial.cards||(!budget.cards && !(await evaluate('!!document.querySelector(".explore-empty #empty-reset")'))))throw new Error('Quick fee filter failed: '+JSON.stringify(budget));
     await evaluate('document.querySelector("#clear-filters").click()');
     let native = null;
     if (mode === 'fixture-native-explore') {
