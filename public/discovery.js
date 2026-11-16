@@ -3,6 +3,7 @@ import { sportPhoto, shortPrice } from './sport-media.js';
 import { trackMetric } from './metrics.js';
 import { listingFlowMarkup } from './kinetic-art.js';
 import { externalEntryGuideMarkup } from './entry-clarity.js';
+import { categoryComparisonMarkup, mountCategoryComparison } from './category-comparison.js';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const areaLabel = area => /mumbai/i.test(String(area || '')) ? String(area) : String(area || '') + ', Mumbai';
 const external = (url, text, attributes = '') => `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" ${attributes}>${text} ↗</a>`;
@@ -78,9 +79,7 @@ export async function renderListing(id, { main, api, session, go, toast, openShe
   trackMetric('external_detail_view');
   const status = e.availability;
   const statusText = status.code === 'check' ? 'Entry availability is not live' : status.label;
-  const categoryMarkup = Array.isArray(e.categories) && e.categories.length
-    ? '<section class="listing-categories" aria-labelledby="listing-categories-heading"><h2 id="listing-categories-heading">Choose your category</h2><div class="listing-category-grid">' +
-      e.categories.map(item => '<article class="listing-category"><b>' + esc(item.name) + '</b><strong>' + esc(item.fee) + '</strong><small>' + esc(item.notes) + '</small></article>').join('') + '</div></section>' : '';
+  const categoryMarkup = categoryComparisonMarkup(e);
   const highlightMarkup = Array.isArray(e.highlights) && e.highlights.length
     ? '<section class="listing-highlights" aria-labelledby="listing-highlights-heading"><h2 id="listing-highlights-heading">Why take part?</h2><ul>' +
       e.highlights.map(item => '<li>' + esc(item) + '</li>').join('') + '</ul></section>' : '';
@@ -98,6 +97,7 @@ export async function renderListing(id, { main, api, session, go, toast, openShe
     const label = ['closed', 'ended', 'started', 'stale'].includes(status.code) ? 'Review organizer page' : 'Register on ' + esc(destination);
     main.insertAdjacentHTML('beforeend', `<div class="mobile-event-cta"><div><b>${esc(e.priceLabel)}</b><small>${esc(status.label)} · ${esc(e.sourceName)}</small></div>${external(e.registrationUrl, label, 'class="button primary" data-outbound="' + esc(e.id) + '" aria-label="Open ' + esc(e.sourceName) + ' to check entry (new tab)"')}</div>`);
   }
+  mountCategoryComparison(main, e);
   const organizerClaim = main.querySelector('#claim-this-listing');
   if (organizerClaim) organizerClaim.addEventListener('click', () => {
     go('/list-event?claim=' + encodeURIComponent(id));
