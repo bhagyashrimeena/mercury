@@ -177,4 +177,15 @@ export function mountCategoryDraft(main, onChange = () => {}) {
   rows.addEventListener('change', renderPreview);
   renderPresets();
   renderPreview();
+  // Used only to prepare a NEW, unpublished edition from reviewed public
+  // structure. No previous price, date, venue, rules or checkout are copied.
+  return {
+    seedNames(seeds = []) {
+      for (const seed of seeds.slice(0, CATEGORY_LIMIT)) {
+        if (typeof seed?.name !== 'string' || !seed.name.trim()) continue;
+        addRow({ name: seed.name.slice(0, 80),
+          unit: Object.hasOwn(CATEGORY_UNITS, seed.unit) ? seed.unit : '' });
+      }
+    }
+  };
 }
