@@ -362,7 +362,7 @@ function cancelRegistration(booking, passId) {
     });
 }
 function confirmAction(title, body, label, work) {
-    const sheet = ctx.openSheet(title, `<p>${body}</p>${err}<div class="action-row"><button class="button primary" id="confirm-action">${label}</button><button class="button outline" data-close-sheet>Keep as it is</button></div>`);
+    const sheet = ctx.openSheet(title, `<p>${body}</p>${err}<div class="action-row"><button class="button primary" id="confirm-action">${label}</button></div>`);
     const b = sheet.querySelector('#confirm-action');
     const sequence = turn;
     const isCurrent = () => sequence === turn && sheet.open && sheet.contains(b);
