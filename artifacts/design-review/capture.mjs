@@ -326,24 +326,32 @@ try {
     if(state.preview!=='Sunday Fun Run'||state.source!=='example.org')
       throw Error('Preview did not update: '+fill.result.value);
     const categoryDraft=await send('Runtime.evaluate',{expression:'(() => {'+
-      'document.querySelector("#organizer-add-category").click();'+
+      'const form=document.querySelector("#public-event-submission");'+
+      'form.querySelector("[name=sport]").dispatchEvent(new Event("change",{bubbles:true}));'+
+      'const preset=document.querySelector("#organizer-category-preset");'+
+      'const option=[...preset.options].find(x=>x.textContent==="10K Run");'+
+      'if(!option)return JSON.stringify({present:false,presetOptions:[...preset.options].map(x=>x.textContent)});'+
+      'preset.value=option.value;preset.dispatchEvent(new Event("change",{bubbles:true}));'+
+      'document.querySelector("#organizer-use-preset").click();'+
       'const row=document.querySelector(".organizer-category-edit");'+
       'if(!row)return JSON.stringify({present:false});'+
-      'row.querySelector("[data-category-field=name]").value="10K Timed";'+
+      'const name=row.querySelector("[data-category-field=name]").value;'+
+      'const unit=row.querySelector("[data-category-field=unit]").value;'+
+      'const feeBlank=row.querySelector("[data-category-field=fee]").value==="";'+
+      'form.requestSubmit();'+
+      'const invalid=document.querySelector("#event-submission-error")?.textContent;'+
       'row.querySelector("[data-category-field=fee]").value="₹1,100";'+
       'row.querySelector("[data-category-field=notes]").value="Age 18+";'+
       'row.dispatchEvent(new Event("input",{bubbles:true}));'+
-      'document.querySelector("#public-event-submission").requestSubmit();'+
-      'const invalid=document.querySelector("#event-submission-error")?.textContent;'+
-      'row.querySelector("[data-category-field=unit]").value="distance";'+
-      'row.dispatchEvent(new Event("change",{bubbles:true}));'+
-      'return JSON.stringify({present:true,invalid,preview:document.querySelector("#organizer-category-preview")?.textContent,'+
+      'return JSON.stringify({present:true,name,unit,feeBlank,invalid,preview:document.querySelector("#organizer-category-preview")?.textContent,'+
       'count:document.querySelectorAll(".organizer-category-edit").length,'+
       'overflow:document.documentElement.scrollWidth>innerWidth});})()',returnByValue:true});
     const category=JSON.parse(categoryDraft.result.value);
-    if(!category.present||!category.invalid?.includes('choose whether the fee covers')||category.count!==1||!category.preview?.includes('10K Timed')||
-      !category.preview?.includes('₹1,100 per distance')||!category.preview?.includes('Age 18+')||category.overflow)
-      throw Error('Organizer category preview failed: '+categoryDraft.result.value);
+    if(!category.present||category.name!=='10K Run'||category.unit!=='distance'||!category.feeBlank||
+      !category.invalid?.includes('state the currency')||category.count!==1||
+      !category.preview?.includes('10K Run')||!category.preview?.includes('₹1,100 per distance')||
+      !category.preview?.includes('Age 18+')||category.overflow)
+      throw Error('Organizer category preset and preview failed: '+categoryDraft.result.value);
     await send('Runtime.evaluate',{expression:'document.querySelector("#public-event-submission").requestSubmit()'});
     await new Promise(resolve=>setTimeout(resolve,900));
     const result=await send('Runtime.evaluate',{expression:'JSON.stringify({ref:document.querySelector("#submitted-event-ref")?.textContent,'+
@@ -352,7 +360,7 @@ try {
     const completed=JSON.parse(result.result.value);
     if(completed.ref!=='test-organizer-request-123'||!completed.text.includes('manual review')||completed.overflow)
       throw Error('Review intake did not finish: '+result.result.value);
-    if(organizerSubmissions.length !== 1 || !organizerSubmissions[0]?.message?.includes('10K Timed | ₹1,100 per distance') ||
+    if(organizerSubmissions.length !== 1 || !organizerSubmissions[0]?.message?.includes('10K Run | ₹1,100 per distance') ||
       !organizerSubmissions[0].message.includes('[entry_unit=distance]') ||
       !organizerSubmissions[0].message.includes('UNVERIFIED'))
       throw Error('Reviewed category data did not reach the existing intake request.');
