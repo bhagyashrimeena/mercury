@@ -380,7 +380,7 @@ try {
       returnByValue: true
     });
     if (click.exceptionDetails) throw Error(click.exceptionDetails.text);
-    const second = await read('JSON.stringify({title:document.querySelector("[data-category-title]")?.textContent,fee:document.querySelector("[data-category-fee]")?.textContent,notes:document.querySelector("[data-category-notes]")?.textContent,caveat:document.querySelector("[data-category-eligibility]")?.textContent,checked:document.querySelector(".category-choice input[value=2]")?.checked,overflow:document.documentElement.scrollWidth>innerWidth})');
+    const second = await read('JSON.stringify({title:document.querySelector("[data-category-title]")?.textContent,fee:document.querySelector("[data-category-fee]")?.textContent,notes:document.querySelector("[data-category-notes]")?.textContent,caveat:document.querySelector("[data-category-eligibility]")?.textContent,checked:document.querySelectorAll(".category-choice input[type=radio]")[2]?.checked,overflow:document.documentElement.scrollWidth>innerWidth})');
     if (second.title !== '10K Timed' || second.fee !== '₹1,100' || !second.notes.includes('18+') ||
       !second.checked || !second.caveat.includes('organizer') || second.overflow)
       throw Error('Category comparison choice failed: ' + JSON.stringify(second));
