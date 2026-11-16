@@ -3996,3 +3996,19 @@ body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top
 .explore-page .explore-reset-action{min-height:44px}
 .explore-page .explore-recovery-note{font-size:.82rem;margin:14px 0 0;color:#606a79;line-height:1.5}
 @media(max-width:520px){.explore-page .explore-recovery-actions{display:grid;grid-template-columns:minmax(0,1fr)}.explore-page .explore-recovery-action{justify-content:space-between}.explore-page .explore-reset-action{width:100%}}
+
+
+/* Read-only category comparison, backed by the organizer's published category rows. */
+.listing-page .category-comparison-intro{font-size:.9rem;line-height:1.55;color:#526071;max-width:62ch;margin:0 0 16px}
+.listing-page .category-choice-grid{padding:0;margin:0;border:0;min-width:0}
+.listing-page .category-choice{display:grid;grid-template-columns:19px minmax(0,1fr);align-items:start;gap:10px;cursor:pointer;min-width:0}
+.listing-page .category-choice>input{width:18px;height:18px;margin:2px 0 0;accent-color:#3156f5;cursor:pointer}
+.listing-page .category-choice-copy{min-width:0;display:grid;gap:5px;overflow-wrap:anywhere}
+.listing-page .category-choice:has(input:checked){outline:2px solid #3156f5;outline-offset:0;box-shadow:2px 3px 0 #d9ff38}
+.listing-page .category-choice:focus-within{outline:3px solid #3156f5;outline-offset:3px}
+.listing-page .category-selection{margin-top:14px;padding:16px 18px;border:1px solid #dce3f0;border-radius:13px;background:#f7f8f2}
+.listing-page .category-selection h3{font-size:1.15rem;margin:7px 0}
+.listing-page .category-selection p{font-size:.91rem;line-height:1.5;margin:7px 0;overflow-wrap:anywhere}
+.listing-page .category-selection .category-selection-eligibility{margin-top:14px;padding-top:12px;border-top:1px solid #d9dfec;color:#555f6d}
+@media(max-width:560px){.listing-page .category-choice-grid{grid-template-columns:minmax(0,1fr)}.listing-page .category-selection{padding:14px}}
+@media(prefers-reduced-motion:reduce){.listing-page .category-choice{transition:none!important;transform:none!important}}
