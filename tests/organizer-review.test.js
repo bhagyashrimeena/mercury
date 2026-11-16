@@ -74,7 +74,7 @@ test('unsafe organizer link, html and control characters do not become executabl
 test('missing information is identified but no auto-approval or source-date updates occur', () => {
   const payload='EVENT LISTING REQUEST — manual review required\nEvent / registration URL: https://example.org/event\nName: Not supplied\nSport: Tennis\nDate: Not supplied';
   const html=organizerReviewMarkup({category:'Organizer enquiry',message:payload});
-  assert.match(html,/Missing from submission: Event, Date, Venue, Fee summary, Claimed existing listing/);
+  assert.match(html,/Missing from submission: Event, Date, Venue, Fee summary/);
   assert.match(html,/Tennis/);
   assert.doesNotMatch(html,/publish-now|verified=true|autoApprove/i);
 });
@@ -86,4 +86,22 @@ test('claim submission is still unverified regardless of embedded text declaring
   assert.doesNotMatch(html,/data-auto-publish/);
   const parsed=parseOrganizerIntake(payload);
   assert.equal(parsed.unverified,true);
+});
+
+test('a category-only organizer submission need not duplicate prices in fee summary', () => {
+  const message=[
+    'EVENT LISTING REQUEST — manual review required',
+    'Event / registration URL: https://events.example.org/open',
+    'Name: Winter Run',
+    'Sport: Running',
+    'Date: 2026-12-10',
+    'Venue: Mumbai',
+    'Fee overview: Not supplied',
+    'Proposed categories (UNVERIFIED; verify against official source):',
+    '1. 5K | ₹800 per distance [entry_unit=distance]'
+  ].join('\n');
+  const html=organizerReviewMarkup({category:'Organizer enquiry',message});
+  assert.match(html,/See proposed category fees below \(unverified\)/);
+  assert.doesNotMatch(html,/Missing from submission:/);
+  assert.match(html,/Existing listing claim \(optional\)/);
 });
