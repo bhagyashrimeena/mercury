@@ -4047,3 +4047,22 @@ body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top
 .organizer-category-presets button{min-height:44px;white-space:normal;text-align:center}
 .organizer-category-presets button:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:560px){.organizer-category-presets{grid-template-columns:1fr}.organizer-category-presets button{width:100%}}
+
+
+/* Private owner triage: untrusted organizer enquiries are not publication approval. */
+.owner-organizer-review{margin:15px 0;padding:14px;border:1px solid #ced8ed;border-radius:13px;background:#f7f8f2;color:#10131a}
+.owner-organizer-review>summary{cursor:pointer;font-size:.9rem;font-weight:850;line-height:1.4;min-height:30px}
+.owner-organizer-review>summary:focus-visible{outline:2px solid #3156f5;outline-offset:3px}
+.owner-organizer-review .fine{margin:12px 0;line-height:1.5}
+.owner-organizer-review-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0}
+.owner-organizer-review-facts div{border:1px solid #e0e5ee;border-radius:9px;padding:10px 12px;min-width:0;background:#fff}
+.owner-organizer-review-facts dt{font-size:.72rem;color:#5a6575;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.owner-organizer-review-facts dd{margin:5px 0 0;overflow-wrap:anywhere;font-size:.88rem;line-height:1.4}
+.owner-organizer-missing{font-size:.86rem;font-weight:750;line-height:1.5;color:#754000}
+.owner-organizer-submitted-categories{padding-left:18px;max-height:175px;overflow:auto;font-size:.82rem;line-height:1.5;overflow-wrap:anywhere}
+.owner-organizer-review-steps{margin:14px 0;padding:12px;border:1px solid #d4dbeb;border-radius:10px;display:grid;gap:8px}
+.owner-organizer-review-steps legend{font-weight:800;font-size:.87rem;padding:0 5px}
+.owner-organizer-review-steps label{display:flex;align-items:flex-start;gap:8px;min-width:0;font-size:.83rem;line-height:1.45}
+.owner-organizer-review-steps input{flex:none;width:16px;height:16px;accent-color:#3156f5;margin:2px 0 0}
+.owner-organizer-review [data-owner-review-note]{white-space:normal;max-width:100%;min-height:44px}
+@media(max-width:600px){.owner-organizer-review-facts{grid-template-columns:minmax(0,1fr)}.owner-organizer-review{padding:12px}}
