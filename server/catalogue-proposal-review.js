@@ -64,8 +64,12 @@ export function assessCatalogueProposal(packet, existing = [], today = new Date(
         const key=cat.name.toLocaleLowerCase('en-IN');
         if(names.has(key))errors.push('Duplicate published category: '+cat.name);
         names.add(key);
-        if(!text(cat.name,2,80) || !text(cat.fee,2,100) || !text(cat.notes,8,250))
-          errors.push('Category '+index+' requires a source-backed name, fee label, and readable notes.');
+        const sourceCategory=record.categories[i];
+        // Validate actual reviewed source fields, never presentation fallbacks such
+        // as "Fee not specified" or "Category requirements not specified".
+        if(!text(sourceCategory?.name,2,80) || !text(sourceCategory?.fee,2,100) ||
+           !text(sourceCategory?.notes,8,250))
+          errors.push('Category '+index+' requires a source-backed name, explicit fee label, and readable notes.');
         if(cat.reviewStatus === 'unverified-submission' || record.categories[i]?.reviewStatus === 'unverified-submission')
           errors.push('Category '+index+' is an unverified organizer submission.');
         if(cat.unitConflict || !cat.entryUnit)
