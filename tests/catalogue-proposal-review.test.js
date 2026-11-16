@@ -95,6 +95,8 @@ test('tampered packet, duplicate ID and mismatched source dates fail closed',()=
   assert.match(assessCatalogueProposal(p,listings,'2026-11-16').errors.join(' '),/sourceUrl must match/);
   p=ready();p.review.evidenceNotes='approved';
   assert.match(assessCatalogueProposal(p,listings,'2026-11-16').errors.join(' '),/concrete source/);
+  p=ready();p.review.verifiedAt='2026-11-01';p.record.checkedOn='2026-11-01';
+  assert.match(assessCatalogueProposal(p,listings,'2026-11-16').errors.join(' '),/over seven days old/);
   p=ready();p.record.date='2026-09-01';p.record.endDate='2026-09-02';
   assert.match(assessCatalogueProposal(p,listings,'2026-11-16').errors.join(' '),/concluded before source review/);
   assert.equal(assessCatalogueProposal(ready(),null,'2026-11-16').valid,false);
