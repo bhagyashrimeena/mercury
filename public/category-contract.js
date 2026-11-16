@@ -31,13 +31,16 @@ export function normalizeCategoryForDisplay(row) {
   const note = clean(row?.notes);
   const requestedUnit = clean(row?.entryUnit);
   const suffix = fee.match(feeUnitPattern)?.[1]?.toLowerCase() || null;
-  const entryUnit = Object.hasOwn(CATEGORY_ENTRY_UNITS, requestedUnit) ? requestedUnit :
-    (suffix && Object.hasOwn(CATEGORY_ENTRY_UNITS, suffix) ? suffix : null);
+  const explicitUnit = Object.hasOwn(CATEGORY_ENTRY_UNITS, requestedUnit) ? requestedUnit : null;
+  const unitConflict = Boolean(explicitUnit && suffix && explicitUnit !== suffix);
+  const entryUnit = unitConflict ? null :
+    (explicitUnit || (suffix && Object.hasOwn(CATEGORY_ENTRY_UNITS, suffix) ? suffix : null));
   return {
     name,
     fee: fee || 'Fee not specified',
     notes: note || 'Category requirements not specified',
     entryUnit,
+    unitConflict,
     feeKind: categoryFeeKind(fee),
     // A manually submitted category is never a source-reviewed public record.
     reviewStatus: row?.reviewStatus === 'unverified-submission' ? 'unverified-submission' : 'source-displayed'
