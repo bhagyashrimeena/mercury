@@ -15,6 +15,11 @@ export function organizerSportPrompt(sport) {
     'Explain who can enter, the exact entry fee and unit, key category rules, and where participants register.';
 }
 export function organizerInformationChecklist(fields = {}) {
+  // Reviewed-by-humans category suggestions count as useful submitted information,
+  // not as verified event fees or eligibility.
+  const drafted = Array.isArray(fields.categories) ? fields.categories : [];
+  const hasCategoryFees = drafted.some(item => present(item?.name) && present(item?.fee));
+  const hasCategoryNotes = drafted.some(item => present(item?.notes));
   return [
     { label: 'Registration page', present: present(fields.registrationUrl) },
     { label: 'Organizer name and contact', present: present(fields.name) && present(fields.email) },
@@ -22,8 +27,8 @@ export function organizerInformationChecklist(fields = {}) {
     { label: 'Sport', present: present(fields.sport) },
     { label: 'Event date', present: present(fields.date) },
     { label: 'Venue or area', present: present(fields.venue) },
-    { label: 'Fee and entry unit', present: present(fields.fee) && /(?:per\s+(?:player|person|pair|team|entry|category|distance)|each|free|no fee|₹\s*0\b)/i.test(fields.fee) },
-    { label: 'Category / eligibility explanation', present: present(fields.notes) }
+    { label: 'Fee and entry unit', present: hasCategoryFees || (present(fields.fee) && /(?:per\s+(?:player|person|pair|team|entry|category|distance)|each|free|no fee|₹\s*0\b)/i.test(fields.fee)) },
+    { label: 'Category / eligibility explanation', present: present(fields.notes) || hasCategoryNotes }
   ];
 }
 export function organizerGuidanceMarkup(fields = {}) {
