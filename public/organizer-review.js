@@ -89,13 +89,28 @@ export function organizerReviewMarkup(request) {
       '<label><input type="checkbox" value="' + esc(step.key) + '" data-owner-review-check>' +
       '<span>' + esc(step.title) + '</span></label>').join('') + '</fieldset>' +
     '<button type="button" class="button outline" data-owner-review-note>Draft internal review note</button>' +
+    '<button type="button" class="button outline" data-owner-review-export>Export unpublished catalogue review packet (JSON)</button>' +
+    '<p class="fine">A reviewer must independently enter verified facts into the exported JSON and run the offline review gate. Export does not mark anything approved.</p>' +
     '<p class="fine" data-owner-review-result role="status">This does not save a review, resolve the enquiry, change source freshness, or publish an event.</p>' +
     '</details>';
 }
 
-export function mountOrganizerReviewWorksheets(main) {
+export function mountOrganizerReviewWorksheets(main, requests = [], onExport = null) {
   main.querySelectorAll('[data-organizer-review]').forEach(section=>{
     const button = section.querySelector('[data-owner-review-note]');
+    const exportButton = section.querySelector('[data-owner-review-export]');
+    exportButton?.addEventListener('click', () => {
+      const article = section.closest('article');
+      const id = article?.querySelector('form[data-support-id]')?.dataset.supportId;
+      const request = requests.find(item => item.id === id && item.category === 'Organizer enquiry');
+      const status = section.querySelector('[data-owner-review-result]');
+      if (!request || typeof onExport !== 'function') {
+        if (status) status.textContent = 'Owner review export is currently unavailable.';
+        return;
+      }
+      onExport(request);
+      if (status) status.textContent = 'An unpublished review packet was exported locally. Nothing was saved, approved or published.';
+    });
     button?.addEventListener('click',()=>{
       const article = section.closest('article');
       const note = article?.querySelector('form[data-support-id] textarea[name="note"]');
