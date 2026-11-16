@@ -328,14 +328,17 @@ try {
       'if(!row)return JSON.stringify({present:false});'+
       'row.querySelector("[data-category-field=name]").value="10K Timed";'+
       'row.querySelector("[data-category-field=fee]").value="₹1,100";'+
-      'row.querySelector("[data-category-field=unit]").value="distance";'+
       'row.querySelector("[data-category-field=notes]").value="Age 18+";'+
       'row.dispatchEvent(new Event("input",{bubbles:true}));'+
-      'return JSON.stringify({present:true,preview:document.querySelector("#organizer-category-preview")?.textContent,'+
+      'document.querySelector("#public-event-submission").requestSubmit();'+
+      'const invalid=document.querySelector("#event-submission-error")?.textContent;'+
+      'row.querySelector("[data-category-field=unit]").value="distance";'+
+      'row.dispatchEvent(new Event("change",{bubbles:true}));'+
+      'return JSON.stringify({present:true,invalid,preview:document.querySelector("#organizer-category-preview")?.textContent,'+
       'count:document.querySelectorAll(".organizer-category-edit").length,'+
       'overflow:document.documentElement.scrollWidth>innerWidth});})()',returnByValue:true});
     const category=JSON.parse(categoryDraft.result.value);
-    if(!category.present||category.count!==1||!category.preview?.includes('10K Timed')||
+    if(!category.present||!category.invalid?.includes('choose whether the fee covers')||category.count!==1||!category.preview?.includes('10K Timed')||
       !category.preview?.includes('₹1,100 per distance')||!category.preview?.includes('Age 18+')||category.overflow)
       throw Error('Organizer category preview failed: '+categoryDraft.result.value);
     await send('Runtime.evaluate',{expression:'document.querySelector("#public-event-submission").requestSubmit()'});
