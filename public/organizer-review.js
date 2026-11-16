@@ -64,12 +64,16 @@ export function organizerReviewMarkup(request) {
   const value = key => intake.submitted[key] && intake.submitted[key] !== 'Not supplied'
     ? intake.submitted[key] : 'Not supplied';
   const url = safeOrganizerSourceUrl(value('url'));
+  const hasCategoryFees = intake.categoryLines.length > 0;
   const details = [
     ['Event',value('title')], ['Sport',value('sport')],
     ['Date',value('date')], ['Venue',value('venue')],
-    ['Fee summary',value('fee')], ['Claimed existing listing',value('claim')]
+    ['Fee summary',value('fee') === 'Not supplied' && hasCategoryFees ?
+      'See proposed category fees below (unverified)' : value('fee')],
+    ['Existing listing claim (optional)',value('claim')]
   ];
-  const missing = details.filter(([,v])=>v==='Not supplied').map(([k])=>k);
+  const missing = details.filter(([k,v])=>v==='Not supplied' &&
+    k !== 'Existing listing claim (optional)').map(([k])=>k);
   return '<details class="owner-organizer-review" data-organizer-review>' +
     '<summary>Organizer verification worksheet · no automatic publication</summary>' +
     '<p class="fine"><strong>All submitted details are unverified.</strong> Check the official source and actual organizer authority. Ticking a box only prepares an internal note.</p>' +
