@@ -112,6 +112,10 @@ test('unreviewed, conflicting or duplicate category entries cannot pass even wit
   p=ready();p.record.categories[0].fee='₹1,500';
   p.record.categories[0].entryUnit=null;
   assert.match(assessCatalogueProposal(p,listings,'2026-11-16').errors.join(' '),/explicitly verified entry-unit/);
+  p=ready();p.record.categories[0].notes='';
+  assert.match(assessCatalogueProposal(p,listings,'2026-11-16').errors.join(' '),/readable notes/);
+  p=ready();p.record.categories[0].fee='';
+  assert.match(assessCatalogueProposal(p,listings,'2026-11-16').errors.join(' '),/explicit fee label/);
 });
 
 test('unsupported review packet schema cannot be interpreted as an approvable event',()=>{
