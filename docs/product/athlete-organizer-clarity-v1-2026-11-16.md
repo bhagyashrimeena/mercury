@@ -147,3 +147,22 @@ Aadish's \`aadish/improv\` branch contains native registration, payments, and St
 - \`tests/organizer-category-draft.test.js\`: unit preservation, free-versus-unknown, invalid partial rows, six-category limit, duplicate category detection, optional no-category submission, and manual-review-only request serialization.
 - Browser: existing public event submission with category builder; deliberately omit fee unit and assert the request is blocked; then select the unit, verify local preview and complete mocked review intake.
 - Re-test \`/list-event?claim=<id>\` prefill and no-login path, plus phone/tablet/desktop overflow.
+
+
+## Increment 5: shared, read-only category contract (2026-11-16)
+
+This increment deliberately avoids migrating the database or creating a second owned-registration system. It centralizes the presentation agreement between optional external-organizer submissions and curated athlete-facing categories in `public/category-contract.js`.
+
+**Shared display fields:** `name`, the exact published `fee` label, `notes`, explicit `entryUnit` when known (`player | pair | team | category | distance`), `feeKind` (`free | unknown | quoted`), `unitConflict`, and `reviewStatus` (`unverified-submission | source-displayed`). None is a paid booking confirmation or independently validated organizer identity.
+
+- Legacy category rows with only `name/fee/notes` still display exactly as published. Mercury **does not infer** that a running event fee is per distance or a doubles fee is per pair just because of the category name.
+- Explicit units from an organizer's reviewed fee text or structured field can be recognized. If the two disagree, Mercury marks the unit unknown and tells the athlete to confirm with the organizer.
+- When no unit was recorded, the athlete view explicitly states that it is not specified. A quoted price is not a checkout total.
+- Category drafts preserve a structured `entryUnit` for future integrations, but carry `reviewStatus: 'unverified-submission'`. Such rows are excluded from the athlete comparison until independent manual source review creates public catalogue rows.
+- The owner intake text retains the human-readable fee and an `[entry_unit=pair]`-style key for later controlled import, while explicitly stating that every item is unverified. It is not an auto-import or event publication API.
+- Existing private organizer rosters, authenticated Studio data, participant payments and the external provider registration link are unchanged.
+- Currency-code entries require a concrete amount rather than accepting a bare `₹` or `USD`; the separate `Fee to confirm` state remains supported.
+
+**Acceptance and verification:** unit tests cover legacy records, missing/known/conflicting units, free versus unknown fees, unverified draft exclusion, and source-incomplete eligibility. The real browser suite checks that an external event explicitly shows an unknown fee unit, and that an organizer's optional 10K category and structured unit reach the existing mocked manual-review request. Until a normalized native category backend is deliberately adopted, this contract remains a read-only adapter.
+
+**Integration policy:** Only one future backend should own native category registrations. Do not treat a plain-text organizer request as a verified, published category; do not infer entry units or eligibility using an AI model without source review.
