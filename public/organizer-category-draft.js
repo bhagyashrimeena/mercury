@@ -27,6 +27,10 @@ export function categoryDraftMarkup() {
     '</section>';
 }
 
+const feeHasPublishedValue = fee =>
+  /(?:₹|€|£|\$|\b(?:INR|EUR|USD|GBP|Rs\.?)\b|\bfree\b|no fee|to confirm|not published|see organizer)/i.test(fee);
+const containsFeeUnit = fee => /\bper\s+(?:player|person|pair|team|entry|category|distance)\b/i.test(fee);
+
 export function validateCategoryDrafts(rows) {
   const errors = [];
   if (!Array.isArray(rows)) return { categories: [], errors: ['Category details could not be read.'] };
@@ -40,15 +44,17 @@ export function validateCategoryDrafts(rows) {
     const n = index + 1;
     if (name.length < 2 || name.length > 80)
       errors.push('Category ' + n + ': enter a category or distance name (2–80 characters).');
-    if (fee.length < 2 || fee.length > 65 || !/(₹|rs\.?|inr|free|no fee|to confirm|not published|see organizer)/i.test(fee))
+    if (fee.length < 2 || fee.length > 65 || !feeHasPublishedValue(fee))
       errors.push('Category ' + n + ': state the currency (e.g. ₹800), Free, or Fee to confirm.');
+    if (containsFeeUnit(fee))
+      errors.push('Category ' + n + ': put the fee unit in the selector instead of repeating "per player/pair/team" in the amount.');
     if (!Object.hasOwn(CATEGORY_UNITS, unit))
       errors.push('Category ' + n + ': choose whether the fee covers a player, pair, team, category or distance.');
     if (notes.length > 150)
       errors.push('Category ' + n + ': shorten eligibility and format notes to 150 characters.');
     if (name.length >= 2 && name.length <= 80 && fee.length >= 2 && fee.length <= 65 &&
       Object.hasOwn(CATEGORY_UNITS, unit) && notes.length <= 150 &&
-      /(₹|rs\.?|inr|free|no fee|to confirm|not published|see organizer)/i.test(fee)) {
+      feeHasPublishedValue(fee) && !containsFeeUnit(fee)) {
       categories.push({ name, fee: fee + ' ' + CATEGORY_UNITS[unit], notes });
     }
   }
