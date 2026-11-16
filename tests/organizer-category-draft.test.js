@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  CATEGORY_LIMIT, CATEGORY_UNITS, categoryDraftMarkup, validateCategoryDrafts,
+  CATEGORY_LIMIT, CATEGORY_UNITS, CATEGORY_PRESETS, categoryPresetsForSport, categoryDraftMarkup, validateCategoryDrafts,
   categoryDraftReviewText, readCategoryDraft
 } from '../public/organizer-category-draft.js';
 import { buildOrganizerMessage, eventSubmissionMarkup } from '../public/organizer-public.js';
@@ -126,4 +126,24 @@ test('does not accept an empty currency symbol as a real entry fee', () => {
   const valid=validateCategoryDrafts([{name:'Open Singles',fee:'inr 900',unit:'player',notes:''}]);
   assert.deepEqual(valid.errors,[]);
   assert.match(categoryDraftReviewText(valid.categories),/entry_unit=player/);
+});
+
+test('sport-aware starter categories are editable suggestions and contain no invented fees or eligibility', () => {
+  assert.equal(categoryPresetsForSport('Running').find(x=>x.name==='10K Run').unit, 'distance');
+  assert.equal(categoryPresetsForSport('Badminton').find(x=>x.name==='Doubles').unit,'pair');
+  assert.equal(categoryPresetsForSport('Pickleball').find(x=>x.name==='Mixed Doubles').unit,'pair');
+  assert.equal(categoryPresetsForSport('Chess').find(x=>x.name==='Rapid').unit,'player');
+  assert.deepEqual(categoryPresetsForSport('Other sport'),[]);
+  for (const list of Object.values(CATEGORY_PRESETS)) {
+    for (const preset of list) {
+      assert.ok(preset.name && preset.unit);
+      assert.equal(preset.fee,undefined);
+      assert.equal(preset.notes,undefined);
+      assert.ok(Object.hasOwn(CATEGORY_UNITS,preset.unit));
+    }
+  }
+  const markup=categoryDraftMarkup();
+  assert.match(markup,/organizer-category-preset/);
+  assert.match(markup,/organizer-use-preset/);
+  assert.match(markup,/Add custom category/);
 });
