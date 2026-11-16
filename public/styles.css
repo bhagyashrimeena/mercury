@@ -3987,3 +3987,12 @@ body:has(.listing-detail-stock) .page-width>.back{display:inline-flex;margin-top
 .organizer-clarity-sport{border-top:1px solid #dde2eb;margin:10px 0;padding:12px 0 0;font-size:.86rem;line-height:1.55}
 .organizer-clarity .fine{margin-bottom:0}
 @media(max-width:600px){.entry-clarity{padding:16px;margin:18px 0}.entry-clarity-grid,.organizer-clarity-list{grid-template-columns:1fr}.entry-clarity-fact{padding:13px}}
+
+
+/* Explore empty-state recovery: truthful catalogue-derived alternatives. */
+.explore-page .explore-recovery-actions{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0 14px}
+.explore-page .explore-recovery-action{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:44px;white-space:normal;text-align:center}
+.explore-page .explore-recovery-action small{font-size:.72rem;font-weight:700;color:#566174;white-space:nowrap}
+.explore-page .explore-reset-action{min-height:44px}
+.explore-page .explore-recovery-note{font-size:.82rem;margin:14px 0 0;color:#606a79;line-height:1.5}
+@media(max-width:520px){.explore-page .explore-recovery-actions{display:grid;grid-template-columns:minmax(0,1fr)}.explore-page .explore-recovery-action{justify-content:space-between}.explore-page .explore-reset-action{width:100%}}
