@@ -95,3 +95,55 @@ Player ratings must specify their rating system; DUPR and UTR values are not int
 `tests/category-comparison.test.js` covers the four published Rotary categories, escaping of untrusted content, unknown/missing categories, fail-closed rule validation, age/partner mismatches, rating-system matching and absence of guaranteed booking claims. Real Chrome adds a phone and desktop flow selecting 10K after 2.5K and checking that the published fee, age note and organizer caveat update correctly.
 
 The website's source data is still curated and may be out of date. This comparison must not be presented as live organizer availability, federation-sanctioned eligibility or a confirmed registration.
+
+
+## Increment 4: optional organizer category drafts — read-only bridge, not registration (2026-11-16)
+
+### The interim organizer-to-athlete information contract
+
+The public \`/list-event\` route now lets external organizers describe up to six optional categories without creating an organizer account or migrating payments.
+
+\`\`\`mermaid
+flowchart TD
+  A[Organizer enters official event URL] --> B[Optional category draft editor]
+  B --> C[Local unpublished preview]
+  C --> D{Valid entered details?}
+  D -- No --> B
+  D -- Yes --> E[Existing support intake request]
+  E --> F[Manual source and organizer review]
+  F --> G{Approved for publication?}
+  G -- No --> H[Request correction or decline]
+  G -- Yes --> I[Reviewed curated category rows]
+  I --> J[Athlete reads category comparison]
+  J --> K[Organizer's external registration system]
+\`\`\`
+
+This bridge is **not a registration system** and **does not auto-publish categories**:
+
+1. Organizer enters category name (e.g. Open Doubles, 10K), exact stated fee or explicit fee uncertainty, and fee unit \`player | pair | team | category | distance\`. Optional notes describe published eligibility or format.
+2. A local preview reflects the inputs. If the organizer started a category, all required row fields must be complete, but the entire category section remains optional for simple events.
+3. Invalid or ambiguous rows block intake with actionable errors rather than silently dropping details. The source checkout URL remains unchanged.
+4. Category entries are appended to the existing **manual-review support request**, clearly marked UNVERIFIED. No new table, credentials, payment integration or data publication is introduced.
+5. After independent source review, a human may add approved \`name, fee, notes\` rows to the existing curated listing pipeline. **No automatic transfer of the request into a live event.**
+6. Athlete event pages display the exact reviewed category fee and notes. Selecting one does not reserve a place or assert age, rating or official eligibility.
+
+### Safeguards and limitations
+
+- No more than six categories or 150 characters of notes per row; fee unit is explicitly required for any entered row. "Fee to confirm" is not rendered as "Free".
+- The published fee string keeps its currency (INR, EUR, GBP, USD, etc.); no automatic currency conversion or guessing.
+- If the organizer types "per pair" into both the fee field and fee unit selector, intake asks them to correct the ambiguity.
+- HTML input is treated as data, escaped for previews and never executed. Reviewer text is human-untrusted, not an instruction to autonomous agents.
+- The existing 2,000-character support message limit still applies; excessively long combinations must be shortened before submission.
+- The existing no-login event submission, manual claim/ownership check, roster privacy, native free booking, and Aadish's paid-registration work are not altered.
+- Minor/guardian requirements are not validated here. The organizer's official published rules and appropriate guardian processes remain authoritative.
+- Existing authenticated organizer Studio does not yet have a normalized category editor; this public intake is intentionally independent of its database migrations.
+
+### Integration gate with Aadish
+
+Aadish's \`aadish/improv\` branch contains native registration, payments, and Studio changes. **Do not make the public intake field set authoritative over those systems.** When his category schema is ready, map reviewed external category rows and native categories into a common *read-only display adapter* with explicit provenance; do not mutate paid checkout behavior or copy private registrations into a public catalogue.
+
+### QA
+
+- \`tests/organizer-category-draft.test.js\`: unit preservation, free-versus-unknown, invalid partial rows, six-category limit, duplicate category detection, optional no-category submission, and manual-review-only request serialization.
+- Browser: existing public event submission with category builder; deliberately omit fee unit and assert the request is blocked; then select the unit, verify local preview and complete mocked review intake.
+- Re-test \`/list-event?claim=<id>\` prefill and no-login path, plus phone/tablet/desktop overflow.
