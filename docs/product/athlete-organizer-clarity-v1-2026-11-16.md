@@ -166,3 +166,16 @@ This increment deliberately avoids migrating the database or creating a second o
 **Acceptance and verification:** unit tests cover legacy records, missing/known/conflicting units, free versus unknown fees, unverified draft exclusion, and source-incomplete eligibility. The real browser suite checks that an external event explicitly shows an unknown fee unit, and that an organizer's optional 10K category and structured unit reach the existing mocked manual-review request. Until a normalized native category backend is deliberately adopted, this contract remains a read-only adapter.
 
 **Integration policy:** Only one future backend should own native category registrations. Do not treat a plain-text organizer request as a verified, published category; do not infer entry units or eligibility using an AI model without source review.
+
+
+## Increment 6: editable sport-aware category starters
+
+Public external-organizer intake now offers optional category-name suggestions based on the selected sport: singles/doubles for tennis, badminton and pickleball; distances for running; time-control-based chess groups. They are **editable starting points, not endorsed event rules**.
+
+- No competition category is added automatically simply because a sport is selected. The organizer explicitly chooses **Add suggested category** or **Add custom category**.
+- Suggestions prefill **only category name and unit**. They do **not** prefill entry fees, availability, age eligibility, timings, federation rules or a registration link.
+- Organizers must still supply a real fee or an explicit unknown-fee state. Partially entered rows block submission with a clear error, while skipping the entire optional category section remains supported.
+- Switching the sport after adding categories does not silently delete organizer-entered rows. Duplicated category names are rejected, and no more than six rows can be submitted.
+- This experience remains on `/list-event` for existing external registration URLs; it does not create a native category, registration, organizer payout, or production event.
+
+**Test coverage:** source-tested preset definitions contain no invented fees or rules; real-Chrome flow selects Running → 10K, verifies that name and unit are filled while fee remains blank, blocks an incomplete request, then confirms the completed fee and reviewer-only submission path.
