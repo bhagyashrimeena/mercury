@@ -1,6 +1,6 @@
 # Direct organizer payments
 
-Organizers can publish paid events with UPI, cash, or both. UPI requires a QR image; paid publication requires a public organizer contact email. Free entry keeps immediate confirmation. Mercury does not collect or transfer money.
+Organizers can submit paid events with UPI, cash, or both. Mercury admin approval is required before any new event goes live; see [native event review](native-event-review.md). UPI requires a QR image; paid publication requires a public organizer contact email. Free entry keeps immediate confirmation. Mercury does not collect or transfer money.
 
 ## Release
 

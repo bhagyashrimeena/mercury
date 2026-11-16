@@ -10,7 +10,7 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
  const directory=await mkdtemp(join(tmpdir(),'mercury-registration-'));
  let pg=new PGlite(directory);
  try{
- for(const file of ['20261102_initial.sql','20261105132850_site_metrics.sql','20261115000000_direct_payments.sql','20261115010000_optional_event_instructions.sql','20261116000000_event_covers.sql','20261116010000_cancellation_requests.sql'])await pg.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
+ for(const file of ['20261102_initial.sql','20261105132850_site_metrics.sql','20261115000000_direct_payments.sql','20261115010000_optional_event_instructions.sql','20261116000000_event_covers.sql','20261116010000_cancellation_requests.sql','20261116020000_event_review.sql'])await pg.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
  function adapter(runner) {
    return { async batch(statements) {
      const results=[];
@@ -37,7 +37,7 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
    }); }
  };
  const host={userId:'host',email:'host@example.test'}, player={userId:'player',email:'player@example.test'};
- const req=async(path,user,body,method=body?'POST':'GET')=>{const r=await apiHandler(new Request('https://mercury.test/api/'+path,{method,headers:{origin:'https://mercury.test','content-type':'application/json'},body:body?JSON.stringify(body):undefined}),db,user);const result=await r.json();assert.equal(r.status,200,JSON.stringify(result));return result};
+ const req=async(path,user,body,method=body?'POST':'GET')=>{const r=await apiHandler(new Request('https://mercury.test/api/'+path,{method,headers:{origin:'https://mercury.test','content-type':'application/json'},body:body?JSON.stringify(body):undefined}),db,user,{adminEmail:'host@example.test'});const result=await r.json();assert.equal(r.status,200,JSON.stringify(result));return result};
  for(const user of [host,player])await req('session',user);
  await req('organizer/profile',host,{name:'Test Club',contact:'host@example.test'});
  const {id:emptyId}=await req('organizer/events',host,{title:'Optional instructions',sport:'Badminton',area:'Powai',venue:'QA Court Mumbai',date:'2030-11-22',time:'18:00',capacity:2,price:0,level:'All levels',format:'Social play'});
@@ -45,11 +45,23 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
  for(const value of Object.values(emptyRow))assert.equal(value,null);
  const savedEmpty=(await req('organizer/events',host)).events.find(event=>event.id===emptyId);
  await req('organizer/events/'+emptyId,host,{...savedEmpty.draft,revision:savedEmpty.revision,publish:true},'PATCH');
+ await req('admin/events/'+emptyId+'/review',host,{decision:'approve',revision:2});
  assert.equal((await req('events/'+emptyId,null)).event.status,'published');
  await req('events/'+emptyId+'/register',player,{name:'Test Player',level:'Beginner',rulesAccepted:true,revision:2,idempotencyKey:'no-age-confirmation-key'});
  const image='data:image/png;base64,'+(await readFile(new URL('./fixtures/payment-upi.png',import.meta.url))).toString('base64');
  const cover='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1cAAAAASUVORK5CYII=';
  const {id}=await req('organizer/events',host,{title:'Paid PostgreSQL Rally',sport:'Badminton',area:'Powai',venue:'QA Court Mumbai',description:'A friendly paid doubles session for testing.',date:'2030-11-22',time:'18:00',capacity:2,price:250,level:'All levels',format:'Social play',included:'Court time',bring:'Racket and water',cancellation:'Contact organizer for cancellation and refunds.',paymentMethods:['upi','cash'],qrImage:image,coverImage:cover,publish:true});
+ assert.equal((await pg.query('SELECT status FROM events WHERE id=$1',[id])).rows[0].status,'pending_review');
+ assert.equal((await apiHandler(new Request('https://mercury.test/api/events/'+id),db,null)).status,404);
+ await pg.exec("CREATE FUNCTION fail_event_notice() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'notice unavailable'; END; $$; CREATE TRIGGER block_review_notice BEFORE INSERT ON notifications FOR EACH ROW EXECUTE FUNCTION fail_event_notice();");
+ const failedReview=await apiHandler(new Request('https://mercury.test/api/admin/events/'+id+'/review',{method:'POST',headers:{origin:'https://mercury.test','content-type':'application/json'},body:JSON.stringify({decision:'approve',revision:1})}),db,host,{adminEmail:host.email});
+ assert.equal(failedReview.status,500);
+ const unchanged=(await pg.query('SELECT status,approved_at,reviewed_at FROM events WHERE id=$1',[id])).rows[0];
+ assert.equal(unchanged.status,'pending_review');
+ assert.equal(unchanged.approved_at,null);
+ assert.equal(unchanged.reviewed_at,null);
+ await pg.exec('DROP TRIGGER block_review_notice ON notifications; DROP FUNCTION fail_event_notice();');
+ await req('admin/events/'+id+'/review',host,{decision:'approve',revision:1});
  assert.equal((await req('events/'+id,null)).event.status,'published');
  await req('organizer/events/'+id+'/publish',host,{});
  const entry={name:'Test Player',adultConfirmed:true,rulesAccepted:true,revision:1,idempotencyKey:'postgres-paid-test-key',paymentMethod:'cash',paymentConsentVersion:'2026-11-15-direct-payments'};
@@ -78,6 +90,8 @@ test('PostgreSQL API persists QR and receipts across reopen and protects review 
  await req('organizer/events/'+id+'/cancel',host,{});
  assert.equal((await req('bookings',player)).bookings.find(entry=>entry.id===b.id).status,'cancelled');
  await pg.close();pg=new PGlite(directory);
+ assert.equal((await pg.query('SELECT reviewed_by FROM events WHERE id=$1',[id])).rows[0].reviewed_by,'host');
+ assert.ok((await pg.query('SELECT approved_at FROM events WHERE id=$1',[id])).rows[0].approved_at);
  assert.equal((await pg.query('SELECT refund_resolution FROM bookings WHERE id=$1',[b.id])).rows[0].refund_resolution,'not_collected');
  assert.equal((await pg.query('SELECT cover_image FROM events WHERE id=$1',[id])).rows[0].cover_image,cover);
  assert.equal((await pg.query('SELECT qr_image FROM events WHERE id=$1',[id])).rows[0].qr_image,image);

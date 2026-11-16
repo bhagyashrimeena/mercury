@@ -57,7 +57,8 @@ export async function operations({ db, user, now, path: p, method: m, body: b, r
     } catch { metricsAvailable = false; }
     const saves = await all(db, 'SELECT listing_id,COUNT(*) AS count FROM saved_listings GROUP BY listing_id');
     const users = await one(db, 'SELECT COUNT(*) AS count FROM users');
-    return { support, corrections, overrides, clicks, metrics, metricsAvailable, saves, users: users.count, listings: listings.map(e => ({ id:e.id,title:e.title,checkedOn:e.checkedOn,date:e.date,sourceUrl:e.sourceUrl,availability:listingStatus(e,now) })) };
+    const eventReviews = await all(db, "SELECT e.id,e.title,e.status,e.revision,e.submitted_at,e.reviewed_at,e.review_note,o.name AS organizer FROM events e JOIN organizers o ON o.user_id=e.owner_id WHERE e.submitted_at IS NOT NULL ORDER BY CASE e.status WHEN 'pending_review' THEN 0 ELSE 1 END,CASE WHEN e.status='pending_review' THEN e.submitted_at END ASC,e.updated_at DESC LIMIT 100");
+    return { eventReviews, support, corrections, overrides, clicks, metrics, metricsAvailable, saves, users: users.count, listings: listings.map(e => ({ id:e.id,title:e.title,checkedOn:e.checkedOn,date:e.date,sourceUrl:e.sourceUrl,availability:listingStatus(e,now) })) };
   }
   if (m === 'POST' && p[1] === 'support' && p.length === 3) {
     if (!['open','resolved'].includes(b.status)) fail(422, 'Choose an open or resolved status.', 'validation_failed');

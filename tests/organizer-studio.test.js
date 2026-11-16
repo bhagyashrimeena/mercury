@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { organizerDashboardMarkup, organizerEventCard, organizerMenuMarkup, publicationMarkup } from '../public/organizer-studio.js';
+import { organizerDashboardMarkup, organizerEventCard, organizerMenuMarkup, submissionMarkup } from '../public/organizer-studio.js';
 
 const event = { id:'club-game',title:'<Club> tournament',status:'published',date:'2030-11-22',time:'18:00',
   startsAt:Date.parse('2030-11-22T12:30:00Z'),registered:0,capacity:12,price:250,pendingCount:0 };
@@ -31,14 +31,14 @@ test('event menus expose appropriate actions for published, registered, draft an
   assert.match(published, /class="danger"/);
   assert.doesNotMatch(organizerMenuMarkup({...event,registered:1}), /Return to draft/);
   const draft = organizerMenuMarkup({...event,status:'draft'});
-  assert.match(draft, /Publish event/);
+  assert.match(draft, /Send for review/);
   assert.doesNotMatch(draft, /Copy link|View page|Return to draft/);
   assert.doesNotMatch(organizerMenuMarkup({...event,status:'cancelled'}), /data-studio-action/);
 });
 
-test('publication celebration links to the created event and home, escaping event content', () => {
-  const html = publicationMarkup(event.id,event.title);
-  assert.match(html, /href="\/event\/club-game"/);
+test('submission confirmation links to the private editor and home, escaping event content', () => {
+  const html = submissionMarkup(event.id,event.title);
+  assert.match(html, /href="\/host\/club-game"/);
   assert.match(html, /href="\/">Home/);
   assert.match(html, /&lt;Club&gt; tournament/);
   assert.doesNotMatch(html, /<Club>/);

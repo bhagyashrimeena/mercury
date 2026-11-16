@@ -42,7 +42,7 @@ try {
     }
     await client.query('COMMIT');
   } catch (error) { await client.query('ROLLBACK'); throw error; }
-  for (const migrationName of ['20261115010000_optional_event_instructions.sql', '20261116000000_event_covers.sql', '20261116010000_cancellation_requests.sql']) {
+  for (const migrationName of ['20261115010000_optional_event_instructions.sql', '20261116000000_event_covers.sql', '20261116010000_cancellation_requests.sql', '20261116020000_event_review.sql']) {
     await client.query('BEGIN');
     try {
       await client.query('SELECT pg_advisory_xact_lock(15000000)');

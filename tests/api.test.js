@@ -17,9 +17,9 @@ function database() { const sqlite = new DatabaseSync(':memory:'); sqlite.exec('
         sqlite.exec('ROLLBACK');
         throw e;
     } } }; return { db, sqlite }; }
-function harness() { const { db, sqlite } = database(); const req = async (path, user = host, body, method = body ? 'POST' : 'GET', options = {}) => { const request = new Request('https://mercury.test/api/' + path, { method, headers: { Origin: options.origin || 'https://mercury.test', 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); const r = await apiHandler(request, db, user, { now: options.now ?? now, adminEmail: options.adminEmail ?? 'host@example.test' }); return { status: r.status, data: await r.json() }; }; const create = async (data = {}) => { await req('organizer/profile', host, { name: 'Weekend Club', bio: 'For the love of play', contact: 'host@example.test' }); const result = await req('organizer/events', host, { ...draft, ...data }); assert.equal(result.status, 200); return result.data.id; }; const publish = async (data = {}) => { const id = await create(data); assert.equal((await req(`organizer/events/${id}/publish`, host, {})).status, 200); return id; }; const join = (id, n, extra = {}) => req(`events/${id}/register`, player(n), { name: 'Player ' + n, level: 'Beginner', rulesAccepted: true, adultConfirmed: true, revision: 1, idempotencyKey: 'request-key-player-' + n, ...extra }); return { db, req, create, publish, join, sqlite }; }
+function harness() { const { db, sqlite } = database(); const req = async (path, user = host, body, method = body ? 'POST' : 'GET', options = {}) => { const request = new Request('https://mercury.test/api/' + path, { method, headers: { Origin: options.origin || 'https://mercury.test', 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); const r = await apiHandler(request, db, user, { now: options.now ?? now, adminEmail: options.adminEmail ?? 'host@example.test' }); return { status: r.status, data: await r.json() }; }; const create = async (data = {}) => { await req('organizer/profile', host, { name: 'Weekend Club', bio: 'For the love of play', contact: 'host@example.test' }); const result = await req('organizer/events', host, { ...draft, ...data }); assert.equal(result.status, 200); return result.data.id; }; const approve = async id => { const revision = sqlite.prepare('SELECT revision FROM events WHERE id=?').get(id).revision; const r = await req('admin/events/'+id+'/review', host, {decision:'approve',revision}); assert.equal(r.status,200,JSON.stringify(r.data)); }; const publish = async (data = {}) => { const id = await create(data); assert.equal((await req(`organizer/events/${id}/publish`, host, {})).status, 200); await approve(id); return id; }; const join = (id, n, extra = {}) => req(`events/${id}/register`, player(n), { name: 'Player ' + n, level: 'Beginner', rulesAccepted: true, adultConfirmed: true, revision: 1, idempotencyKey: 'request-key-player-' + n, ...extra }); return { db, req, create, publish, approve, join, sqlite }; }
 test('auth, origin and owner boundaries protect private records', async () => { const h = harness(); assert.equal((await h.req('session', null)).data.user, null); assert.equal((await h.req('organizer/events', null)).status, 401); const id = await h.publish(); assert.equal((await h.req('organizer/events/' + id + '/attendees', player(1))).status, 404); assert.equal((await h.req('organizer/events/' + id, player(1), { ...draft, revision: 1 }, 'PATCH')).status, 404); assert.equal((await h.req('profile', host, { name: 'Changed' }, 'POST', { origin: 'https://evil.test' })).status, 403); assert.equal((await h.req('organizer/events/' + id + '/cancel', player(1), {})).status, 404); h.sqlite.close(); });
-test('drafts are private; free publication and paid blocking are enforced', async () => { const h = harness(); const id = await h.create(); assert.equal((await h.req('events')).data.events.length, 0); assert.equal((await h.req('events/' + id)).status, 404); await h.req('organizer/events/' + id + '/publish', host, {}); assert.equal((await h.req('events')).data.events.length, 1); const paid = await h.create({ price: 450 }); const result = await h.req('organizer/events/' + paid + '/publish', host, {}); assert.equal(result.status, 409); assert.equal(result.data.error.code, 'payments_unavailable'); assert.equal((await h.join(paid, 1)).status, 409); h.sqlite.close(); });
+test('drafts are private; free publication and paid blocking are enforced', async () => { const h = harness(); const id = await h.create(); assert.equal((await h.req('events')).data.events.length, 0); assert.equal((await h.req('events/' + id)).status, 404); await h.req('organizer/events/' + id + '/publish', host, {}); assert.equal((await h.req('events')).data.events.length, 0); await h.approve(id); assert.equal((await h.req('events')).data.events.length, 1); const paid = await h.create({ price: 450 }); const result = await h.req('organizer/events/' + paid + '/publish', host, {}); assert.equal(result.status, 409); assert.equal(result.data.error.code, 'payments_unavailable'); assert.equal((await h.join(paid, 1)).status, 409); h.sqlite.close(); });
 test('simultaneous requests never oversell the final places', async () => { const h = harness(); const id = await h.publish(); const results = await Promise.all(Array.from({ length: 12 }, (_, i) => h.join(id, i))); assert.equal(results.filter(r => r.status === 200).length, 2); assert.equal(results.filter(r => r.status === 409).length, 10); assert.equal((await h.req('events/' + id)).data.event.spots, 0); assert.equal(h.sqlite.prepare('SELECT count(*) n FROM bookings').get().n, 2); h.sqlite.close(); });
 test('retry and duplicate requests create exactly one active registration', async () => { const h = harness(); const id = await h.publish(); const results = await Promise.all([h.join(id, 1), h.join(id, 1), h.join(id, 1, { idempotencyKey: 'another-key-player-1' })]); assert.ok(results.every(r => r.status === 200)); assert.equal(new Set(results.map(r => r.data.id)).size, 1); assert.equal((await h.req('bookings', player(1))).data.bookings.length, 1); assert.equal((await h.req('bookings', player(2))).data.bookings.length, 0); h.sqlite.close(); });
 test('booking notifications run after commit and cannot undo a confirmed place', async () => {
@@ -60,7 +60,7 @@ test('booking notifications run after commit and cannot undo a confirmed place',
     assert.equal(notificationAttempts, 1);
   } finally { h.sqlite.close(); }
 });
-test('consent, event revision and start time are checked server-side', async () => { const h = harness(); const id = await h.publish(); assert.equal((await h.join(id, 1, { rulesAccepted: false })).status, 422); assert.equal((await h.join(id, 1, { revision: 0 })).data.error.code, 'event_changed'); const updated = await h.req('organizer/events/' + id, host, { ...draft, title: 'Changed session name', revision: 1 }, 'PATCH'); assert.equal(updated.status, 200); assert.equal((await h.join(id, 1)).status, 409); assert.equal((await h.join(id, 1, { revision: 2 })).status, 200); const expired = await h.req('events/' + id + '/register', player(2), { name: 'Player Two', level: 'Beginner', adultConfirmed: true, rulesAccepted: true, idempotencyKey: 'expired-test-key-2', revision: 2 }, 'POST', { now: Date.parse('2026-11-09') }); assert.equal(expired.data.error.code, 'event_started'); h.sqlite.close(); });
+test('consent, event revision and start time are checked server-side', async () => { const h = harness(); const id = await h.publish(); assert.equal((await h.join(id, 1, { rulesAccepted: false })).status, 422); assert.equal((await h.join(id, 1, { revision: 0 })).data.error.code, 'event_changed'); const updated = await h.req('organizer/events/' + id, host, { ...draft, title: 'Changed session name', revision: 1 }, 'PATCH'); assert.equal(updated.status, 200); assert.equal((await h.join(id, 1)).status, 409); assert.equal((await h.req('organizer/events/'+id+'/submit',host,{})).status,200); await h.approve(id); assert.equal((await h.join(id, 1, { revision: 2 })).status, 200); const expired = await h.req('events/' + id + '/register', player(2), { name: 'Player Two', level: 'Beginner', adultConfirmed: true, rulesAccepted: true, idempotencyKey: 'expired-test-key-2', revision: 2 }, 'POST', { now: Date.parse('2026-11-09') }); assert.equal(expired.data.error.code, 'event_started'); h.sqlite.close(); });
 test('registered events lock editing and unpublishing; stale edits fail', async () => { const h = harness(); const id = await h.publish(); assert.equal((await h.req('organizer/events/' + id, host, { ...draft, revision: 0 }, 'PATCH')).status, 409); await h.join(id, 1); assert.equal((await h.req('organizer/events/' + id, host, { ...draft, revision: 1 }, 'PATCH')).data.error.code, 'has_registrations'); assert.equal((await h.req('organizer/events/' + id + '/unpublish', host, {})).status, 409); h.sqlite.close(); });
 test('cancellation releases capacity and cancelled request keys cannot resurrect passes', async () => { const h = harness(); const id = await h.publish(); const { data: b } = await h.join(id, 1); await h.join(id, 2); assert.equal((await h.req('bookings/' + b.id + '/cancel', player(2), {})).status, 404); assert.equal((await h.req('bookings/' + b.id + '/cancel', player(1), {})).status, 200); assert.equal((await h.req('events/' + id)).data.event.spots, 1); assert.equal((await h.join(id, 1)).data.error.code, 'request_cancelled'); assert.equal((await h.join(id, 3)).status, 200); assert.ok((await h.req('session', host)).data.notifications.some(n => n.message.includes('cancelled their place'))); h.sqlite.close(); });
 test('attendance is owner-only, idempotent, and blocks subsequent player cancellation', async () => { const h = harness(); const id = await h.publish(); const { data: b } = await h.join(id, 1); assert.equal((await h.req('organizer/events/' + id + '/check-in', player(1), { bookingId: b.id })).status, 404); assert.equal((await h.req('organizer/events/' + id + '/check-in', host, { bookingId: b.id })).status, 200); assert.equal((await h.req('organizer/events/' + id + '/check-in', host, { bookingId: b.id })).status, 200); assert.equal((await h.req('bookings/' + b.id + '/cancel', player(1), {})).status, 409); const roster = (await h.req('organizer/events/' + id + '/attendees')).data.attendees; assert.equal(roster[0].status, 'checked_in'); assert.equal(roster[0].email, undefined); h.sqlite.close(); });
@@ -337,13 +337,14 @@ test('optional instructions persist as null, survive edits, and registration nee
   const own = (await h.req('organizer/events')).data.events.find(e => e.id === id);
   for (const field of Object.keys(fields)) assert.equal(own.draft[field], null);
   assert.equal((await h.req('organizer/events/' + id + '/publish', host, {})).status, 200);
+  await h.approve(id);
   const detail = (await h.req('events/' + id)).data.event;
   for (const field of Object.keys(fields)) assert.equal(detail[field], null);
   assert.equal((await h.join(id, 1, { adultConfirmed: undefined, revision: 2 })).status, 200);
   h.sqlite.close();
 });
 
-test('wizard publishes new free and paid events atomically with their latest details', async () => {
+test('wizard submits new free and paid events with their latest details for admin review', async () => {
   const h = harness();
   try {
     await h.req('organizer/profile', host, { name: 'Direct Publish Club', contact: 'host@example.test' });
@@ -352,9 +353,11 @@ test('wizard publishes new free and paid events atomically with their latest det
       const result = await h.req('organizer/events', host, { ...draft, ...payment, publish:true });
       assert.equal(result.status, 200);
       const row = h.sqlite.prepare('SELECT * FROM events WHERE id=?').get(result.data.id);
-      assert.equal(row.status, 'published');
+      assert.equal(row.status, 'pending_review');
       assert.equal(row.price, payment.price);
       assert.equal(row.qr_image, payment.qrImage || '');
+      assert.equal((await h.req('events/' + row.id, null)).status, 404);
+      await h.approve(row.id);
       assert.equal((await h.req('events/' + row.id, null)).status, 200);
     }
     const id = await h.create();
@@ -362,7 +365,7 @@ test('wizard publishes new free and paid events atomically with their latest det
     assert.equal((await h.req('organizer/events/' + id, host, edited, 'PATCH')).status, 200);
     const row = h.sqlite.prepare('SELECT * FROM events WHERE id=?').get(id);
     assert.equal(row.title, edited.title);
-    assert.equal(row.status, 'published');
+    assert.equal(row.status, 'pending_review');
     assert.equal(row.price, 300);
     assert.equal(row.qr_image, qr);
     assert.equal(row.revision, 2);
@@ -410,6 +413,7 @@ test('event covers persist separately from payment QR, stay private in drafts, a
     assert.equal(row.qr_image, '');
     assert.equal(row.cover_image, image);
     assert.equal((await h.req('organizer/events/' + id, host, {...draft,coverImage:own.coverImage,revision:1,publish:true}, 'PATCH')).status, 200);
+    await h.approve(id);
     assert.equal((await h.req('events/' + id, null)).data.event.coverImage, '/api/events/' + id + '/cover');
     const published = await apiHandler(new Request('https://mercury.test/api/events/' + id + '/cover'), h.db, null);
     assert.equal(published.status, 200);
@@ -447,6 +451,111 @@ test('one wizard request accepts both cover and QR within their individual uploa
     const stored = h.sqlite.prepare('SELECT qr_image,cover_image FROM events WHERE id=?').get(result.data.id);
     assert.equal(stored.cover_image, image);
     assert.equal(stored.qr_image, image);
+  } finally { h.sqlite.close(); }
+});
+
+test('native event submissions remain private until an admin reviews the exact revision and images', async () => {
+  const h = harness();
+  const admin = {userId:'reviewer',email:'reviewer@example.test'};
+  const request = (path,user,body,method=body?'POST':'GET') => h.req(path,user,body,method,{adminEmail:admin.email});
+  try {
+    const qr = 'data:image/png;base64,' + readFileSync(new URL('./fixtures/payment-upi.png', import.meta.url)).toString('base64');
+    const id = await h.create({price:250,paymentMethods:['upi','cash'],qrImage:qr,coverImage:qr,submitForReview:true});
+    assert.equal(h.sqlite.prepare('SELECT status FROM events WHERE id=?').get(id).status,'pending_review');
+    assert.equal((await h.req('events',null)).data.events.length,0);
+    assert.equal((await h.req('events/'+id,null)).status,404);
+    assert.equal((await h.req('events/'+id+'/cover',null)).status,404);
+    assert.equal((await h.req('events/'+id+'/qr',player(1))).status,404);
+    assert.equal((await h.join(id,1)).status,409);
+    assert.equal((await h.req('saved/'+id,player(1),{saved:true})).status,404);
+    for (const user of [null,host,player(1)]) {
+      assert.equal((await request('admin/events/'+id,user)).status,403);
+      assert.equal((await request('admin/events/'+id+'/review',user,{decision:'approve',revision:1})).status,403);
+    }
+    const queue = (await request('admin/overview',admin)).data.eventReviews;
+    assert.equal(queue[0].id,id);
+    assert.equal(JSON.stringify(queue).includes('base64'),false);
+    const review = (await request('admin/events/'+id,admin)).data;
+    assert.equal(review.event.venue,draft.venue);
+    assert.equal(review.event.description,draft.description);
+    assert.deepEqual(review.event.included,[draft.included]);
+    assert.equal(review.event.bring,draft.bring);
+    assert.equal(review.event.cancellation,draft.cancellation);
+    assert.equal(review.owner.email,host.email);
+    assert.deepEqual(review.event.paymentMethods,['upi','cash']);
+    for (const path of [review.event.coverImage,review.event.qrImage]) {
+      const get = user => apiHandler(new Request('https://mercury.test'+path),h.db,user,{now,adminEmail:admin.email});
+      assert.equal((await get(host)).status,403);
+      const image = await get(admin);
+      assert.equal(image.status,200);
+      assert.equal(Buffer.from(await image.arrayBuffer()).toString('base64'),qr.split(',')[1]);
+    }
+    assert.equal((await request('admin/events/'+id+'/review',admin,{decision:'approve',revision:0})).status,409);
+    assert.equal((await request('admin/events/'+id+'/review',admin,{decision:'approve',revision:1})).status,200);
+    assert.equal((await h.req('events/'+id,null)).data.event.status,'published');
+    const notice=(await h.req('session',host)).data.notifications.find(n=>n.message.includes('now live'));
+    assert.equal(notice.actionPath,'/host/'+id);
+    assert.equal((await request('admin/events/'+id+'/review',admin,{decision:'reject',revision:1,note:'Changed my mind'})).status,409);
+  } finally { h.sqlite.close(); }
+});
+
+test('rejection, correction, withdrawal and resubmission cannot reuse a stale approval', async () => {
+  const h=harness();
+  try {
+    const id=await h.create({publish:true}); // Old clients must also enter review.
+    assert.equal((await h.req('admin/events/'+id+'/review',host,{decision:'reject',revision:1,note:''})).status,422);
+    assert.equal((await h.req('admin/events/'+id+'/review',host,{decision:'reject',revision:1,note:'Please correct the venue address.'})).status,200);
+    let event=(await h.req('organizer/events')).data.events.find(e=>e.id===id);
+    assert.equal(event.status,'rejected');
+    assert.equal(event.reviewNote,'Please correct the venue address.');
+    assert.equal((await h.req('events/'+id,null)).status,404);
+    assert.equal((await h.req('organizer/events/'+id,host,{...event.draft,revision:1,venue:'Corrected venue address, Mumbai',submitForReview:true},'PATCH')).status,200);
+    assert.equal((await h.req('admin/events/'+id+'/review',host,{decision:'approve',revision:1})).status,409);
+    await h.approve(id);
+    event=(await h.req('organizer/events')).data.events.find(e=>e.id===id);
+    assert.equal((await h.req('organizer/events/'+id,host,{...event.draft,revision:2,title:'Changed approved tournament'},'PATCH')).status,200);
+    assert.equal((await h.req('events/'+id,null)).status,404);
+    assert.equal(h.sqlite.prepare('SELECT approved_at FROM events WHERE id=?').get(id).approved_at,null);
+    assert.equal((await h.req('organizer/events/'+id+'/publish',host,{})).status,200);
+    assert.equal(h.sqlite.prepare('SELECT status FROM events WHERE id=?').get(id).status,'pending_review');
+    event=(await h.req('organizer/events')).data.events.find(e=>e.id===id);
+    assert.equal((await h.req('organizer/events/'+id,host,{...event.draft,revision:3},'PATCH')).status,200);
+    assert.equal((await h.req('admin/events/'+id+'/review',host,{decision:'approve',revision:3})).status,409);
+    assert.equal((await h.req('organizer/events/'+id+'/submit',host,{})).status,200);
+    await h.approve(id);
+    assert.equal((await h.req('events/'+id,null)).data.event.title,'Changed approved tournament');
+  } finally { h.sqlite.close(); }
+});
+
+test('cancelling an unapproved event does not expose its details or cover', async () => {
+  const h=harness();
+  try {
+    const image='data:image/png;base64,'+readFileSync(new URL('./fixtures/payment-upi.png',import.meta.url)).toString('base64');
+    const id=await h.create({coverImage:image,submitForReview:true});
+    assert.equal((await h.req('organizer/events/'+id+'/cancel',host,{})).status,200);
+    assert.equal((await h.req('events/'+id,null)).status,404);
+    assert.equal((await h.req('events/'+id+'/cover',null)).status,404);
+    assert.equal((await h.req('admin/events/'+id+'/review',host,{decision:'approve',revision:1})).status,409);
+  } finally { h.sqlite.close(); }
+});
+
+test('admin approval rechecks expiry and payment contact, and rolls back if its notice fails', async () => {
+  const h=harness();
+  try {
+    const id=await h.create({price:250,paymentMethods:['cash'],submitForReview:true});
+    await h.req('organizer/profile',host,{name:'Weekend Club',contact:''});
+    const review={decision:'approve',revision:1};
+    assert.equal((await h.req('admin/events/'+id+'/review',host,review)).status,422);
+    await h.req('organizer/profile',host,{name:'Weekend Club',contact:'host@example.test'});
+    assert.equal((await h.req('admin/events/'+id+'/review',host,review,'POST',{now:Date.parse('2026-11-09')})).status,409);
+    h.sqlite.exec("CREATE TRIGGER block_review_notice BEFORE INSERT ON notifications BEGIN SELECT RAISE(ABORT,'notice unavailable'); END");
+    assert.equal((await h.req('admin/events/'+id+'/review',host,review)).status,500);
+    const row=h.sqlite.prepare('SELECT status,approved_at,reviewed_at FROM events WHERE id=?').get(id);
+    assert.equal(row.status,'pending_review');
+    assert.equal(row.approved_at,null);
+    assert.equal(row.reviewed_at,null);
+    h.sqlite.exec('DROP TRIGGER block_review_notice');
+    await h.approve(id);
   } finally { h.sqlite.close(); }
 });
 

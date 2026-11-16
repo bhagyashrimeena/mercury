@@ -4,7 +4,7 @@ import { findListing, currentListings, listingStatus, indiaDay } from '../public
 import { validateDraft, newId } from '../public/domain.js';
 import { CLIENT_METRICS, recordMetric } from './metrics.js';
 const ACTIVE = "('pending','confirmed','checked_in')";
-const PUBLIC_SELECT = `SELECT e.id,e.owner_id,e.title,e.sport,e.area,e.venue,e.description,e.date,e.time,e.starts_at,e.duration,e.capacity,e.price,e.format,e.included,e.bring,e.cancellation,e.status,e.revision,e.created_at,e.payment_methods,CASE WHEN length(e.qr_image)>0 THEN 'present' ELSE '' END AS qr_image,CASE WHEN length(e.cover_image)>0 THEN 'present' ELSE '' END AS cover_image,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE}) AS registered,(SELECT COUNT(*) FROM bookings pending WHERE pending.event_id=e.id AND pending.status='pending') AS pending_count,(SELECT COUNT(*) FROM bookings cancellations WHERE cancellations.event_id=e.id AND cancellations.status='cancellation_pending') AS cancellation_count FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
+const PUBLIC_SELECT = `SELECT e.id,e.owner_id,e.title,e.sport,e.area,e.venue,e.description,e.date,e.time,e.starts_at,e.duration,e.capacity,e.price,e.format,e.included,e.bring,e.cancellation,e.status,e.revision,e.created_at,e.approved_at,e.submitted_at,e.reviewed_at,e.review_note,e.payment_methods,CASE WHEN length(e.qr_image)>0 THEN 'present' ELSE '' END AS qr_image,CASE WHEN length(e.cover_image)>0 THEN 'present' ELSE '' END AS cover_image,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE}) AS registered,(SELECT COUNT(*) FROM bookings pending WHERE pending.event_id=e.id AND pending.status='pending') AS pending_count,(SELECT COUNT(*) FROM bookings cancellations WHERE cancellations.event_id=e.id AND cancellations.status='cancellation_pending') AS cancellation_count FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
 export class ApiError extends Error {
     constructor(status, message, code = 'request_failed', fields = null) { super(message); this.status = status; this.code = code; this.fields = fields; }
 }
@@ -57,9 +57,9 @@ function coverResponse(value) {
 }
 async function validatePublication(db, event, userId, now) {
     if (event.status === 'cancelled') fail(409, 'Cancelled events cannot be published again.', 'event_cancelled');
-    if (event.price > 0 && (!event.payment_methods || (event.payment_methods.includes('upi') && !event.qr_image))) fail(409, 'Choose cash or upload your UPI QR image before publishing.', 'payments_unavailable');
+    if (event.price > 0 && (!event.payment_methods || (event.payment_methods.includes('upi') && !event.qr_image))) fail(409, 'Choose cash or upload your UPI QR image before submitting for review.', 'payments_unavailable');
     if (event.price > 0 && !(await one(db, 'SELECT contact FROM organizers WHERE user_id=?', userId))?.contact) fail(422, 'Add a public organizer contact email for payment and refund queries.', 'contact_required');
-    if (event.starts_at <= now) fail(409, 'Choose a future event date before publishing.', 'event_started');
+    if (event.starts_at <= now) fail(409, 'Choose a future event date before submitting for review.', 'event_started');
 }
 async function parseBody(request) { if (!(request.headers.get('content-type') || '').startsWith('application/json'))
     fail(415, 'Send JSON data.', 'content_type'); const origin = request.headers.get('origin'); if (origin !== new URL(request.url).origin)
@@ -96,6 +96,7 @@ export async function apiHandler(request, db, user, { now = Date.now(), adminEma
         // PostgreSQL needs an event-row lock across the capacity check and insert.
         // The SQLite test adapter keeps its existing serial-write behavior.
         let lockId = method === 'POST' && path[0] === 'events' && path[2] === 'register' ? path[1] : ['POST','PATCH'].includes(method) && path[0] === 'organizer' && path[1] === 'events' ? path[2] : null;
+        if (method === 'POST' && path[0] === 'admin' && path[1] === 'events') lockId = path[2];
         if (method === 'POST' && path[0] === 'bookings' && path[2] === 'cancel') lockId = (await one(db, 'SELECT event_id FROM bookings WHERE id=? AND user_id=?', path[1], user?.userId || ''))?.event_id;
         const result = lockId && db.withEventLock
             ? await db.withEventLock(lockId, lockedDb => dispatch({ ...options, db: lockedDb }))
@@ -131,6 +132,36 @@ export async function apiHandler(request, db, user, { now = Date.now(), adminEma
 }
 async function dispatch({ request, db, user, now, path: p, method: m, body: b, config, onBookingCreated }) {
     const route = p.join('/');
+    if (p[0] === 'admin' && p[1] === 'events' && p.length >= 3) {
+        if (!isAdmin(user, config)) fail(403, 'This area is available to the Mercury owner only.', 'forbidden');
+        const event = await one(db, 'SELECT * FROM events WHERE id=?', p[2]);
+        if (!event) fail(404, 'Event not found.', 'not_found');
+        if (m === 'GET' && p.length === 4 && ['cover','qr'].includes(p[3])) {
+            if (Number(new URL(request.url).searchParams.get('revision')) !== event.revision) fail(409, 'This submission changed. Reload its review.', 'version_conflict');
+            return coverResponse(p[3] === 'cover' ? event.cover_image : event.qr_image);
+        }
+        if (m === 'GET' && p.length === 3) {
+            const row = await one(db, `${PUBLIC_SELECT} WHERE e.id=?`, event.id);
+            const owner = await one(db, 'SELECT name,email FROM users WHERE id=?', event.owner_id);
+            const imagePath = '/api/admin/events/' + encodeURIComponent(event.id);
+            return { event: { ...publicEvent(row), submittedAt: row.submitted_at, reviewedAt: row.reviewed_at, reviewNote: row.review_note, coverImage: row.cover_image ? imagePath + '/cover?revision=' + row.revision : '', qrImage: row.qr_image ? imagePath + '/qr?revision=' + row.revision : '' }, owner };
+        }
+        if (m === 'POST' && p.length === 4 && p[3] === 'review') {
+            if (!['approve','reject'].includes(b.decision)) fail(422, 'Choose approve or reject.', 'validation_failed');
+            if (event.status !== 'pending_review' || !Number.isInteger(b.revision) || event.revision !== b.revision) fail(409, 'This submission changed or was already reviewed. Reload before deciding.', 'version_conflict');
+            const note = clean(b.note, 1000);
+            if (b.decision === 'reject' && note.length < 5) fail(422, 'Explain what the organizer needs to correct (at least 5 characters).', 'validation_failed');
+            if (b.decision === 'approve') await validatePublication(db, event, event.owner_id, now);
+            const status = b.decision === 'approve' ? 'published' : 'rejected';
+            const results = await db.batch([
+                db.prepare("UPDATE events SET status=?,approved_at=?,review_note=?,reviewed_at=?,reviewed_by=?,updated_at=? WHERE id=? AND status='pending_review' AND revision=?").bind(status, status === 'published' ? now : null, note, now, user.userId, now, event.id, b.revision),
+                db.prepare('INSERT INTO notifications(id,user_id,event_id,message,created_at) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM events WHERE id=? AND status=? AND revision=? AND reviewed_at=?)').bind('event-review-' + newId(), event.owner_id, event.id, status === 'published' ? `${event.title} was approved and is now live!` : `${event.title} needs changes before it can go live: ${note}`, now, event.id, status, b.revision, now)
+            ]);
+            if (!results[0].meta.changes) fail(409, 'This submission changed. Reload its review.', 'version_conflict');
+            return { ok: true, status };
+        }
+        fail(404, 'Not found.', 'not_found');
+    }
     const op = await operations({ db, user, now, path: p, method: m, body: b, request, config, fail });
     if (op !== undefined) return op;
     if (m === 'GET' && route === 'health') {
@@ -162,17 +193,17 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         }
     }
     if (m === 'GET' && route === 'events') {
-        const rows = await all(db, `${PUBLIC_SELECT} WHERE e.status='published' AND e.starts_at>? ORDER BY e.starts_at LIMIT 100`, now);
+        const rows = await all(db, `${PUBLIC_SELECT} WHERE e.status='published' AND e.approved_at IS NOT NULL AND e.starts_at>? ORDER BY e.starts_at LIMIT 100`, now);
         return { events: rows.map(publicEvent) };
     }
     if (m === 'GET' && p[0] === 'events' && p.length === 2) {
-        const row = await one(db, `${PUBLIC_SELECT} WHERE e.id=? AND e.status IN ('published','cancelled')`, p[1]);
+        const row = await one(db, `${PUBLIC_SELECT} WHERE e.id=? AND e.status IN ('published','cancelled') AND e.approved_at IS NOT NULL`, p[1]);
         if (!row)
             fail(404, 'This game is not available.', 'not_found');
         return { event: publicEvent(row) };
     }
     if (m === 'GET' && p[0] === 'events' && p.length === 3 && p[2] === 'cover') {
-        const row = await one(db, "SELECT cover_image FROM events WHERE id=? AND status IN ('published','cancelled')", p[1]);
+        const row = await one(db, "SELECT cover_image FROM events WHERE id=? AND status IN ('published','cancelled') AND approved_at IS NOT NULL", p[1]);
         return coverResponse(row?.cover_image);
     }
     if (m === 'GET' && route === 'session') {
@@ -183,13 +214,13 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         const saved = await all(db, 'SELECT event_id FROM saved_events WHERE user_id=?', uid);
         const savedListings = await all(db, 'SELECT listing_id FROM saved_listings WHERE user_id=?', uid);
         const notificationRows = await all(db, 'SELECT n.id,n.event_id,n.message,n.read_at,n.created_at,(SELECT owner_id FROM events WHERE id=n.event_id) AS event_owner FROM notifications n WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 50', uid);
-        const notifications = notificationRows.map(({event_owner, ...n}) => ({...n, actionPath: n.event_id && event_owner === uid ? '/participants/' + encodeURIComponent(n.event_id) : '/my-games'}));
+        const notifications = notificationRows.map(({event_owner, ...n}) => ({...n, actionPath: n.event_id && event_owner === uid ? (n.id.startsWith('event-review-') ? '/host/' : '/participants/') + encodeURIComponent(n.event_id) : '/my-games'}));
         return { user: { name:profile?.name || clean(user.fullName || 'Player',80), email:user.email }, organizer, saved:saved.map(x=>x.event_id), savedListings:savedListings.map(x=>x.listing_id), notifications, paymentsEnabled:false, isAdmin:isAdmin(user,config) };
     }
     const uid = ensureUser(user);
     if (m === 'GET' && ((p[0] === 'events' && p[2] === 'qr') || (p[0] === 'bookings' && p[2] === 'proof')) && p.length === 3) {
         const row = p[0] === 'events'
-            ? await one(db, "SELECT qr_image AS image FROM events WHERE id=? AND (status='published' OR owner_id=?)", p[1], uid)
+            ? await one(db, "SELECT qr_image AS image FROM events WHERE id=? AND ((status='published' AND approved_at IS NOT NULL) OR owner_id=?)", p[1], uid)
             : await one(db, 'SELECT b.payment_proof AS image FROM bookings b JOIN events e ON e.id=b.event_id WHERE b.id=? AND (b.user_id=? OR e.owner_id=?)', p[1], uid, uid);
         if (!row?.image) fail(404, 'Image not available.', 'not_found');
         const [header, data] = row.image.split(',');
@@ -235,7 +266,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
     }
     if (m === 'GET' && route === 'organizer/events') {
         const rows = await all(db, `${PUBLIC_SELECT} WHERE e.owner_id=? ORDER BY e.created_at DESC LIMIT 100`, uid);
-        return { events: rows.map(row => ({ ...publicEvent(row), coverImage: row.cover_image ? (row.status === 'draft' ? '/api/organizer/events/' : '/api/events/') + encodeURIComponent(row.id) + '/cover' : '', draft: { title: row.title, sport: row.sport, area: row.area, date: row.date, time: row.time, capacity: row.capacity, price: row.price, format: row.format, venue: row.venue, description: row.description, included: row.included, bring: row.bring, cancellation: row.cancellation, paymentMethods: row.payment_methods.split(',').filter(Boolean), coverImage: row.cover_image ? '/api/organizer/events/' + encodeURIComponent(row.id) + '/cover' : '', qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '' } })) };
+        return { events: rows.map(row => ({ ...publicEvent(row), isPublic: ['published','cancelled'].includes(row.status) && row.approved_at != null, submittedAt: row.submitted_at, reviewedAt: row.reviewed_at, reviewNote: row.review_note, coverImage: row.cover_image ? (!row.approved_at ? '/api/organizer/events/' : '/api/events/') + encodeURIComponent(row.id) + '/cover' : '', draft: { title: row.title, sport: row.sport, area: row.area, date: row.date, time: row.time, capacity: row.capacity, price: row.price, format: row.format, venue: row.venue, description: row.description, included: row.included, bring: row.bring, cancellation: row.cancellation, paymentMethods: row.payment_methods.split(',').filter(Boolean), coverImage: row.cover_image ? '/api/organizer/events/' + encodeURIComponent(row.id) + '/cover' : '', qrImage: row.qr_image ? '/api/events/' + encodeURIComponent(row.id) + '/qr' : '' } })) };
     }
     if (m === 'POST' && route === 'organizer/events') {
         if (!await one(db, 'SELECT user_id FROM organizers WHERE user_id=?', uid))
@@ -244,11 +275,11 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         const d = validate(b, now);
         const [methods, qr] = paymentConfig(b);
         const cover = imageData(b.coverImage);
-        const status = b.publish === true ? 'published' : 'draft';
-        if (b.publish === true) await validatePublication(db, { ...d, payment_methods: methods, qr_image: qr, starts_at: Date.parse(`${d.date}T${d.time}:00+05:30`) }, uid, now);
+        const status = b.submitForReview === true || b.publish === true ? 'pending_review' : 'draft';
+        if (b.submitForReview === true || b.publish === true) await validatePublication(db, { ...d, payment_methods: methods, qr_image: qr, starts_at: Date.parse(`${d.date}T${d.time}:00+05:30`) }, uid, now);
         const id = newId();
-        await run(db, 'INSERT INTO events(id,owner_id,title,sport,area,venue,description,date,time,starts_at,capacity,price,format,included,bring,cancellation,payment_methods,qr_image,cover_image,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', id, uid, ...eventValues(d), methods, qr, cover, status, now, now);
-        return { id };
+        await run(db, 'INSERT INTO events(id,owner_id,title,sport,area,venue,description,date,time,starts_at,capacity,price,format,included,bring,cancellation,payment_methods,qr_image,cover_image,status,submitted_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', id, uid, ...eventValues(d), methods, qr, cover, status, status === 'pending_review' ? now : null, now, now);
+        return { id, status };
     }
     if (p[0] === 'organizer' && p[1] === 'events' && p.length >= 3) {
         const id = p[2];
@@ -263,25 +294,23 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
             const active = await one(db, `SELECT COUNT(*) AS count FROM bookings WHERE event_id=? AND status IN ${ACTIVE}`, id);
             if (active.count > 0 || (await one(db, 'SELECT COUNT(*) AS count FROM bookings WHERE event_id=? AND amount>0', id)).count > 0)
                 fail(409, 'This event has registrations. Cancel it before changing the advertised details.', 'has_registrations');
-            if (e.status === 'published' && d.price > 0 && !(await one(db, 'SELECT contact FROM organizers WHERE user_id=?', uid))?.contact) fail(422, 'Add a public payment contact.', 'contact_required');
-            if (e.status === 'published' && d.price > 0 && (!methods || (methods.includes('upi') && !qr))) fail(422, 'Set payment options and upload a UPI QR image.', 'payments_unavailable');
-            if (b.publish === true) await validatePublication(db, { ...d, payment_methods: methods, qr_image: qr, starts_at: Date.parse(`${d.date}T${d.time}:00+05:30`) }, uid, now);
-            const result = await run(db, `UPDATE events SET title=?,sport=?,area=?,venue=?,description=?,date=?,time=?,starts_at=?,capacity=?,price=?,format=?,included=?,bring=?,cancellation=?,payment_methods=?,qr_image=?,cover_image=?,status=CASE WHEN ?=1 THEN 'published' ELSE status END,revision=revision+1,updated_at=? WHERE id=? AND owner_id=? AND revision=? AND status!='cancelled' AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${ACTIVE})`, ...eventValues(d), methods, qr, cover, b.publish === true ? 1 : 0, now, id, uid, Number(b.revision), id);
+            if (b.submitForReview === true || b.publish === true) await validatePublication(db, { ...d, payment_methods: methods, qr_image: qr, starts_at: Date.parse(`${d.date}T${d.time}:00+05:30`) }, uid, now);
+            const result = await run(db, `UPDATE events SET title=?,sport=?,area=?,venue=?,description=?,date=?,time=?,starts_at=?,capacity=?,price=?,format=?,included=?,bring=?,cancellation=?,payment_methods=?,qr_image=?,cover_image=?,status=?,approved_at=NULL,submitted_at=?,reviewed_at=NULL,reviewed_by=NULL,review_note='',revision=revision+1,updated_at=? WHERE id=? AND owner_id=? AND revision=? AND status!='cancelled' AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${ACTIVE})`, ...eventValues(d), methods, qr, cover, b.submitForReview === true || b.publish === true ? 'pending_review' : 'draft', b.submitForReview === true || b.publish === true ? now : null, now, id, uid, Number(b.revision), id);
             if (!result.meta.changes)
                 fail(409, 'This event changed or received a booking. Reload before editing.', 'version_conflict');
             return { ok: true };
         }
-        if (m === 'POST' && p[3] === 'publish') {
+        if (m === 'POST' && ['submit','publish'].includes(p[3]) && p.length === 4) {
             await validatePublication(db, e, uid, now);
-            if (e.status === 'published')
-                return { ok: true };
-            const r = await run(db, "UPDATE events SET status='published',updated_at=? WHERE id=? AND owner_id=? AND status='draft' AND starts_at>? AND revision=?", now, id, uid, now, e.revision);
+            if (['published','pending_review'].includes(e.status))
+                return { ok: true, status: e.status };
+            const r = await run(db, "UPDATE events SET status='pending_review',submitted_at=?,reviewed_at=NULL,reviewed_by=NULL,review_note='',updated_at=? WHERE id=? AND owner_id=? AND status IN ('draft','rejected') AND starts_at>? AND revision=?", now, now, id, uid, now, e.revision);
             if (!r.meta.changes)
-                fail(409, 'This event changed. Reload before publishing.', 'version_conflict');
+                fail(409, 'This event changed. Reload before submitting for review.', 'version_conflict');
             return { ok: true };
         }
         if (m === 'POST' && p[3] === 'unpublish') {
-            const result = await run(db, `UPDATE events SET status='draft',updated_at=? WHERE id=? AND owner_id=? AND status='published' AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${ACTIVE})`, now, id, uid, id);
+            const result = await run(db, `UPDATE events SET status='draft',approved_at=NULL,submitted_at=NULL,reviewed_at=NULL,reviewed_by=NULL,review_note='',updated_at=? WHERE id=? AND owner_id=? AND status='published' AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${ACTIVE})`, now, id, uid, id);
             if (!result.meta.changes)
                 fail(409, 'Events with registrations must be cancelled instead.', 'has_registrations');
             return { ok: true };
@@ -353,7 +382,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
             return { id: prior.id, existing: true };
         }
         const event = await one(db, 'SELECT * FROM events WHERE id=?', p[1]);
-        if (!event || event.status !== 'published')
+        if (!event || event.status !== 'published' || event.approved_at == null)
             fail(409, 'This event is not accepting registrations.', 'event_unavailable');
 
         if (event.starts_at <= now)
@@ -373,7 +402,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         if (paid && !contact) fail(409, 'Organizer payment contact is unavailable. Contact support before paying.', 'contact_required');
         const status = paid ? 'pending' : 'confirmed';
         const id = newId();
-        const result = await run(db, `INSERT INTO bookings(id,user_id,event_id,idempotency_key,player_name,rules_revision,consent_at,created_at,status,payment_method,payment_proof,amount,organizer_contact,payment_consent_version) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM events e WHERE e.id=? AND e.status='published' AND e.starts_at>? AND e.revision=? AND (SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE})<e.capacity) ON CONFLICT DO NOTHING`, id, uid, event.id, key, name, event.revision, now, now, status, method, proof, event.price, contact || '', paid ? PAYMENT_TERMS : '', event.id, now, event.revision);
+        const result = await run(db, `INSERT INTO bookings(id,user_id,event_id,idempotency_key,player_name,rules_revision,consent_at,created_at,status,payment_method,payment_proof,amount,organizer_contact,payment_consent_version) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM events e WHERE e.id=? AND e.status='published' AND e.approved_at IS NOT NULL AND e.starts_at>? AND e.revision=? AND (SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE})<e.capacity) ON CONFLICT DO NOTHING`, id, uid, event.id, key, name, event.revision, now, now, status, method, proof, event.price, contact || '', paid ? PAYMENT_TERMS : '', event.id, now, event.revision);
         if (!result.meta.changes) {
             const duplicate = await one(db, `SELECT id FROM bookings WHERE user_id=? AND event_id=? AND status IN ${ACTIVE}`, uid, event.id);
             if (duplicate)
@@ -414,7 +443,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         return {ok:true,status,organizer:{name:booking.organizer_name,contact}};
     }
     if (m === 'POST' && p[0] === 'saved' && p.length === 2) {
-        const e = await one(db, "SELECT id FROM events WHERE id=? AND status='published'", p[1]);
+        const e = await one(db, "SELECT id FROM events WHERE id=? AND status='published' AND approved_at IS NOT NULL", p[1]);
         if (!e)
             fail(404, 'Event not found.', 'not_found');
         if (b.saved === true)

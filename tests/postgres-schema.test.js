@@ -32,7 +32,11 @@ test('Supabase schema applies on PostgreSQL and preserves booking constraints', 
     await db.query("UPDATE bookings SET status='rejected' WHERE id='booking-1'");
     const { rows: indexes } = await db.query("SELECT indexname FROM pg_indexes WHERE schemaname='public' AND tablename='bookings'");
     assert.ok(indexes.some(row => row.indexname === 'booking_active_unique'));
-    for (const file of ['20261115010000_optional_event_instructions.sql','20261116000000_event_covers.sql','20261116010000_cancellation_requests.sql']) await db.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
+    await db.query("UPDATE events SET status='published' WHERE id='event-1'");
+    for (const file of ['20261115010000_optional_event_instructions.sql','20261116000000_event_covers.sql','20261116010000_cancellation_requests.sql','20261116020000_event_review.sql']) await db.exec(await readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'));
+    assert.ok((await db.query("SELECT approved_at FROM events WHERE id='event-1'")).rows[0].approved_at);
+    await db.query("UPDATE events SET status='pending_review',approved_at=NULL WHERE id='event-1'");
+    await db.query("UPDATE events SET status='rejected' WHERE id='event-1'");
     const {rows:columns}=await db.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name IN ('events','bookings') AND column_name='level'");
     assert.equal(columns.length,0);
     await db.query("UPDATE bookings SET status='cancellation_pending' WHERE id='booking-1'");

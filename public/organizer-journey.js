@@ -11,7 +11,7 @@ const STEPS = [
   { label: 'The essentials', indices: [0, 1] },
   { label: 'Player details', indices: [2, 3] },
   { label: 'Review event', indices: [4] },
-  { label: 'Payment & publish', indices: [5] }
+  { label: 'Payment & review', indices: [5] }
 ];
 const enc = value => String(value ?? '').replace(/[&<>"']/g, char =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -166,7 +166,7 @@ export function mountOrganizerJourney(form, {
       ['When', values.date ? values.date + ' · ' + (values.time || 'time not chosen') + ' IST' : 'Date not chosen'],
       ['Where', [values.venue, values.area].filter(Boolean).join(' · ')],
       ['Players', (values.capacity || '?') + ' places'],
-      ['Entry', Number(values.price) === 0 ? 'Free — eligible to publish' : '₹' + (values.price || '?') + ' per player / organizer review'],
+      ['Entry', Number(values.price) === 0 ? 'Free — review required' : '₹' + (values.price || '?') + ' per player / organizer review'],
       ['Payment', Number(values.price) === 0 ? 'No payment required' : [values.allowUpi === 'on' ? 'UPI QR' : '', values.allowCash === 'on' ? 'Cash' : ''].filter(Boolean).join(' + ') || 'Choose payment options in the final step']
     ];
     review.innerHTML = '<p class="eyebrow blue">YOUR GAME AT A GLANCE</p>' +

@@ -4239,3 +4239,15 @@ main:has(.organizer-editor) .studio-layout.organizer-editor{display:block;max-wi
 .event-organizer-links{display:flex;align-items:center;flex-wrap:wrap;gap:2px 14px;min-width:0}
 .event-organizer-links>a{display:inline-flex;align-items:center;min-height:36px;max-width:100%;font-size:13px;line-height:1.4;color:var(--blue);text-decoration:underline;overflow-wrap:anywhere;word-break:break-word}
 @media(max-width:600px){.event-organizer{gap:12px;margin-top:20px;padding:12px}.event-organizer-heading{flex-basis:36%;gap:7px}.event-organizer-icon{flex-basis:26px;width:26px;height:26px}.detail-layout article .event-organizer-heading>h3{font-size:14px}.event-organizer-contact{flex:1;min-width:0}.event-organizer-links>a{font-size:12px}}
+
+/* Private event moderation and organizer review states. */
+.state-pending_review, .organizer-title-row .state-pending_review { background: #fff1c9; color: #78540d; }
+.state-rejected, .organizer-title-row .state-rejected { background: #fbe9e5; color: #9f3529; }
+.event-review-details dl { display: grid; gap: 12px; }
+.event-review-details dl > div { display: grid; grid-template-columns: minmax(110px, .8fr) minmax(0, 1.5fr); gap: 12px; border-bottom: 1px solid var(--line, #deded8); padding-bottom: 10px; }
+.event-review-details dt { font-size: .85rem; color: #6b6f79; }
+.event-review-details dd { margin: 0; font-size: .95rem; overflow-wrap: anywhere; white-space: pre-wrap; }
+.event-review-image { display: block; max-width: 100%; max-height: 340px; object-fit: contain; margin: 12px auto; border-radius: 12px; }
+.event-review-details h3 { font-size: 1.1rem; margin-top: 24px; }
+.event-review-details .action-row { flex-wrap: wrap; }
+@media (max-width: 420px) { .event-review-details dl > div { grid-template-columns: 1fr; gap: 4px; } }

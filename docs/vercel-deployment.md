@@ -41,7 +41,7 @@ Set these environment variables for **Production** before deploying:
 | `SUPABASE_PUBLISHABLE_KEY` | Supabase publishable API key (`sb_publishable_...`) |
 | `SUPABASE_DB_URL` | Secret Transaction pooler PostgreSQL URI (port 6543) |
 | `SUPABASE_DB_CA` | Supabase database CA certificate PEM from SSL Configuration; keep server-side |
-| `MERCURY_ADMIN_EMAIL` | Google email of the Mercury owner; enables the owner inbox and support intake |
+| `MERCURY_ADMIN_EMAIL` | Google email of the Mercury owner; enables event approvals in `/admin`, the owner inbox and support intake |
 | `MERCURY_PUBLIC_LAUNCH` | `true` to enable search indexing; this flag does not restrict account signup |
 | `MERCURY_SITE_ORIGIN` | Final HTTPS production origin: `https://www.playonmercury.com` while the apex domain redirects there |
 
@@ -68,3 +68,5 @@ If `/api/health` fails, first verify the schema was applied and `SUPABASE_DB_URL
 The Google consent email confirms that Google shared a profile with Supabase; successful code exchange establishes the Mercury session. `error=identity` means the exchanged identity lacked a required ID or email; `error=callback` means the code exchange failed; `error=configuration` means the Supabase client could not be created; `error=start` means OAuth could not be started. All preserve a safe local return destination. Redeploy code changes; changing an old pilot environment flag is not required to open signup.
 
 See [Google branding setup](google-signin-branding.md) to replace the Supabase project hostname on Google's account chooser with the official Mercury brand.
+
+Mercury-hosted events require platform review before publication. Apply the latest event-review migration before deploying this version and configure the approving account in `MERCURY_ADMIN_EMAIL`; see [native event review](native-event-review.md).
