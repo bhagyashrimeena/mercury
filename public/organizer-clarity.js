@@ -23,7 +23,7 @@ export function organizerInformationChecklist(fields = {}) {
     { label: 'Event date', present: present(fields.date) },
     { label: 'Venue or area', present: present(fields.venue) },
     { label: 'Fee and entry unit', present: present(fields.fee) && /(?:per\s+(?:player|person|pair|team|entry|category|distance)|each|free|no fee|₹\s*0\b)/i.test(fields.fee) },
-    { label: 'Category / eligibility explanation', present(fields.notes) }
+    { label: 'Category / eligibility explanation', present: present(fields.notes) }
   ];
 }
 export function organizerGuidanceMarkup(fields = {}) {
