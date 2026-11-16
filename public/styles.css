@@ -4229,3 +4229,15 @@ main:has(.organizer-editor) .studio-layout.organizer-editor{display:block;max-wi
 .state-cancellation_pending{background:#fff0c6;color:#805b00}
 .compact-pass-page .pass-ticket-top .state-cancellation_pending{background:#fff0c6;color:#805b00}
 @media(max-width:600px){.compact-pass-page>.back{margin-bottom:12px}.pass-page-heading{margin-bottom:16px}.pass-page-heading h1{font-size:25px}.compact-pass-page .pass-ticket-top,.compact-pass-page .pass-ticket-body{padding:17px}.compact-pass-page .pass-ticket-top h2{font-size:24px;margin-top:13px}.compact-pass-page .pass-facts{gap:13px}.compact-pass-page .pass-facts dd{font-size:13px}.compact-pass-page .pass-reference-row>code{font-size:10px}}
+
+.event-organizer{margin:24px 0 30px;padding:24px;border:1px solid var(--border);border-radius:18px;background:#f0f0ff;min-width:0}
+.detail-layout article .event-organizer>h2{margin:0 0 20px;font-size:23px;line-height:1.25;letter-spacing:-.025em}
+.event-organizer-heading{display:flex;align-items:center;gap:13px;min-width:0}
+.event-organizer-avatar{display:grid;place-items:center;flex:0 0 46px;width:46px;height:46px;background:var(--blue);color:white;border-radius:14px;font-weight:800;font-size:16px}
+.detail-layout article .event-organizer-heading>h3{font-size:20px;line-height:1.3;margin:0;overflow-wrap:anywhere}
+.event-organizer-bio{font-size:14px;line-height:1.7;color:#50566a;margin:17px 0 0;overflow-wrap:anywhere}
+.event-organizer-contact{display:grid;gap:6px;margin-top:20px;padding-top:16px;border-top:1px solid #dcdcf0}
+.event-organizer-contact>span{font-size:10px;font-weight:750;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.event-organizer-contact>a{display:inline-flex;align-items:center;min-height:36px;font-size:14px;font-weight:700;line-height:1.5;color:var(--blue);text-decoration:underline;overflow-wrap:anywhere;word-break:break-word}
+.event-organizer-no-contact{font-size:13px;line-height:1.5;color:var(--muted);margin:18px 0 0}
+@media(max-width:600px){.event-organizer{margin:20px 0 26px;padding:18px;border-radius:15px}.detail-layout article .event-organizer>h2{font-size:21px;margin-bottom:17px}.detail-layout article .event-organizer-heading>h3{font-size:18px}.event-organizer-bio{font-size:13px;line-height:1.65}.event-organizer-contact>a{font-size:13px}}

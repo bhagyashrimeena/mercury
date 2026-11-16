@@ -22,6 +22,10 @@ export function eventDetailMarkup(event, { saved = false, preview = false, polic
     : state.canBook ? link('Register now', '/register/' + event.id)
     : link('Explore other games', '/explore', 'outline');
   const included = (Array.isArray(event.included) ? event.included : String(event.included || '').split('\n')).filter(item => String(item ?? '').trim());
+  const organizerName = String(event.host || 'Event organizer').trim() || 'Event organizer';
+  const organizerBio = String(event.hostBio || '').trim();
+  const organizerContact = String(event.hostContact || '').trim();
+  const initials = organizerName.split(/\s+/).slice(0, 2).map(word => Array.from(word)[0]).join('').toLocaleUpperCase();
   return `${preview ? '<div class="inline-notice"><b>Private preview.</b> These details are not saved or published. Booking controls are disabled.</div>' : ''}
     <a class="back" href="${preview ? '/host' : '/explore'}">&#8592; ${preview ? 'Back to editor' : 'All games'}</a>
     <div class="detail-cover event-photo-cover"><img class="sport-stock-img" src="${esc(media.src)}" alt="${esc(media.alt)}" width="1000" height="500" decoding="async"><span>${media.source === 'stock' ? 'ILLUSTRATIVE SPORT PHOTO · NOT THIS EVENT' : 'ORGANIZER-SUPPLIED PHOTO'}</span></div>
@@ -33,13 +37,18 @@ export function eventDetailMarkup(event, { saved = false, preview = false, polic
         <div><span aria-hidden="true">&#8962;</span><p><b>${esc(event.area)}, Mumbai</b><small>${esc(event.venue)}</small>${preview ? '' : `<a class="text-link venue-map-link" href="${esc(venueMapUrl(event))}" target="_blank" rel="noopener noreferrer" aria-label="Open venue in Google Maps (new tab)">Open venue map ↗</a>`}</p></div>
         <div><span aria-hidden="true">&#8599;</span><p><b>${esc(event.type)}</b><small>${esc(event.capacity)} players</small></p></div>
       </div>
+      <section class="event-organizer" aria-labelledby="event-organizer-title">
+        <h2 id="event-organizer-title">Meet your organizer</h2>
+        <div class="event-organizer-heading"><span class="event-organizer-avatar" aria-hidden="true">${esc(initials)}</span><h3>${esc(organizerName)}</h3></div>
+        ${organizerBio ? `<p class="event-organizer-bio preserve-lines">${esc(organizerBio)}</p>` : ''}
+        ${organizerContact ? `<div class="event-organizer-contact"><span>Contact organizer</span><a href="mailto:${esc(organizerContact)}">${esc(organizerContact)} ↗</a></div>` : '<p class="event-organizer-no-contact">The organizer hasn’t added public contact details yet.</p>'}
+      </section>
       ${event.description?.trim() ? `<h2>A good game, a good time.</h2><p class="body-copy preserve-lines">${esc(event.description)}</p>` : ''}
       ${included.length ? `<h3>What's included</h3><ul class="included">${included.map(item => `<li>&#10003; ${esc(item)}</li>`).join('')}</ul>` : ''}
       ${event.bring?.trim() ? `<h3>What to bring</h3><p class="body-copy">${esc(event.bring)}</p>` : ''}
       <div class="solo-note"><span aria-hidden="true">&#10033;</span><p>Come as you are. Respect other players, share court time fairly and tell your host if you need a break.</p></div>
       ${event.cancellation?.trim() ? `<details open><summary>Cancellation</summary>${policy && policy !== event.cancellation ? `<p>${esc(policy)}</p>` : ''}<p>${esc(event.cancellation)}</p></details>` : ''}
-      <details><summary>Your host</summary><p>${esc(event.hostBio || 'Your organizer will welcome you at the session.')}</p>${event.hostContact ? `<a class="text-link" href="mailto:${esc(event.hostContact)}">${esc(event.hostContact)}</a>` : '<p>No public contact email added yet.</p>'}</details>
-      <p class="fine">The artwork is illustrative. Confirm the address above with your host.</p>
+      <p class="fine">${media.source === 'stock' ? 'The photo is illustrative. ' : ''}Confirm the address above with your organizer.</p>
     </article><aside class="booking-panel">
       <p class="eyebrow blue">MAKE IT A PLAN</p><div class="price">${fee}</div>
       <p class="muted">${Number(event.price) ? 'Pay organizer directly / approval required' : 'No payment required'}</p>
