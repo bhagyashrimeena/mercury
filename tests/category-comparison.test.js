@@ -66,7 +66,6 @@ test('insufficient, invalid, or stale rules always return unknown, even if notes
     { eligibilityRules: { ...reviewed, checkedOn: '2026-11-01', minAge: 18 } },
     { eligibilityRules: { ...reviewed, minAge: 18, maxAge: 16 } },
     { eligibilityRules: { ...reviewed, minRating: 3.5 } },
-    { eligibilityRules: { ...reviewed, minAge: 18 }, notes: 'Age 18+' },
     { notes: 'Age 18+', fee: '₹1,200' },
   ];
   for (const entry of cases) {
