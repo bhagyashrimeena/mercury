@@ -22,7 +22,8 @@ export function categoryDraftMarkup() {
 }
 
 const feeHasPublishedValue = fee =>
-  /(?:₹|€|£|\$|\b(?:INR|EUR|USD|GBP|Rs\.?)\b|\bfree\b|no fee|to confirm|not published|see organizer)/i.test(fee);
+  /(?:₹|€|£|\$|\b(?:INR|EUR|USD|GBP|Rs\.?)\b)\s*\d/.test(fee) ||
+  /\b(?:free|no fee|to confirm|not published|see organizer)\b/i.test(fee);
 const containsFeeUnit = fee => /\bper\s+(?:player|person|pair|team|entry|category|distance)\b/i.test(fee);
 
 export function validateCategoryDrafts(rows) {
@@ -65,7 +66,8 @@ export function validateCategoryDrafts(rows) {
 export function categoryDraftReviewText(categories = []) {
   if (!categories.length) return '';
   return 'Proposed categories (UNVERIFIED; verify against official source):\n' +
-    categories.map((item, i) => (i + 1) + '. ' + categoryReviewLine(item)).join('\n');
+    categories.map((item, i) => (i + 1) + '. ' + categoryReviewLine(item) +
+      ' [entry_unit=' + (Object.hasOwn(CATEGORY_UNITS, item.entryUnit) ? item.entryUnit : 'unknown') + ']').join('\n');
 }
 
 export function readCategoryDraft(root) {
