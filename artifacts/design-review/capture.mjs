@@ -419,8 +419,28 @@ try {
       !draft.note?.includes('[ ] Confirm organizer identity')||draft.status!=='open'||
       !draft.notice?.includes('unpublished')||draft.overflow)
       throw Error('Owner review cannot create an unsaved, nonpublishing internal note: '+JSON.stringify(draft));
-    await writeFile(output,JSON.stringify({initial,draft},null,2));
-    process.stdout.write(output+' organizer owner worksheet and draft note passed\\n');
+    const exported = await send('Runtime.evaluate',{
+      expression:'(async () => {'+
+        'let captured;const original=HTMLAnchorElement.prototype.click;'+
+        'HTMLAnchorElement.prototype.click=function(){if(this.download?.startsWith("mercury-catalogue-proposal-"))captured={name:this.download,url:this.href};else original.call(this);};'+
+        'try{document.querySelector("[data-owner-review-export]").click();'+
+        'if(!captured)return JSON.stringify({captured:false});'+
+        'const packet=await fetch(captured.url).then(r=>r.json());'+
+        'return JSON.stringify({captured:true,filename:captured.name,schema:packet.schema,state:packet.state,'+
+        'sourceRequestId:packet.sourceRequestId,verifiedFields:Object.values(packet.record).filter(x=>x!==null&&(Array.isArray(x)?x.length:x)).length,'+
+        'privateData:JSON.stringify(packet).includes("review@example.test"),checks:Object.values(packet.review.checks),' +
+        'ownerStatus:document.querySelector("form[data-support-id] select[name=status]")?.value});'+
+        '}finally{HTMLAnchorElement.prototype.click=original;}})()',
+      awaitPromise:true,returnByValue:true
+    });
+    if(exported.exceptionDetails) throw Error(exported.exceptionDetails.text);
+    const proposal=JSON.parse(exported.result.value);
+    if(!proposal.captured||!proposal.filename.endsWith('.json')||proposal.schema!=='mercury.catalogue-proposal.v1'||
+      proposal.state!=='needs_independent_review'||proposal.sourceRequestId!=='review-enquiry'||
+      proposal.verifiedFields!==0||proposal.privateData||proposal.checks.some(Boolean)||proposal.ownerStatus!=='open')
+      throw Error('Private catalogue review export violated unpublished safety gates: '+JSON.stringify(proposal));
+    await writeFile(output,JSON.stringify({initial,draft,proposal},null,2));
+    process.stdout.write(output+' organizer owner worksheet and unpublished proposal export passed\\n');
   } else if (scope === 'kinetic-explore') {
     const reading=await send('Runtime.evaluate',{
       expression:'JSON.stringify({arena:!!document.querySelector(".mercury-arena"),paths:document.querySelectorAll(".arena-wave-svg .arena-line").length,'+
