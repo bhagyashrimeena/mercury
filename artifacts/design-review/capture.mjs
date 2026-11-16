@@ -105,7 +105,7 @@ socket.addEventListener('message', event => {
             'Proposed categories (UNVERIFIED; verify against official source):',
             '1. Open Singles | ₹900 per player [entry_unit=player]',
             'Applicant confirms adult consent and permission. Ownership is NOT verified.'
-          ].join('\\n')
+          ].join('\n')
         }] : [], corrections: [], overrides: [], clicks: [{ listing_id: 'mumbai-flex-nov-2026', count: 9 }],
         metrics: [{ metric: 'home_view', count: 42 }, { metric: 'explore_view', count: 24 }, { metric: 'external_detail_view', count: 12 }, { metric: 'zero_results', count: 3 }, { metric: 'signin_error', count: 2 }, { metric: 'booking_confirmed', count: 1 }],
         metricsAvailable: true, saves: [], users: 5, listings: [] };
