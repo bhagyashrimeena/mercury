@@ -4,6 +4,15 @@ import { CATEGORY_ENTRY_UNITS, categoryReviewLine } from './category-contract.js
 
 export const CATEGORY_LIMIT = 6;
 export const CATEGORY_UNITS = CATEGORY_ENTRY_UNITS;
+export const CATEGORY_PRESETS = Object.freeze({
+  Badminton: [{ name: 'Singles', unit: 'player' }, { name: 'Doubles', unit: 'pair' }, { name: 'Mixed Doubles', unit: 'pair' }],
+  Tennis: [{ name: 'Singles', unit: 'player' }, { name: 'Doubles', unit: 'pair' }, { name: 'Mixed Doubles', unit: 'pair' }],
+  Pickleball: [{ name: 'Singles', unit: 'player' }, { name: 'Doubles', unit: 'pair' }, { name: 'Mixed Doubles', unit: 'pair' }],
+  Running: [{ name: '5K Run', unit: 'distance' }, { name: '10K Run', unit: 'distance' }, { name: '21K Half Marathon', unit: 'distance' }],
+  Chess: [{ name: 'Rapid', unit: 'player' }, { name: 'Blitz', unit: 'player' }, { name: 'Classical', unit: 'player' }]
+});
+export const categoryPresetsForSport = sport => CATEGORY_PRESETS[sport] || [];
+
 
 const trim = value => String(value ?? '').replace(/\s+/g, ' ').trim();
 const esc = value => trim(value).replace(/[&<>"']/g, c =>
@@ -14,8 +23,11 @@ export function categoryDraftMarkup() {
     '<div class="organizer-category-heading"><div><p class="organizer-form-kicker">02 / OPTIONAL EVENT DIVISIONS</p>' +
     '<h3 id="organizer-category-heading">Different categories or fees?</h3>' +
     '<p>List each distance, singles/doubles division, or team entry separately if the rules or fees differ. Skip this if you only have one general entry.</p></div></div>' +
+    '<div class="organizer-category-presets"><label for="organizer-category-preset">Start with a common category (editable)' +
+    '<select id="organizer-category-preset"><option value="">Choose a sport above</option></select></label>' +
+    '<button type="button" id="organizer-use-preset" class="button outline" disabled>Add suggested category</button></div>' +
     '<div id="organizer-category-rows" class="organizer-category-rows"></div>' +
-    '<button type="button" id="organizer-add-category" class="button outline organizer-category-add">+ Add a category</button>' +
+    '<button type="button" id="organizer-add-category" class="button outline organizer-category-add">+ Add custom category</button>' +
     '<p class="fine">Up to six optional categories. A reviewer will verify every detail against your official event page before any publication.</p>' +
     '<div id="organizer-category-preview" class="organizer-category-preview" aria-live="polite" aria-atomic="true"></div>' +
     '</section>';
@@ -84,7 +96,16 @@ export function mountCategoryDraft(main, onChange = () => {}) {
   if (!root) return;
   const rows = root.querySelector('#organizer-category-rows');
   const add = root.querySelector('#organizer-add-category');
+  const presetSelect = root.querySelector('#organizer-category-preset');
+  const usePreset = root.querySelector('#organizer-use-preset');
+  const sportSelect = main.querySelector('#public-event-submission [name="sport"]');
   const preview = root.querySelector('#organizer-category-preview');
+  const renderPresets = () => {
+    const options = categoryPresetsForSport(sportSelect?.value);
+    presetSelect.innerHTML = '<option value="">Choose a category</option>' +
+      options.map((option, i) => '<option value="' + i + '">' + esc(option.name) + '</option>').join('');
+    usePreset.disabled = true;
+  };
   const renderPreview = () => {
     const fields = [...rows.querySelectorAll('.organizer-category-edit')].map(row => {
       const value = name => trim(row.querySelector('[data-category-field="' + name + '"]')?.value);
@@ -99,9 +120,10 @@ export function mountCategoryDraft(main, onChange = () => {}) {
         '</ul>'
       : '';
     add.disabled = rows.querySelectorAll('.organizer-category-edit').length >= CATEGORY_LIMIT;
+    usePreset.disabled = add.disabled || presetSelect.value === '';
     onChange();
   };
-  add.addEventListener('click', () => {
+  const addRow = (seed = {}) => {
     if (rows.children.length >= CATEGORY_LIMIT) return;
     const row = document.createElement('div');
     row.className = 'organizer-category-edit';
@@ -116,11 +138,29 @@ export function mountCategoryDraft(main, onChange = () => {}) {
       '</select></label></div>' +
       '<label class="organizer-category-notes">Category eligibility / format notes (optional)<input type="text" data-category-field="notes" maxlength="150" placeholder="Age 18+, doubles partner required, skill range…"></label>';
     rows.append(row);
+    if (seed.name) row.querySelector('[data-category-field="name"]').value = seed.name;
+    if (seed.unit && Object.hasOwn(CATEGORY_UNITS, seed.unit))
+      row.querySelector('[data-category-field="unit"]').value = seed.unit;
     rows.querySelectorAll('.organizer-category-number').forEach((node, i) => {
       node.textContent = 'Category ' + (i + 1);
     });
     renderPreview();
-    row.querySelector('[data-category-field="name"]').focus();
+    row.querySelector(seed.name ? '[data-category-field="fee"]' : '[data-category-field="name"]').focus();
+  };
+  add.addEventListener('click', () => addRow());
+  usePreset.addEventListener('click', () => {
+    const selected = categoryPresetsForSport(sportSelect?.value)[Number(presetSelect.value)];
+    if (presetSelect.value !== '' && selected) addRow(selected);
+    presetSelect.value = '';
+    renderPreview();
+  });
+  presetSelect.addEventListener('change', () => {
+    usePreset.disabled = !presetSelect.value || rows.children.length >= CATEGORY_LIMIT;
+  });
+  sportSelect?.addEventListener('change', () => {
+    // Existing manually entered rows are preserved when sport changes.
+    renderPresets();
+    renderPreview();
   });
   rows.addEventListener('click', event => {
     const button = event.target.closest('.organizer-remove-category');
@@ -135,5 +175,6 @@ export function mountCategoryDraft(main, onChange = () => {}) {
   });
   rows.addEventListener('input', renderPreview);
   rows.addEventListener('change', renderPreview);
+  renderPresets();
   renderPreview();
 }
