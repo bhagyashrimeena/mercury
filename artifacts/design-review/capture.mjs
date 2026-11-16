@@ -32,6 +32,7 @@ await new Promise((resolve, reject) => {
 let nextId = 0;
 const pending = new Map();
 const outboundRequests = [];
+const organizerSubmissions = [];
 const organizerFixture = ['fixture-organizer', 'fixture-preview', 'fixture-roster'].includes(mode);
 const ownerFixture = mode === 'fixture-owner';
 const accountFixture = ['fixture-account', 'fixture-pass', 'fixture-register'].includes(mode) || pastBookingMode || cancelledBookingMode || organizerFixture || ownerFixture;
@@ -60,6 +61,8 @@ socket.addEventListener('message', event => {
         paymentsEnabled: false, consentAccepted: accountFixture, isAdmin: ownerFixture };
       status = 200;
     } else if (parts[1] === 'support' && mode === 'fixture-event-submission') {
+      try { organizerSubmissions.push(JSON.parse(message.params.request.postData || '{}')); }
+      catch { organizerSubmissions.push({ invalid: true }); }
       payload = { id: 'test-organizer-request-123', message: 'Request is in the private owner inbox.' };
       status = 200;
     } else if (parts[1] === 'support' && mode === 'fixture-support-failure') {
@@ -349,7 +352,11 @@ try {
     const completed=JSON.parse(result.result.value);
     if(completed.ref!=='test-organizer-request-123'||!completed.text.includes('manual review')||completed.overflow)
       throw Error('Review intake did not finish: '+result.result.value);
-    await writeFile(output,JSON.stringify({initial,preview:state,category,completed},null,2));
+    if(organizerSubmissions.length !== 1 || !organizerSubmissions[0]?.message?.includes('10K Timed | ₹1,100 per distance') ||
+      !organizerSubmissions[0].message.includes('[entry_unit=distance]') ||
+      !organizerSubmissions[0].message.includes('UNVERIFIED'))
+      throw Error('Reviewed category data did not reach the existing intake request.');
+    await writeFile(output,JSON.stringify({initial,preview:state,category,completed,categoryIntakeVerified:true},null,2));
     process.stdout.write(output+' no-login organizer event submission passed\n');
   } else if (scope === 'kinetic-explore') {
     const reading=await send('Runtime.evaluate',{
@@ -399,9 +406,9 @@ try {
       returnByValue: true
     });
     if (click.exceptionDetails) throw Error(click.exceptionDetails.text);
-    const second = await read('JSON.stringify({title:document.querySelector("[data-category-title]")?.textContent,fee:document.querySelector("[data-category-fee]")?.textContent,notes:document.querySelector("[data-category-notes]")?.textContent,caveat:document.querySelector("[data-category-eligibility]")?.textContent,checked:document.querySelectorAll(".category-choice input[type=radio]")[2]?.checked,overflow:document.documentElement.scrollWidth>innerWidth})');
+    const second = await read('JSON.stringify({title:document.querySelector("[data-category-title]")?.textContent,fee:document.querySelector("[data-category-fee]")?.textContent,notes:document.querySelector("[data-category-notes]")?.textContent,caveat:document.querySelector("[data-category-eligibility]")?.textContent,unit:document.querySelector("[data-category-unit]")?.textContent,checked:document.querySelectorAll(".category-choice input[type=radio]")[2]?.checked,overflow:document.documentElement.scrollWidth>innerWidth})');
     if (second.title !== '10K Timed' || second.fee !== '₹1,100' || !second.notes.includes('18+') ||
-      !second.checked || !second.caveat.includes('organizer') || second.overflow)
+      !second.checked || !second.caveat.includes('organizer') || !second.unit.includes('Fee unit not specified') || second.overflow)
       throw Error('Category comparison choice failed: ' + JSON.stringify(second));
     await writeFile(output, JSON.stringify({ first, second }, null, 2));
     process.stdout.write(output + ' category selection, fee and honest eligibility passed\\n');
