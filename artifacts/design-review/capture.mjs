@@ -421,16 +421,17 @@ try {
       throw Error('Owner review cannot create an unsaved, nonpublishing internal note: '+JSON.stringify(draft));
     const exported = await send('Runtime.evaluate',{
       expression:'(async () => {'+
-        'let captured;const original=HTMLAnchorElement.prototype.click;'+
-        'HTMLAnchorElement.prototype.click=function(){if(this.download?.startsWith("mercury-catalogue-proposal-"))captured={name:this.download,url:this.href};else original.call(this);};'+
+        'let captured,blob;const original=HTMLAnchorElement.prototype.click,originalURL=URL.createObjectURL;'+
+        'URL.createObjectURL=function(value){blob=value;return originalURL.call(URL,value);};'+
+        'HTMLAnchorElement.prototype.click=function(){if(this.download?.startsWith("mercury-catalogue-proposal-"))captured={name:this.download};else original.call(this);};'+
         'try{document.querySelector("[data-owner-review-export]").click();'+
-        'if(!captured)return JSON.stringify({captured:false});'+
-        'const packet=await fetch(captured.url).then(r=>r.json());'+
+        'if(!captured||!blob)return JSON.stringify({captured:false});'+
+        'const packet=JSON.parse(await blob.text());'+
         'return JSON.stringify({captured:true,filename:captured.name,schema:packet.schema,state:packet.state,'+
         'sourceRequestId:packet.sourceRequestId,verifiedFields:Object.values(packet.record).filter(x=>x!==null&&(Array.isArray(x)?x.length:x)).length,'+
         'privateData:JSON.stringify(packet).includes("review@example.test"),checks:Object.values(packet.review.checks),' +
         'ownerStatus:document.querySelector("form[data-support-id] select[name=status]")?.value});'+
-        '}finally{HTMLAnchorElement.prototype.click=original;}})()',
+        '}finally{HTMLAnchorElement.prototype.click=original;URL.createObjectURL=originalURL;}})()',
       awaitPromise:true,returnByValue:true
     });
     if(exported.exceptionDetails) throw Error(exported.exceptionDetails.text);
