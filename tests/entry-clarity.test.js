@@ -63,3 +63,14 @@ test('organizer guidance accepts fee units and HTML-escapes organizer-provided n
   assert.doesNotMatch(markup, /<img/);
   assert.match(eventSubmissionMarkup(), /submission-readiness/);
 });
+
+test('organizer-verified Cup S3 venue and entry fee are kept distinct from Season 2', () => {
+  const cup = findListing('mumbai-pickleball-cup-s3');
+  assert.equal(cup.area, 'Borivali');
+  assert.match(cup.venue, /AT Arena/);
+  assert.doesNotMatch(cup.venue, /Stratum Play|Malad/);
+  assert.match(cup.priceNote, /₹1,200 early bird until 20 November 2026/);
+  assert.match(cup.priceNote, /then ₹1,500 per category entry/);
+  assert.match(cup.priceNote, /Doubles entry covers both players/);
+  assert.equal(cup.checkedOn, '2026-11-16');
+});
