@@ -1,15 +1,9 @@
 // Optional, client-side category details for Mercury's external event intake.
 // These drafts are unverified suggestions for a human reviewer, never published listings.
-import { publishedCategories } from './category-comparison.js';
+import { CATEGORY_ENTRY_UNITS, categoryReviewLine } from './category-contract.js';
 
 export const CATEGORY_LIMIT = 6;
-export const CATEGORY_UNITS = Object.freeze({
-  player: 'per player',
-  pair: 'per pair',
-  team: 'per team',
-  category: 'per category',
-  distance: 'per distance'
-});
+export const CATEGORY_UNITS = CATEGORY_ENTRY_UNITS;
 
 const trim = value => String(value ?? '').replace(/\s+/g, ' ').trim();
 const esc = value => trim(value).replace(/[&<>"']/g, c =>
@@ -55,7 +49,8 @@ export function validateCategoryDrafts(rows) {
     if (name.length >= 2 && name.length <= 80 && fee.length >= 2 && fee.length <= 65 &&
       Object.hasOwn(CATEGORY_UNITS, unit) && notes.length <= 150 &&
       feeHasPublishedValue(fee) && !containsFeeUnit(fee)) {
-      categories.push({ name, fee: fee + ' ' + CATEGORY_UNITS[unit], notes });
+      categories.push({ name, fee: fee + ' ' + CATEGORY_UNITS[unit], notes,
+        entryUnit: unit, reviewStatus: 'unverified-submission' });
     }
   }
   const names = new Set();
@@ -69,10 +64,8 @@ export function validateCategoryDrafts(rows) {
 
 export function categoryDraftReviewText(categories = []) {
   if (!categories.length) return '';
-  const normalized = publishedCategories({ categories });
   return 'Proposed categories (UNVERIFIED; verify against official source):\n' +
-    normalized.map((item, i) => (i + 1) + '. ' + trim(item.name) + ' | ' +
-      trim(item.fee) + (item.notes && item.notes !== 'Category requirements not specified' ? ' | ' + trim(item.notes) : '')).join('\n');
+    categories.map((item, i) => (i + 1) + '. ' + categoryReviewLine(item)).join('\n');
 }
 
 export function readCategoryDraft(root) {
