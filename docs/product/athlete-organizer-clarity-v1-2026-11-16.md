@@ -221,3 +221,19 @@ The eight human-only checks cover official source and registration destination, 
 \`tests/organizer-review.test.js\` covers parsing, default-unverified state, optional claims, missing fields, safe link rendering, HTML escaping, tampered input and checklists that do not auto-approve. The Chrome owner fixture uses a synthetic organizer enquiry; it opens the worksheet, drafts a note, verifies unchecked tasks remain visible, confirms the request stays \`open\`, and checks mobile width.
 
 **Not implemented:** event publication from the admin UI, native organizer verification, image-rights licensing automation, payment processing, duplicate-detection automation, or real organizer notifications. These require a separate audited backend design and approval gate.
+
+
+## Increment 8: safe next-edition preparation (structure only)
+
+A public event detail page now offers an optional **Hosting a new edition? Start with this event's category structure** link to \`/list-event?template=<public-listing-id>\`.
+
+It is a **new external event submission**, not a renewal or proof that the applicant controls the old listing. The official event registration page must be newly supplied, and Mercury's owner still checks organizer authority.
+
+The \`newEditionStarter\` adapter copies **only** the existing sport and up to six category *names* and explicitly source-stated entry units, where consistent. Every seeded category begins with no fee and no eligibility notes. The new event title, date, venue, registration URL, deadline, organizer contact, ownership identity, and previous entry fee are **not copied**. Invalid or unknown fee units remain blank. Switching sports does not silently destroy the prepared rows, and entrants may remove or edit every starter category.
+
+Review pipeline stays:
+previous public listing → structure-only draft → applicant supplies fresh details and consent → private organizer enquiry → owner verifies source/ownership and event facts → separately reviewed catalogue change. No native registration, direct publication, saved organizer relationship or historical payment transfer occurs.
+
+This deliberately avoids the dangerous failure previously identified in the Mumbai Pickleball Cup Season 2→Season 3 venue conflict. Repeating an event must never blindly copy last edition's venue or fee.
+
+**Verification:** \`tests/repeat-edition.test.js\` covers known source rows, explicit vs conflicting units, blank fees/eligibility, maximum category count, and omitted stale data. A real-Chrome mobile fixture opens the new-edition URL with Rotary's four public categories, asserts only structure is prefilled, and verifies blank contact, title, date, venue, fee and checkout.
