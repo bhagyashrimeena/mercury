@@ -94,3 +94,12 @@ test('category preview treats markup as data and stays source-unverified', () =>
   assert.match(review,/per team/);
   assert.doesNotMatch(review, /payment confirmed|verified category/i);
 });
+
+test('international fees remain explicit and duplicated fee units are rejected', () => {
+  const inEuro = validateCategoryDrafts([{ name:'Tennis camp', fee:'€790', unit:'player', notes:'' }]);
+  assert.deepEqual(inEuro.errors,[]);
+  assert.equal(inEuro.categories[0].fee,'€790 per player');
+  const withUnit = validateCategoryDrafts([{ name:'Open Doubles', fee:'₹800 per pair', unit:'pair', notes:'' }]);
+  assert.ok(withUnit.errors.some(error=>/unit in the selector/i.test(error)));
+  assert.equal(withUnit.categories.length,0);
+});
