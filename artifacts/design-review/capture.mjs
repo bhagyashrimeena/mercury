@@ -365,6 +365,27 @@ try {
        throw Error('Kinetic listing page failed: '+reading.result.value);
     await writeFile(output,JSON.stringify(state,null,2));
     process.stdout.write(output+' event detail motion and facts passed\n');
+  } else if (scope === 'category-compare') {
+    const read = async expression => {
+      const result = await send('Runtime.evaluate', { expression, returnByValue: true });
+      if (result.exceptionDetails) throw Error(result.exceptionDetails.text);
+      return JSON.parse(result.result.value);
+    };
+    const first = await read('JSON.stringify({path:location.pathname,options:document.querySelectorAll(".category-choice input[type=radio]").length,title:document.querySelector("[data-category-title]")?.textContent,fee:document.querySelector("[data-category-fee]")?.textContent,notes:document.querySelector("[data-category-notes]")?.textContent,overflow:document.documentElement.scrollWidth>innerWidth})');
+    if (first.path !== '/listing/rotary-queen-city-half-marathon-2026' || first.options !== 4 ||
+      first.title !== '2.5K Fun Run' || first.fee !== '₹700' || first.overflow)
+      throw Error('Initial published category comparison failed: ' + JSON.stringify(first));
+    const click = await send('Runtime.evaluate', {
+      expression: 'document.querySelector(".category-choice input[value=\\\"2\\\"]")?.click()',
+      returnByValue: true
+    });
+    if (click.exceptionDetails) throw Error(click.exceptionDetails.text);
+    const second = await read('JSON.stringify({title:document.querySelector("[data-category-title]")?.textContent,fee:document.querySelector("[data-category-fee]")?.textContent,notes:document.querySelector("[data-category-notes]")?.textContent,caveat:document.querySelector("[data-category-eligibility]")?.textContent,checked:document.querySelector(".category-choice input[value=2]")?.checked,overflow:document.documentElement.scrollWidth>innerWidth})');
+    if (second.title !== '10K Timed' || second.fee !== '₹1,100' || !second.notes.includes('18+') ||
+      !second.checked || !second.caveat.includes('organizer') || second.overflow)
+      throw Error('Category comparison choice failed: ' + JSON.stringify(second));
+    await writeFile(output, JSON.stringify({ first, second }, null, 2));
+    process.stdout.write(output + ' category selection, fee and honest eligibility passed\\n');
   } else if (scope === 'kinetic-home') {
     const reading=await send('Runtime.evaluate',{
       expression:'JSON.stringify({trail:!!document.querySelector(".home-speedlines"),'+
