@@ -473,6 +473,14 @@ try {
     await evaluate('document.querySelector("#directory-filters [name=query]").value="no-such-game";document.querySelector("#directory-filters [name=query]").dispatchEvent(new Event("input",{bubbles:true}))');
     const empty = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,empty:!!document.querySelector(".explore-empty"),reset:!!document.querySelector("#empty-reset"),url:location.search})'));
     if (empty.cards || !empty.empty || !empty.reset || !empty.url.includes('query=no-such-game')) throw new Error(`Empty search failed: ${JSON.stringify(empty)}`);
+    // The suggested recovery must use the real catalogue and restore results
+    // without removing the chosen sport or inventing a new event.
+    const recovery = JSON.parse(await evaluate('JSON.stringify({exists:!!document.querySelector("[data-recovery=query]"),label:document.querySelector("[data-recovery=query]")?.textContent})'));
+    if (!recovery.exists || !recovery.label?.includes('listing')) throw new Error('No catalogue-backed keyword recovery: '+JSON.stringify(recovery));
+    await evaluate('document.querySelector("[data-recovery=query]").click()');
+    const restoredSearch = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length})'));
+    if (restoredSearch.url.includes('query=no-such-game') || restoredSearch.cards !== initial.cards)
+      throw new Error('Keyword recovery failed: '+JSON.stringify(restoredSearch));
     await evaluate('document.querySelector("#clear-filters").click();document.querySelector("#filter-toggle").click()');
     const advanced = JSON.parse(await evaluate('JSON.stringify({expanded:document.querySelector("#filter-toggle").getAttribute("aria-expanded"),focus:document.activeElement?.name,hidden:document.querySelector("#directory-more-panel").hidden,cards:document.querySelectorAll("#directory-results .directory-card").length})'));
     if (advanced.expanded !== 'true' || advanced.hidden || advanced.focus !== 'sport' || advanced.cards !== initial.cards) throw new Error(`Advanced filters failed: ${JSON.stringify(advanced)}`);
