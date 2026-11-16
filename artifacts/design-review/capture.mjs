@@ -317,6 +317,30 @@ try {
       throw Error('Public guide failed: '+reading.result.value);
     await writeFile(output,JSON.stringify(state,null,2));
     process.stdout.write(output+' publicly readable How It Works passed\n');
+  } else if (scope === 'repeat-edition') {
+    const reading = await send('Runtime.evaluate', {
+      expression:'JSON.stringify({path:location.pathname,search:location.search,'+
+        'intro:document.querySelector(".organizer-submission-intro")?.textContent,'+
+        'sport:document.querySelector("#public-event-submission [name=sport]")?.value,'+
+        'title:document.querySelector("#public-event-submission [name=title]")?.value,'+
+        'date:document.querySelector("#public-event-submission [name=date]")?.value,'+
+        'venue:document.querySelector("#public-event-submission [name=venue]")?.value,'+
+        'link:document.querySelector("#public-event-submission [name=registrationUrl]")?.value,'+
+        'contact:document.querySelector("#public-event-submission [name=email]")?.value,'+
+        'fees:[...document.querySelectorAll(".organizer-category-edit [data-category-field=fee]")].map(x=>x.value),'+
+        'names:[...document.querySelectorAll(".organizer-category-edit [data-category-field=name]")].map(x=>x.value),'+
+        'overflow:document.documentElement.scrollWidth>innerWidth})',
+      returnByValue:true
+    });
+    const state=JSON.parse(reading.result.value);
+    if(state.path!=='/list-event'||!state.search.includes('template=rotary-queen-city-half-marathon-2026')||
+      !state.intro?.includes('not an ownership claim')||state.sport!=='Running'||
+      state.title||state.date||state.venue||state.link||state.contact||
+      state.names.length!==4||!state.names.includes('5K Timed')||
+      state.fees.some(Boolean)||state.overflow)
+      throw Error('New-edition starter copied stale or sensitive event data: '+reading.result.value);
+    await writeFile(output,JSON.stringify(state,null,2));
+    process.stdout.write(output+' repeat-edition starter contains only public structure\\n');
   } else if (scope === 'public-submission') {
     const first=await send('Runtime.evaluate',{
       expression:'JSON.stringify({path:location.pathname,form:!!document.querySelector("#public-event-submission"),'+
