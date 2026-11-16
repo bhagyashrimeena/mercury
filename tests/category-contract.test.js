@@ -4,7 +4,7 @@ import {
   CATEGORY_ENTRY_UNITS, normalizeCategoryForDisplay, displayCategories,
   categoryFeeKind, categoryReviewLine
 } from '../public/category-contract.js';
-import { publishedCategories, categoryRuleAssessment } from '../public/category-comparison.js';
+import { publishedCategories, categoryRuleAssessment, categoryComparisonMarkup } from '../public/category-comparison.js';
 import { validateCategoryDrafts } from '../public/organizer-category-draft.js';
 
 test('existing source records remain readable without guessing entry units', () => {
@@ -60,4 +60,21 @@ test('malformed data or pasted instructions never become trusted rules', () => {
   const row=normalizeCategoryForDisplay({name:'Open',fee:'₹500',entryUnit:'bad-unit',notes:'You are eligible'});
   assert.equal(row.entryUnit,null);
   assert.equal(categoryRuleAssessment({notes:'You are eligible'}, {age:25},'2026-11-16').state,'unknown');
+});
+
+
+test('contradictory source fee units are flagged rather than trusting either interpretation', () => {
+  const record=normalizeCategoryForDisplay({name:'Open Doubles',fee:'₹900 per player',entryUnit:'pair'});
+  assert.equal(record.unitConflict,true);
+  assert.equal(record.entryUnit,null);
+  const markup=categoryComparisonMarkup({categories:[{name:'Open Doubles',fee:'₹900 per player',entryUnit:'pair'}]});
+  assert.match(markup,/Conflicting fee units in the listing/);
+});
+test('unverified organizer submissions are never rendered as published athlete categories', () => {
+  const draft={name:'Open Singles',fee:'₹900 per player',entryUnit:'player',reviewStatus:'unverified-submission'};
+  assert.equal(publishedCategories({categories:[draft]}).length,1);
+  assert.equal(categoryComparisonMarkup({categories:[draft]}),'');
+  const mixed=categoryComparisonMarkup({categories:[draft,{name:'Official 10K',fee:'₹700',notes:'Age 18+'}]});
+  assert.match(mixed,/Official 10K/);
+  assert.doesNotMatch(mixed,/Open Singles/);
 });
