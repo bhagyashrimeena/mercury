@@ -60,7 +60,7 @@ export function categoryRuleAssessment(category, athlete = {}, asOf = new Date(D
 }
 
 export function categoryComparisonMarkup(listing) {
-  const categories = publishedCategories(listing);
+  const categories = publishedCategories(listing).filter(item => item.reviewStatus !== 'unverified-submission');
   if (!categories.length) return '';
   return '<section class="listing-categories category-comparison" aria-labelledby="listing-categories-heading">' +
     '<h2 id="listing-categories-heading">Compare published categories</h2>' +
@@ -77,8 +77,9 @@ export function categoryComparisonMarkup(listing) {
     '<p><strong data-category-fee>' + esc(categories[0].fee) + '</strong></p>' +
     '<p data-category-notes>' + esc(categories[0].notes) + '</p>' +
     '<p class="category-entry-unit" data-category-unit>' +
-    esc(categories[0].entryUnit ? 'Entry fee unit: ' + CATEGORY_ENTRY_UNITS[categories[0].entryUnit] :
-      'Fee unit not specified in the reviewed listing. Confirm whether the quoted price covers a player, pair, team or category.') + '</p>' +
+    esc(categories[0].unitConflict ? 'Conflicting fee units in the listing. Confirm the correct unit with the organizer.' :
+      categories[0].entryUnit ? 'Entry fee unit: ' + CATEGORY_ENTRY_UNITS[categories[0].entryUnit] :
+      'Fee unit not specified in the published listing. Confirm whether the quoted price covers a player, pair, team or category.') + '</p>' +
     '<p class="category-selection-eligibility" data-category-eligibility>Eligibility needs confirmation from the organizer. Category notes alone do not confirm you can enter.</p>' +
     '</div></section>';
 }
@@ -86,7 +87,7 @@ export function categoryComparisonMarkup(listing) {
 export function mountCategoryComparison(main, listing) {
   const section = main.querySelector('.category-comparison');
   if (!section) return;
-  const categories = publishedCategories(listing);
+  const categories = publishedCategories(listing).filter(item => item.reviewStatus !== 'unverified-submission');
   const selected = section.querySelector('[data-category-selection]');
   section.addEventListener('change', event => {
     const input = event.target.closest('input[name="listing-category-choice"]');
@@ -97,9 +98,10 @@ export function mountCategoryComparison(main, listing) {
     selected.querySelector('[data-category-title]').textContent = category.name;
     selected.querySelector('[data-category-fee]').textContent = category.fee;
     selected.querySelector('[data-category-notes]').textContent = category.notes;
-    selected.querySelector('[data-category-unit]').textContent = category.entryUnit
-      ? 'Entry fee unit: ' + CATEGORY_ENTRY_UNITS[category.entryUnit]
-      : 'Fee unit not specified in the reviewed listing. Confirm whether the quoted price covers a player, pair, team or category.';
+    selected.querySelector('[data-category-unit]').textContent = category.unitConflict
+      ? 'Conflicting fee units in the listing. Confirm the correct unit with the organizer.'
+      : category.entryUnit ? 'Entry fee unit: ' + CATEGORY_ENTRY_UNITS[category.entryUnit]
+      : 'Fee unit not specified in the published listing. Confirm whether the quoted price covers a player, pair, team or category.';
     // Real catalogue records currently do not contain manually reviewed structured rules.
     selected.querySelector('[data-category-eligibility]').textContent =
       'Eligibility needs confirmation from the organizer. Category notes alone do not confirm you can enter.';
