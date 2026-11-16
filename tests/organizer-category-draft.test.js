@@ -5,6 +5,7 @@ import {
   categoryDraftReviewText, readCategoryDraft
 } from '../public/organizer-category-draft.js';
 import { buildOrganizerMessage, eventSubmissionMarkup } from '../public/organizer-public.js';
+import { organizerInformationChecklist } from '../public/organizer-clarity.js';
 import { publishedCategories } from '../public/category-comparison.js';
 
 const singles = {
@@ -102,4 +103,16 @@ test('international fees remain explicit and duplicated fee units are rejected',
   const withUnit = validateCategoryDrafts([{ name:'Open Doubles', fee:'₹800 per pair', unit:'pair', notes:'' }]);
   assert.ok(withUnit.errors.some(error=>/unit in the selector/i.test(error)));
   assert.equal(withUnit.categories.length,0);
+});
+
+test('completed category rows satisfy fee and category guidance without duplicate summary entry', () => {
+  const { categories, errors } = validateCategoryDrafts([doubles]);
+  assert.deepEqual(errors, []);
+  const base = { registrationUrl:'https://example.org/open', name:'Club', email:'club@example.org',
+    title:'Open Tournament',sport:'Badminton',date:'2026-12-20',venue:'Powai',fee:'',notes:'' };
+  const before = organizerInformationChecklist(base);
+  const after = organizerInformationChecklist({ ...base, categories });
+  assert.equal(before.find(x=>x.label==='Fee and entry unit').present,false);
+  assert.equal(after.find(x=>x.label==='Fee and entry unit').present,true);
+  assert.equal(after.find(x=>x.label==='Category / eligibility explanation').present,true);
 });
