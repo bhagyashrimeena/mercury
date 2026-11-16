@@ -59,7 +59,9 @@ export function mountEventSubmission(main, { request = fetch, locationObject = l
     main.querySelector('#submission-preview-sport').textContent = values.sport || 'SPORTS EVENT';
     main.querySelector('#submission-preview-meta').textContent =
       [values.date, values.venue].filter(Boolean).join(' · ') || 'Add a date and location';
-    main.querySelector('#submission-preview-fee').textContent = values.fee || 'Fee from organizer';
+    const categoryReview = readCategoryDraft(main.querySelector('#organizer-category-draft'));
+    main.querySelector('#submission-preview-fee').textContent = values.fee ||
+      (categoryReview.categories.length ? 'See proposed category fees below' : 'Fee from organizer');
     main.querySelector('#submission-preview-link').textContent = validEventUrl(values.registrationUrl)
       ? new URL(values.registrationUrl).hostname : 'Your registration link appears here';
     main.querySelector('#submission-readiness').innerHTML = organizerGuidanceMarkup(values);
