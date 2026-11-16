@@ -44,6 +44,7 @@ jobs:
           node artifacts/design-review/capture.mjs http://localhost:3002/how-it-works 390 844 /tmp/mercury-ux-captures/how-it-works-phone.json fixture-home public-how
           node artifacts/design-review/capture.mjs http://localhost:3002/list-event 390 844 /tmp/mercury-ux-captures/list-event-phone.json fixture-event-submission public-submission
           node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/organizer-owner-review-phone.json fixture-owner-review owner-review
+          node artifacts/design-review/capture.mjs 'http://localhost:3002/list-event?template=rotary-queen-city-half-marathon-2026' 390 844 /tmp/mercury-ux-captures/organizer-repeat-starter-phone.json fixture-event-submission repeat-edition
           node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/kinetic-home.json fixture-home kinetic-home
           node artifacts/design-review/capture.mjs http://localhost:3002/explore 1440 900 /tmp/mercury-ux-captures/kinetic-explore-desktop.json fixture-explore kinetic-explore
           node artifacts/design-review/capture.mjs http://localhost:3002/explore 390 844 /tmp/mercury-ux-captures/kinetic-explore-phone.json fixture-explore kinetic-explore
