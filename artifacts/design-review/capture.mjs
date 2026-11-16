@@ -34,7 +34,7 @@ const pending = new Map();
 const outboundRequests = [];
 const organizerSubmissions = [];
 const organizerFixture = ['fixture-organizer', 'fixture-preview', 'fixture-roster'].includes(mode);
-const ownerFixture = mode === 'fixture-owner';
+const ownerFixture = ['fixture-owner','fixture-owner-review'].includes(mode);
 const accountFixture = ['fixture-account', 'fixture-pass', 'fixture-register'].includes(mode) || pastBookingMode || cancelledBookingMode || organizerFixture || ownerFixture;
 const fixtureBooking = {
   id: 'review-pass', event_id: fixtureEvent.id, status: cancelledBookingMode ? 'event_cancelled' : 'confirmed', title: fixtureEvent.title,
@@ -91,7 +91,22 @@ socket.addEventListener('message', event => {
       payload = { event: fixtureEvent, attendees: organizerFixture ? [fixtureBooking] : [] };
       status = 200;
     } else if (parts[1] === 'admin' && parts[2] === 'overview') {
-      payload = { support: [], corrections: [], overrides: [], clicks: [{ listing_id: 'mumbai-flex-nov-2026', count: 9 }],
+      payload = { support: mode === 'fixture-owner-review' ? [{
+          id: 'review-enquiry', status: 'open', category: 'Organizer enquiry',
+          name: 'Review Organizer', email: 'review@example.test', internal_note: '', created_at: Date.now(),
+          message: [
+            'EVENT LISTING REQUEST — manual review required',
+            'Event / registration URL: https://example.org/events/winter',
+            'Name: Winter Badminton Open',
+            'Sport: Badminton',
+            'Date: 2026-12-20',
+            'Venue: Powai, Mumbai',
+            'Fee overview: ₹900 per player',
+            'Proposed categories (UNVERIFIED; verify against official source):',
+            '1. Open Singles | ₹900 per player [entry_unit=player]',
+            'Applicant confirms adult consent and permission. Ownership is NOT verified.'
+          ].join('\\n')
+        }] : [], corrections: [], overrides: [], clicks: [{ listing_id: 'mumbai-flex-nov-2026', count: 9 }],
         metrics: [{ metric: 'home_view', count: 42 }, { metric: 'explore_view', count: 24 }, { metric: 'external_detail_view', count: 12 }, { metric: 'zero_results', count: 3 }, { metric: 'signin_error', count: 2 }, { metric: 'booking_confirmed', count: 1 }],
         metricsAvailable: true, saves: [], users: 5, listings: [] };
       status = 200;
@@ -366,6 +381,22 @@ try {
       throw Error('Reviewed category data did not reach the existing intake request.');
     await writeFile(output,JSON.stringify({initial,preview:state,category,completed,categoryIntakeVerified:true},null,2));
     process.stdout.write(output+' no-login organizer event submission passed\n');
+  } else if (scope === 'owner-review') {
+    const read = async expression => {
+      const result = await send('Runtime.evaluate',{expression,returnByValue:true});
+      if (result.exceptionDetails) throw Error(result.exceptionDetails.text);
+      return JSON.parse(result.result.value);
+    };
+    const initial = await read('JSON.stringify({path:location.pathname,worksheet:!!document.querySelector("[data-organizer-review]"),unverified:document.querySelector("[data-organizer-review]")?.textContent.includes("unverified"),published:document.querySelector("[data-organizer-review]")?.textContent.includes("automatic publication"),overflow:document.documentElement.scrollWidth>innerWidth})');
+    if(initial.path!=='/admin'||!initial.worksheet||!initial.unverified||!initial.published||initial.overflow)
+      throw Error('Owner review worksheet missing or incorrectly presented: '+JSON.stringify(initial));
+    const draft = await read('(() => {const section=document.querySelector("[data-organizer-review]");section.open=true;section.querySelector("[data-owner-review-check][value=source]").checked=true;section.querySelector("[data-owner-review-note]").click();const article=section.closest("article");return JSON.stringify({note:article.querySelector("textarea[name=note]")?.value,status:article.querySelector("select[name=status]")?.value,notice:section.querySelector("[data-owner-review-result]")?.textContent,overflow:document.documentElement.scrollWidth>innerWidth})})()');
+    if(!draft.note?.includes('NOT PUBLISHED')||!draft.note?.includes('[x] Confirm official source')||
+      !draft.note?.includes('[ ] Confirm organizer identity')||draft.status!=='open'||
+      !draft.notice?.includes('unpublished')||draft.overflow)
+      throw Error('Owner review cannot create an unsaved, nonpublishing internal note: '+JSON.stringify(draft));
+    await writeFile(output,JSON.stringify({initial,draft},null,2));
+    process.stdout.write(output+' organizer owner worksheet and draft note passed\\n');
   } else if (scope === 'kinetic-explore') {
     const reading=await send('Runtime.evaluate',{
       expression:'JSON.stringify({arena:!!document.querySelector(".mercury-arena"),paths:document.querySelectorAll(".arena-wave-svg .arena-line").length,'+
