@@ -2,6 +2,7 @@ import { indiaDay, listingStatus } from './catalogue.js';
 import { listingCard } from './discovery.js';
 import { trackMetric } from './metrics.js';
 import { arenaIntroMarkup, waveRibbonMarkup } from './kinetic-art.js';
+import { recoverySuggestions } from './discovery-recovery.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const defaults = { query: '', sport: 'All sports', when: 'Any date', area: 'All Mumbai', type: 'All formats', source: 'All listings', level: 'Any level', availability: 'All upcoming', fee: 'Any fee', sort: 'Soonest first', from: '', to: '' };
@@ -213,13 +214,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
   const update = (mode = 'none') => {
     const filters = values();
     const result = sortForDiscovery(filterLineup(items, filters), filters.sort);
-    const widened = result.length ? [] : filterLineup(items, {
-      ...filters, query: '', area: 'All Mumbai', when: 'Any date', from: '', to: ''
-    });
-    const upcoming = result.length || widened.length ? [] : filterLineup(items, {
-      ...filters, query: '', area: 'All Mumbai', when: 'Any date',
-      from: '', to: '', availability: 'All upcoming'
-    });
+    const recoveries = result.length ? [] : recoverySuggestions(items, filters, filterLineup);
     main.querySelectorAll('[data-quick-name]').forEach(button => {
       const active = filters[button.dataset.quickName] === button.dataset.quickValue;
       button.setAttribute('aria-pressed', String(active));
@@ -245,15 +240,15 @@ export function renderExplore({ main, events, listings, gameCard }) {
       name === 'solo' || (value && value !== defaults[name]));
     main.querySelector('#directory-results').innerHTML = result.length
       ? result.map(event => event.external ? listingCard(event) : gameCard(event)).join('')
-      : '<div class="empty explore-empty"><span aria-hidden="true">✳</span><h3>No games match those filters.</h3>' +
-        '<p>' + (widened.length
-          ? widened.length + ' opportunities match when the area, dates and search are widened.'
-          : upcoming.length
-            ? 'There are upcoming events, but their entry status needs checking with the organizer.'
-            : 'Try another sport or reset your filters to browse the lineup.') + '</p>' +
-        (widened.length ? '<button class="button outline" type="button" id="widen-search">Widen search</button>'
-          : upcoming.length ? '<button class="button outline" type="button" id="show-upcoming">See all upcoming</button>' : '') +
-        '</div>';
+      : '<div class="empty explore-empty" aria-label="No matching events"><span aria-hidden="true">✳</span>' +
+        '<h3>Nothing fits every filter yet.</h3>' +
+        '<p>Try one change while keeping your chosen sport. These are existing event listings, not confirmed entry places.</p>' +
+        '<div class="explore-recovery-actions">' +
+        recoveries.map(option => '<button class="button outline explore-recovery-action" type="button" data-recovery="' +
+          esc(option.id) + '">' + esc(option.label) + ' <small>' + option.count +
+          (option.count === 1 ? ' listing' : ' listings') + '</small></button>').join('') +
+        '<button class="button outline explore-reset-action" type="button" id="empty-reset">Clear all filters</button>' +
+        '</div><p class="explore-recovery-note">An organizer must confirm current entry status, fees and eligibility.</p></div>';
 
     const active = Object.entries(filters).filter(([name, value]) =>
       (name === 'solo' || (value && value !== defaults[name])) &&
@@ -264,16 +259,28 @@ export function renderExplore({ main, events, listings, gameCard }) {
       ': ' + esc(value === '1' ? 'Yes' : value) + ' <span aria-hidden="true">×</span></button>'
     ).join('');
 
-    main.querySelector('#widen-search')?.addEventListener('click', () => {
-      for (const name of ['query', 'area', 'when', 'from', 'to'])
-        form.elements.namedItem(name).value = defaults[name];
-      update('push');
+    main.querySelectorAll('[data-recovery]').forEach(button => {
+      button.addEventListener('click', () => {
+        const selected = recoveries.find(option => option.id === button.dataset.recovery);
+        if (!selected) return;
+        for (const [name, value] of Object.entries(selected.patch)) {
+          const input = form.elements.namedItem(name);
+          if (input) input.value = value;
+        }
+        update('push');
+        const count = main.querySelector('#directory-count');
+        count.tabIndex = -1;
+        count.focus({ preventScroll: true });
+      });
     });
-    main.querySelector('#show-upcoming')?.addEventListener('click', () => {
-      for (const name of ['query', 'area', 'when', 'from', 'to'])
-        form.elements.namedItem(name).value = defaults[name];
-      form.elements.namedItem('availability').value = 'All upcoming';
+    main.querySelector('#empty-reset')?.addEventListener('click', () => {
+      form.reset();
+      form.elements.namedItem('sort').value = defaults.sort;
+      solo = false;
       update('push');
+      const count = main.querySelector('#directory-count');
+      count.tabIndex = -1;
+      count.focus({ preventScroll: true });
     });
     if (mode !== 'none') writeUrl(filters, mode);
     return result.length;

@@ -1,0 +1,149 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  CATEGORY_LIMIT, CATEGORY_UNITS, CATEGORY_PRESETS, categoryPresetsForSport, categoryDraftMarkup, validateCategoryDrafts,
+  categoryDraftReviewText, readCategoryDraft
+} from '../public/organizer-category-draft.js';
+import { buildOrganizerMessage, eventSubmissionMarkup } from '../public/organizer-public.js';
+import { organizerInformationChecklist } from '../public/organizer-clarity.js';
+import { publishedCategories } from '../public/category-comparison.js';
+
+const singles = {
+  name: 'Open Singles', fee: '₹800', unit: 'player', notes: 'Open category'
+};
+const doubles = {
+  name: 'Open Doubles', fee: '₹1,200', unit: 'pair', notes: 'Register with your partner'
+};
+
+test('organizer categories retain their source fee unit for athlete-facing review', () => {
+  const result = validateCategoryDrafts([singles, doubles]);
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.categories.map(c => c.fee), ['₹800 per player', '₹1,200 per pair']);
+  const athlete = publishedCategories({ categories: result.categories });
+  assert.deepEqual(athlete.map(c => c.name), ['Open Singles', 'Open Doubles']);
+  assert.equal(athlete[1].notes, 'Register with your partner');
+  assert.equal(CATEGORY_UNITS.team, 'per team');
+});
+
+test('free really means free, while unknown fee stays explicitly unknown', () => {
+  const result = validateCategoryDrafts([
+    { name:'Beginner Run', fee:'Free', unit:'player', notes:'' },
+    { name:'Advanced Run', fee:'Fee to confirm', unit:'distance', notes:'Check with host' }
+  ]);
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.categories[0].fee, 'Free per player');
+  assert.equal(result.categories[1].fee, 'Fee to confirm per distance');
+  assert.doesNotMatch(result.categories[1].fee, /^Free/);
+});
+
+test('partial or ambiguous category drafts are blocked before submission, not silently omitted', () => {
+  const tests = [
+    [{ name:'Doubles', fee:'₹900', unit:'', notes:'' }],
+    [{ name:'', fee:'₹900', unit:'pair', notes:'' }],
+    [{ name:'Doubles', fee:'900', unit:'pair', notes:'' }],
+    [{ name:'Doubles', fee:'₹900', unit:'unrecognized', notes:'' }],
+    [singles, { ...singles, name:'open singles' }]
+  ];
+  for (const rows of tests) {
+    const result = validateCategoryDrafts(rows);
+    assert.ok(result.errors.length, JSON.stringify(rows));
+  }
+  assert.deepEqual(validateCategoryDrafts([]), { categories:[], errors:[] });
+});
+
+test('at most six categories and reasonable field sizes', () => {
+  const tooMany = Array.from({length:CATEGORY_LIMIT+1},(_,i)=>({...singles,name:'Category '+i}));
+  assert.ok(validateCategoryDrafts(tooMany).errors.some(e=>/six categories/i.test(e)));
+  assert.ok(validateCategoryDrafts([{...singles,notes:'A'.repeat(151)}]).errors.some(e=>/150/ig.test(e)));
+  assert.ok(validateCategoryDrafts([{...singles,name:'A'.repeat(81)}]).errors.some(e=>/80/ig.test(e)));
+});
+
+test('submission carries structured unverified categories into existing manual-review intake', () => {
+  const { categories, errors } = validateCategoryDrafts([singles,doubles]);
+  assert.deepEqual(errors,[]);
+  const message = buildOrganizerMessage({
+    registrationUrl:'https://example.org/events/next-tournament',title:'Sunday Open',
+    date:'2026-12-20',sport:'Badminton',venue:'Powai, Mumbai',
+    fee:'₹800 per player · ₹1,200 per pair',notes:'Organized by our academy',
+    categories
+  });
+  assert.match(message,/EVENT LISTING REQUEST — manual review required/);
+  assert.match(message,/Proposed categories \(UNVERIFIED; verify against official source\)/);
+  assert.match(message,/Open Singles \| ₹800 per player \| Open category/);
+  assert.match(message,/Open Doubles \| ₹1,200 per pair \| Register with your partner/);
+  assert.match(message,/Ownership is NOT verified/);
+  assert.ok(message.length <= 2000);
+  assert.equal(categoryDraftReviewText([]),'');
+});
+
+test('draft markup is explicit about manual review, does not publish, and leaks no player details', () => {
+  const markup = eventSubmissionMarkup();
+  assert.match(markup,/id="organizer-category-draft"/);
+  assert.match(markup,/id="organizer-add-category"/);
+  assert.match(markup,/Up to six optional categories/);
+  assert.match(markup,/not published/i);
+  assert.doesNotMatch(markup,/<input[^>]+name="playerEmail"/);
+  assert.match(categoryDraftMarkup(),/different categories or fees/i);
+  assert.deepEqual(readCategoryDraft(null),{categories:[],errors:[]});
+});
+
+test('category preview treats markup as data and stays source-unverified', () => {
+  const result = validateCategoryDrafts([{name:'<img src=x onerror=alert(1)>',fee:'₹100',unit:'team',notes:'<script>alert(1)</script>'}]);
+  assert.deepEqual(result.errors,[]);
+  const review = categoryDraftReviewText(result.categories);
+  assert.match(review,/UNVERIFIED/);
+  assert.match(review,/per team/);
+  assert.doesNotMatch(review, /payment confirmed|verified category/i);
+});
+
+test('international fees remain explicit and duplicated fee units are rejected', () => {
+  const inEuro = validateCategoryDrafts([{ name:'Tennis camp', fee:'€790', unit:'player', notes:'' }]);
+  assert.deepEqual(inEuro.errors,[]);
+  assert.equal(inEuro.categories[0].fee,'€790 per player');
+  const withUnit = validateCategoryDrafts([{ name:'Open Doubles', fee:'₹800 per pair', unit:'pair', notes:'' }]);
+  assert.ok(withUnit.errors.some(error=>/unit in the selector/i.test(error)));
+  assert.equal(withUnit.categories.length,0);
+});
+
+test('completed category rows satisfy fee and category guidance without duplicate summary entry', () => {
+  const { categories, errors } = validateCategoryDrafts([doubles]);
+  assert.deepEqual(errors, []);
+  const base = { registrationUrl:'https://example.org/open', name:'Club', email:'club@example.org',
+    title:'Open Tournament',sport:'Badminton',date:'2026-12-20',venue:'Powai',fee:'',notes:'' };
+  const before = organizerInformationChecklist(base);
+  const after = organizerInformationChecklist({ ...base, categories });
+  assert.equal(before.find(x=>x.label==='Fee and entry unit').present,false);
+  assert.equal(after.find(x=>x.label==='Fee and entry unit').present,true);
+  assert.equal(after.find(x=>x.label==='Category / eligibility explanation').present,true);
+});
+
+test('does not accept an empty currency symbol as a real entry fee', () => {
+  for (const fee of ['₹', 'USD', '€', '£', '₹ nope']) {
+    const result=validateCategoryDrafts([{name:'Open Singles',fee,unit:'player',notes:''}]);
+    assert.ok(result.errors.length, fee);
+    assert.equal(result.categories.length,0);
+  }
+  const valid=validateCategoryDrafts([{name:'Open Singles',fee:'inr 900',unit:'player',notes:''}]);
+  assert.deepEqual(valid.errors,[]);
+  assert.match(categoryDraftReviewText(valid.categories),/entry_unit=player/);
+});
+
+test('sport-aware starter categories are editable suggestions and contain no invented fees or eligibility', () => {
+  assert.equal(categoryPresetsForSport('Running').find(x=>x.name==='10K Run').unit, 'distance');
+  assert.equal(categoryPresetsForSport('Badminton').find(x=>x.name==='Doubles').unit,'pair');
+  assert.equal(categoryPresetsForSport('Pickleball').find(x=>x.name==='Mixed Doubles').unit,'pair');
+  assert.equal(categoryPresetsForSport('Chess').find(x=>x.name==='Rapid').unit,'player');
+  assert.deepEqual(categoryPresetsForSport('Other sport'),[]);
+  for (const list of Object.values(CATEGORY_PRESETS)) {
+    for (const preset of list) {
+      assert.ok(preset.name && preset.unit);
+      assert.equal(preset.fee,undefined);
+      assert.equal(preset.notes,undefined);
+      assert.ok(Object.hasOwn(CATEGORY_UNITS,preset.unit));
+    }
+  }
+  const markup=categoryDraftMarkup();
+  assert.match(markup,/organizer-category-preset/);
+  assert.match(markup,/organizer-use-preset/);
+  assert.match(markup,/Add custom category/);
+});
