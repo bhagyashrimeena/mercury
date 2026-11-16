@@ -22,7 +22,7 @@ export function categoryDraftMarkup() {
 }
 
 const feeHasPublishedValue = fee =>
-  /(?:₹|€|£|\$|\b(?:INR|EUR|USD|GBP|Rs\.?)\b)\s*\d/.test(fee) ||
+  /(?:₹|€|£|\$|\b(?:INR|EUR|USD|GBP|Rs\.?)\b)\s*\d/i.test(fee) ||
   /\b(?:free|no fee|to confirm|not published|see organizer)\b/i.test(fee);
 const containsFeeUnit = fee => /\bper\s+(?:player|person|pair|team|entry|category|distance)\b/i.test(fee);
 
