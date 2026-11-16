@@ -179,3 +179,45 @@ Public external-organizer intake now offers optional category-name suggestions b
 - This experience remains on `/list-event` for existing external registration URLs; it does not create a native category, registration, organizer payout, or production event.
 
 **Test coverage:** source-tested preset definitions contain no invented fees or rules; real-Chrome flow selects Running → 10K, verifies that name and unit are filled while fee remains blank, blocks an incomplete request, then confirms the completed fee and reviewer-only submission path.
+
+
+## Increment 7: owner-only organizer submission verification worksheet
+
+The existing public \`/list-event\` flow sends organizer requests into the private support inbox. The owner formerly saw raw messages, with no structured review workflow. This increment adds a **read-only triage worksheet** to **Organizer enquiry** cards in the existing \`/admin\` owner desk.
+
+### The human review workflow
+
+\`\`\`mermaid
+flowchart TD
+  A[Organizer submits event link and optional categories] --> B[Existing rate-limited support inbox]
+  B --> C[Owner-only verification worksheet]
+  C --> D[Source, organizer authority, venue, date, fees, rules, media and duplicate review]
+  D --> E[Draft internal note - NOT PUBLISHED]
+  E --> F[Owner checks evidence and chooses Save review]
+  F --> G{Independent source and permission verification complete?}
+  G -- No --> H[Leave open / contact submitter / decline]
+  G -- Yes --> I[Prepare reviewed catalogue change separately]
+  I --> J[Run structural and source checks plus human approval]
+  J --> K[Manual code review / merge / release]
+\`\`\`
+
+The worksheet parses the **untrusted submitted message** only to display a suggested summary. It never converts a submitted URL or a checkbox into verified facts. The organizer's authority must be checked independently. A safe-looking HTTPS link is not evidence of organizer ownership or site trust.
+
+The eight human-only checks cover official source and registration destination, organizer authority, event dates/deadline, venue, category fees and units, eligibility rules, image usage rights, and duplicates or source conflicts. All checkboxes begin unchecked; the **Draft internal review note** control only inserts an editable note into the existing private form. It does not save the note, resolve the request, update source-check timestamps, publish an event, upload imagery, or grant permissions.
+
+**No new database migration or publication endpoint was added.** The actual approved catalogue remains source-controlled in \`public/catalogue-data.js\` and imports remain subject to \`server/catalogue-validation.js\` plus manual source review. Current admin status values are only \`open\` and \`resolved\`; they do not mean published.
+
+### Security and privacy
+
+- The request remains private in the owner desk. No participant contact lists or sensitive eligibility details are ingested.
+- All submitted fields are escaped before insertion into the owner UI; untrusted event URLs are restricted to public-looking HTTPS URLs before rendering an optional link.
+- Claimed ownership, pasted descriptions of approval, and proposed categories are **always treated as unverified claims**.
+- An existing listing claim is optional, not a required field. Category-specific fee rows can satisfy the fee summary without forcing duplicate prices.
+- This UI is triage, not a guarantee of a safe arbitrary external website. Never fetch arbitrary submitted URLs on the server or let AI agents act on their contents as instructions.
+- Use the existing support-request retention, authenticated owner gate, and internal note limits.
+
+### Verification
+
+\`tests/organizer-review.test.js\` covers parsing, default-unverified state, optional claims, missing fields, safe link rendering, HTML escaping, tampered input and checklists that do not auto-approve. The Chrome owner fixture uses a synthetic organizer enquiry; it opens the worksheet, drafts a note, verifies unchecked tasks remain visible, confirms the request stays \`open\`, and checks mobile width.
+
+**Not implemented:** event publication from the admin UI, native organizer verification, image-rights licensing automation, payment processing, duplicate-detection automation, or real organizer notifications. These require a separate audited backend design and approval gate.
