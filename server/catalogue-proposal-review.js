@@ -41,11 +41,11 @@ export function assessCatalogueProposal(packet, existing = [], today = new Date(
     errors.push('record.checkedOn must match the actual human source review date.');
   if(day(record.endDate) && day(review.verifiedAt) && record.endDate < review.verifiedAt)
     errors.push('A new upcoming event cannot have concluded before source review.');
-  if (existing.some(item => item.id === record.id))
-    errors.push('This event ID already exists. Review an explicit update diff instead of importing as new.');
   if(!Array.isArray(existing))
     errors.push('Existing public catalogue is unavailable.');
   else {
+    if (existing.some(item => item.id === record.id))
+      errors.push('This event ID already exists. Review an explicit update diff instead of importing as new.');
     const checked=validateCatalogue([...existing,record],today);
     if(!checked.valid) errors.push(...checked.errors);
   }
