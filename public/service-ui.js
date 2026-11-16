@@ -1,4 +1,5 @@
 import { organizerReviewMarkup, mountOrganizerReviewWorksheets } from './organizer-review.js';
+import { buildUnpublishedCatalogueProposal } from './organizer-publication-proposal.js';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const title = (eyebrow, heading, copy='') => `<section class="page-intro"><p class="eyebrow blue">${eyebrow}</p><h1>${heading}</h1><p>${copy}</p></section>`;
 const errorSlot = '<p class="error" role="alert" tabindex="-1"></p>';
@@ -92,7 +93,13 @@ export async function renderAdmin(ctx) {
     ? '<p class="inline-notice">Aggregate counts are unavailable. Apply the site metrics migration before relying on this view.</p>'
     : `<div class="metric-grid">${stages.map(([key,label])=>`<p><b>${metricCounts.get(key)||0}</b><span>${label}</span></p>`).join('')}<p><b>${data.clicks.reduce((sum,row)=>sum+Number(row.count),0)}</b><span>Organizer-link clicks</span></p></div>`;
   ctx.main.querySelector('.owner-stats').insertAdjacentHTML('afterend',`<section class="section-space" aria-labelledby="funnel-title"><h2 id="funnel-title">Discovery and account activity</h2><p class="fine">Last 30 days. Counts are approximate actions, not unique people. Organizer-link clicks are not registrations. No search terms or player identities are stored in these counts.</p>${funnel}</section>`);
-  mountOrganizerReviewWorksheets(ctx.main);
+  mountOrganizerReviewWorksheets(ctx.main, data.support, request => {
+    const packet = buildUnpublishedCatalogueProposal(request);
+    if (!packet) throw Error('Organizer review packet could not be prepared.');
+    const safeId = String(request.id || '').replace(/[^a-zA-Z0-9-]/g,'').slice(0,60);
+    download(packet, 'mercury-catalogue-proposal-' + (safeId || 'draft') + '.json');
+    ctx.toast('Private review proposal exported. No event has been approved or published.');
+  });
   ctx.main.querySelectorAll('[data-support-id]').forEach(form=>submit(form,async d=>{await ctx.api('admin/support/'+form.dataset.supportId,d);ctx.toast('Review saved.');await renderAdmin(ctx);}));
   ctx.main.querySelectorAll('[data-listing-id]').forEach(form=>submit(form,async d=>{await ctx.api('admin/listing/'+form.dataset.listingId,{reason:d.reason,hidden:d.hidden==='true'});ctx.toast('Listing visibility updated.');await renderAdmin(ctx);}));
   ctx.main.querySelectorAll('[data-review-correction]').forEach(button=>button.onclick=async()=>{const r=data.corrections[Number(button.dataset.reviewCorrection)];button.disabled=true;try{await ctx.api('admin/correction',{listingId:r.listing_id,userId:r.user_id,resolved:r.status!=='resolved'});await renderAdmin(ctx);}catch(e){ctx.toast(e.message);button.disabled=false;}});
