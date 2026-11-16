@@ -116,3 +116,14 @@ test('completed category rows satisfy fee and category guidance without duplicat
   assert.equal(after.find(x=>x.label==='Fee and entry unit').present,true);
   assert.equal(after.find(x=>x.label==='Category / eligibility explanation').present,true);
 });
+
+test('does not accept an empty currency symbol as a real entry fee', () => {
+  for (const fee of ['₹', 'USD', '€', '£', '₹ nope']) {
+    const result=validateCategoryDrafts([{name:'Open Singles',fee,unit:'player',notes:''}]);
+    assert.ok(result.errors.length, fee);
+    assert.equal(result.categories.length,0);
+  }
+  const valid=validateCategoryDrafts([{name:'Open Singles',fee:'inr 900',unit:'player',notes:''}]);
+  assert.deepEqual(valid.errors,[]);
+  assert.match(categoryDraftReviewText(valid.categories),/entry_unit=player/);
+});
