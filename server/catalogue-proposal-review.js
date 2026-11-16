@@ -24,6 +24,8 @@ export function assessCatalogueProposal(packet, existing = [], today = new Date(
   if(!text(review.verifiedBy,3,80)) errors.push('Add a human reviewer name to review.verifiedBy.');
   if(!day(review.verifiedAt) || review.verifiedAt > today)
     errors.push('review.verifiedAt must be a real, nonfuture date.');
+  else if(day(today) && (Date.parse(today) - Date.parse(review.verifiedAt)) / 86400000 > 7)
+    errors.push('The independent source review is over seven days old; recheck before PR readiness.');
   if(!text(review.evidenceNotes,40,2000))
     errors.push('Record at least 40 characters of concrete source/ownership evidence in review.evidenceNotes.');
   if(!text(review.officialSourceUrl,12,500))
