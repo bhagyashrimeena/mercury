@@ -2850,6 +2850,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 .explore-page .explore-empty{padding:35px 20px;background:#fff;border:1px solid var(--border);border-radius:8px}
 .explore-page .explore-empty h3{font-size:20px;margin-bottom:6px}
 .explore-page .explore-empty p{font-size:13px;color:var(--muted)}
+
+.explore-page .explore-empty #widen-area{min-height:44px;max-width:100%;white-space:normal;text-align:center}
+.explore-page .area-recovery-notice:not([hidden]){display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px 18px;margin:10px 0 18px;padding:12px 15px;border:1px solid #cbd6fb;border-radius:10px;background:#f0f3ff}
+.explore-page .area-recovery-notice p{margin:0;max-width:700px;flex:1 1 300px;font-size:13px;line-height:1.6}
+.explore-page .area-recovery-notice .text-link{flex:0 1 auto;min-height:44px;text-align:left;color:var(--blue);font-size:12px;font-weight:800;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:480px){.explore-page .area-recovery-notice:not([hidden]){align-items:stretch}.explore-page .area-recovery-notice .text-link{width:100%}}
+
 .explore-page .explore-how{margin:26px 0 10px;padding:14px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
 .explore-page .explore-how summary{font-size:12px;font-weight:800;cursor:pointer;min-height:26px}
 .explore-page .explore-how p{margin:10px 0 0;max-width:700px;font-size:12px;line-height:1.65;color:var(--muted)}
