@@ -59,6 +59,18 @@ export function filterLineup(items, filters, now = Date.now()) {
   }).sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
 }
 
+// Broaden only the selected area. This intentionally preserves sport, date, free-text
+// query, price, level, format, booking route and selected entry-status semantics.
+// Returning a match never implies an external organizer is accepting entries.
+export function findAreaOnlyRecovery(items, filters, now = Date.now()) {
+  if (!filters?.area || filters.area === 'All Mumbai') return [];
+  return sortForDiscovery(
+    filterLineup(items, { ...filters, area: 'All Mumbai' }, now),
+    filters.sort || 'Soonest first',
+    now
+  );
+}
+
 // Keep uncertain external entries visible with explicit warnings rather than allowing the
 // seven-day source-freshness rule to empty Explore. Rank more actionable entries first.
 export function rankForDiscovery(items, filters = {}, now = Date.now()) {
@@ -130,7 +142,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
   const select = ([name, label, values], extraClass = '') =>
     '<label class="directory-filter ' + extraClass + '"><span>' + esc(label) + '</span><select name="' + esc(name) + '">' +
     values.map(value => '<option value="' + esc(value) + '"' + (value === defaults[name] ? ' selected' : '') + '>' +
-      esc(name === 'availability' && value === 'Entry possible' ? 'May accept entries · verify' : value) +
+      esc(name === 'area' && value === 'All Mumbai' ? 'Mumbai region' : name === 'availability' && value === 'Entry possible' ? 'May accept entries · verify' : value) +
       '</option>').join('') +
     '</select></label>';
   const symbols = { 'All sports': '✳', Tennis: '◉', Badminton: '◈', Pickleball: '◎', Running: '↝', Chess: '♟' };
@@ -177,6 +189,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
     '<button type="button" class="text-link" id="clear-filters">Reset</button></div>',
     '</div>',
     '<div id="active-filters" class="active-filters" role="group" aria-label="Active filters"></div>',
+    '<div id="area-recovery-notice" class="area-recovery-notice" role="status" aria-live="polite" hidden></div>',
     '<p class="explore-freshness" id="explore-freshness" hidden></p>',
     '<div class="event-grid" id="directory-results" aria-label="Upcoming sporting opportunities"></div>',
     waveRibbonMarkup(),
@@ -200,26 +213,35 @@ export function renderExplore({ main, events, listings, gameCard }) {
 
   let solo = params.get('solo') === '1';
   let editingQuery = false;
+  const areaSelect = form.elements.namedItem('area');
+  let expandedFromArea = areaSelect.value === 'All Mumbai' &&
+    typeof history.state?.mercuryAreaRecoveryFrom === 'string' &&
+    [...areaSelect.options].some(option => option.value === history.state.mercuryAreaRecoveryFrom && option.value !== 'All Mumbai')
+      ? history.state.mercuryAreaRecoveryFrom : null;
   const values = () => ({ ...Object.fromEntries(new FormData(form)), ...(solo ? { solo: '1' } : {}) });
   const writeUrl = (filters, mode) => {
     const search = new URLSearchParams();
     for (const [name, value] of Object.entries(filters))
       if (value && value !== defaults[name]) search.set(name, value);
     const url = '/explore' + (search.size ? '?' + search : '');
-    if (url !== location.pathname + location.search)
-      history[mode === 'push' ? 'pushState' : 'replaceState'](null, '', url);
+    if (url !== location.pathname + location.search) {
+      const state = history.state && typeof history.state === 'object' ? { ...history.state } : {};
+      if (expandedFromArea && filters.area === 'All Mumbai') state.mercuryAreaRecoveryFrom = expandedFromArea;
+      else delete state.mercuryAreaRecoveryFrom;
+      history[mode === 'push' ? 'pushState' : 'replaceState'](state, '', url);
+    }
+  };
+  const focusResults = () => {
+    const count = main.querySelector('#directory-count');
+    count.tabIndex = -1;
+    count.focus({ preventScroll: true });
   };
 
   const update = (mode = 'none') => {
     const filters = values();
+    if (filters.area !== 'All Mumbai') expandedFromArea = null;
     const result = sortForDiscovery(filterLineup(items, filters), filters.sort);
-    const widened = result.length ? [] : filterLineup(items, {
-      ...filters, query: '', area: 'All Mumbai', when: 'Any date', from: '', to: ''
-    });
-    const upcoming = result.length || widened.length ? [] : filterLineup(items, {
-      ...filters, query: '', area: 'All Mumbai', when: 'Any date',
-      from: '', to: '', availability: 'All upcoming'
-    });
+    const widened = result.length ? [] : findAreaOnlyRecovery(items, filters);
     main.querySelectorAll('[data-quick-name]').forEach(button => {
       const active = filters[button.dataset.quickName] === button.dataset.quickValue;
       button.setAttribute('aria-pressed', String(active));
@@ -243,16 +265,24 @@ export function renderExplore({ main, events, listings, gameCard }) {
       result.length + ' ' + (result.length === 1 ? 'event' : 'events') + ' · ' + (filters.sort || 'Soonest first');
     main.querySelector('#clear-filters').hidden = !Object.entries(filters).some(([name, value]) =>
       name === 'solo' || (value && value !== defaults[name]));
+    const canWidenArea = filters.area && filters.area !== 'All Mumbai';
+    const widerCount = widened.length;
+    const emptyMessage = widerCount
+      ? widerCount + ' ' + (widerCount === 1 ? 'event matches' : 'events match') +
+        ' across the Mumbai region with your sport, date, search text, fee, level, format and entry-status filters unchanged. ' +
+        'Published external listings do not guarantee that registration is open.'
+      : canWidenArea
+        ? 'Widening only the area finds no matches in our current Mumbai-region catalogue. ' +
+          'Your other filters remain unchanged; adjust one if you want to look further.'
+        : 'No events match all your selected filters in our current Mumbai-region catalogue. ' +
+          'You can adjust a filter or reset your search.';
     main.querySelector('#directory-results').innerHTML = result.length
       ? result.map(event => event.external ? listingCard(event) : gameCard(event)).join('')
-      : '<div class="empty explore-empty"><span aria-hidden="true">✳</span><h3>No games match those filters.</h3>' +
-        '<p>' + (widened.length
-          ? widened.length + ' opportunities match when the area, dates and search are widened.'
-          : upcoming.length
-            ? 'There are upcoming events, but their entry status needs checking with the organizer.'
-            : 'Try another sport or reset your filters to browse the lineup.') + '</p>' +
-        (widened.length ? '<button class="button outline" type="button" id="widen-search">Widen search</button>'
-          : upcoming.length ? '<button class="button outline" type="button" id="show-upcoming">See all upcoming</button>' : '') +
+      : '<div class="empty explore-empty"><span aria-hidden="true">✳</span>' +
+        '<h3>' + (canWidenArea ? 'No games match in ' + esc(filters.area) + '.' : 'No games match those filters.') + '</h3>' +
+        '<p>' + esc(emptyMessage) + '</p>' +
+        (widerCount ? '<button class="button outline" type="button" id="widen-area">' +
+          'Search Mumbai region (' + widerCount + ')</button>' : '') +
         '</div>';
 
     const active = Object.entries(filters).filter(([name, value]) =>
@@ -264,16 +294,26 @@ export function renderExplore({ main, events, listings, gameCard }) {
       ': ' + esc(value === '1' ? 'Yes' : value) + ' <span aria-hidden="true">×</span></button>'
     ).join('');
 
-    main.querySelector('#widen-search')?.addEventListener('click', () => {
-      for (const name of ['query', 'area', 'when', 'from', 'to'])
-        form.elements.namedItem(name).value = defaults[name];
+    const recoveryNotice = main.querySelector('#area-recovery-notice');
+    recoveryNotice.hidden = !expandedFromArea;
+    recoveryNotice.innerHTML = expandedFromArea
+      ? '<p>Area expanded from <strong>' + esc(expandedFromArea) +
+        '</strong> to the Mumbai region (including Thane and Navi Mumbai where listed). All other filters still apply.</p>' +
+        '<button type="button" class="text-link" id="restore-area">Restore ' + esc(expandedFromArea) + '</button>'
+      : '';
+    main.querySelector('#widen-area')?.addEventListener('click', () => {
+      expandedFromArea = filters.area;
+      areaSelect.value = 'All Mumbai';
       update('push');
+      focusResults();
     });
-    main.querySelector('#show-upcoming')?.addEventListener('click', () => {
-      for (const name of ['query', 'area', 'when', 'from', 'to'])
-        form.elements.namedItem(name).value = defaults[name];
-      form.elements.namedItem('availability').value = 'All upcoming';
+    main.querySelector('#restore-area')?.addEventListener('click', () => {
+      const previousArea = expandedFromArea;
+      if (!previousArea) return;
+      areaSelect.value = previousArea;
+      expandedFromArea = null;
       update('push');
+      focusResults();
     });
     if (mode !== 'none') writeUrl(filters, mode);
     return result.length;
