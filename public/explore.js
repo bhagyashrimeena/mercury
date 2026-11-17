@@ -364,7 +364,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
     });
   };
   main.querySelector('#clear-filters').onclick = () => {
-    form.reset(); form.elements.namedItem('sort').value = defaults.sort; solo = false; update('push');
+    form.reset(); form.elements.namedItem('sort').value = defaults.sort; solo = false; expandedFromArea = null; update('push');
   };
   main.querySelector('#active-filters').onclick = event => {
     const button = event.target.closest('[data-remove-filter]');
