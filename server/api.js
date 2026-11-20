@@ -4,6 +4,8 @@ import { findListing, currentListings, listingStatus, indiaDay } from '../public
 import { validateDraft, newId } from '../public/domain.js';
 import { CLIENT_METRICS, recordMetric } from './metrics.js';
 const ACTIVE = "('confirmed','checked_in')";
+// Paid registrations are not supported by this release. Never advertise a paid
+// event merely because a newer database schema marks it as published.
 const PUBLIC_SELECT = `SELECT e.*,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE}) AS registered FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
 export class ApiError extends Error {
     constructor(status, message, code = 'request_failed', fields = null) { super(message); this.status = status; this.code = code; this.fields = fields; }
@@ -82,6 +84,14 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
     if (op !== undefined) return op;
     if (m === 'GET' && route === 'health') {
         await one(db, 'SELECT 1 AS ok');
+        // Catch application/database drift before declaring this release healthy.
+        // Both columns are required by the organizer and booking write paths.
+        try {
+            await one(db, 'SELECT level FROM events LIMIT 0');
+            await one(db, 'SELECT level FROM bookings LIMIT 0');
+        } catch {
+            fail(503, 'The database schema is not compatible with this release.', 'schema_incompatible');
+        }
         return { ok: true, version: '0.5.0', paymentsEnabled: false };
     }
     if (m === 'POST' && route === 'metrics') {
@@ -109,11 +119,11 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         }
     }
     if (m === 'GET' && route === 'events') {
-        const rows = await all(db, `${PUBLIC_SELECT} WHERE e.status='published' AND e.starts_at>? ORDER BY e.starts_at LIMIT 100`, now);
+        const rows = await all(db, `${PUBLIC_SELECT} WHERE e.status='published' AND e.price=0 AND e.starts_at>? ORDER BY e.starts_at LIMIT 100`, now);
         return { events: rows.map(publicEvent) };
     }
     if (m === 'GET' && p[0] === 'events' && p.length === 2) {
-        const row = await one(db, `${PUBLIC_SELECT} WHERE e.id=? AND e.status IN ('published','cancelled')`, p[1]);
+        const row = await one(db, `${PUBLIC_SELECT} WHERE e.id=? AND e.price=0 AND e.status IN ('published','cancelled')`, p[1]);
         if (!row)
             fail(404, 'This game is not available.', 'not_found');
         return { event: publicEvent(row) };
@@ -307,7 +317,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         return { ok: true };
     }
     if (m === 'POST' && p[0] === 'saved' && p.length === 2) {
-        const e = await one(db, "SELECT id FROM events WHERE id=? AND status='published'", p[1]);
+        const e = await one(db, "SELECT id FROM events WHERE id=? AND price=0 AND status='published'", p[1]);
         if (!e)
             fail(404, 'Event not found.', 'not_found');
         if (b.saved === true)
