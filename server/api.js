@@ -4,7 +4,12 @@ import { findListing, currentListings, listingStatus, indiaDay } from '../public
 import { validateDraft, newId } from '../public/domain.js';
 import { CLIENT_METRICS, recordMetric } from './metrics.js';
 const ACTIVE = "('confirmed','checked_in')";
-const PUBLIC_SELECT = `SELECT e.*,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE}) AS registered FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
+// A pending payment holds capacity under the production unique index; it must
+// not, however, be auto-cancelled by the free-booking cancellation workflow.
+const RESERVED = "('pending','confirmed','checked_in')";
+// Paid registrations are not supported by this release. Never advertise a paid
+// event merely because a newer database schema marks it as published.
+const PUBLIC_SELECT = `SELECT e.*,o.name AS host,o.bio AS host_bio,o.contact AS host_contact,(SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${RESERVED}) AS registered FROM events e JOIN organizers o ON o.user_id=e.owner_id`;
 export class ApiError extends Error {
     constructor(status, message, code = 'request_failed', fields = null) { super(message); this.status = status; this.code = code; this.fields = fields; }
 }
@@ -82,6 +87,14 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
     if (op !== undefined) return op;
     if (m === 'GET' && route === 'health') {
         await one(db, 'SELECT 1 AS ok');
+        // Catch application/database drift before declaring this release healthy.
+        // Both columns are required by the organizer and booking write paths.
+        try {
+            await one(db, 'SELECT level FROM events LIMIT 0');
+            await one(db, 'SELECT level FROM bookings LIMIT 0');
+        } catch {
+            fail(503, 'The database schema is not compatible with this release.', 'schema_incompatible');
+        }
         return { ok: true, version: '0.5.0', paymentsEnabled: false };
     }
     if (m === 'POST' && route === 'metrics') {
@@ -109,11 +122,11 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         }
     }
     if (m === 'GET' && route === 'events') {
-        const rows = await all(db, `${PUBLIC_SELECT} WHERE e.status='published' AND e.starts_at>? ORDER BY e.starts_at LIMIT 100`, now);
+        const rows = await all(db, `${PUBLIC_SELECT} WHERE e.status='published' AND e.price=0 AND e.starts_at>? ORDER BY e.starts_at LIMIT 100`, now);
         return { events: rows.map(publicEvent) };
     }
     if (m === 'GET' && p[0] === 'events' && p.length === 2) {
-        const row = await one(db, `${PUBLIC_SELECT} WHERE e.id=? AND e.status IN ('published','cancelled')`, p[1]);
+        const row = await one(db, `${PUBLIC_SELECT} WHERE e.id=? AND e.price=0 AND e.status IN ('published','cancelled')`, p[1]);
         if (!row)
             fail(404, 'This game is not available.', 'not_found');
         return { event: publicEvent(row) };
@@ -186,12 +199,12 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
             const d = validate(b, now);
             if (e.status === 'cancelled')
                 fail(409, 'Cancelled events cannot be edited. Create a new event.', 'event_cancelled');
-            const active = await one(db, `SELECT COUNT(*) AS count FROM bookings WHERE event_id=? AND status IN ${ACTIVE}`, id);
+            const active = await one(db, `SELECT COUNT(*) AS count FROM bookings WHERE event_id=? AND status IN ${RESERVED}`, id);
             if (active.count > 0)
                 fail(409, 'This event has registrations. Cancel it before changing the advertised details.', 'has_registrations');
             if (e.status === 'published' && d.price > 0)
                 fail(409, 'Paid events are not enabled yet.', 'payments_unavailable');
-            const result = await run(db, `UPDATE events SET title=?,sport=?,area=?,venue=?,description=?,date=?,time=?,starts_at=?,capacity=?,price=?,level=?,format=?,included=?,bring=?,cancellation=?,revision=revision+1,updated_at=? WHERE id=? AND owner_id=? AND revision=? AND status!='cancelled' AND (status!='published' OR ?=0) AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${ACTIVE})`, ...eventValues(d), now, id, uid, Number(b.revision), d.price, id);
+            const result = await run(db, `UPDATE events SET title=?,sport=?,area=?,venue=?,description=?,date=?,time=?,starts_at=?,capacity=?,price=?,level=?,format=?,included=?,bring=?,cancellation=?,revision=revision+1,updated_at=? WHERE id=? AND owner_id=? AND revision=? AND status!='cancelled' AND (status!='published' OR ?=0) AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${RESERVED})`, ...eventValues(d), now, id, uid, Number(b.revision), d.price, id);
             if (!result.meta.changes)
                 fail(409, 'This event changed or received a booking. Reload before editing.', 'version_conflict');
             return { ok: true };
@@ -211,7 +224,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
             return { ok: true };
         }
         if (m === 'POST' && p[3] === 'unpublish') {
-            const result = await run(db, `UPDATE events SET status='draft',updated_at=? WHERE id=? AND owner_id=? AND status='published' AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${ACTIVE})`, now, id, uid, id);
+            const result = await run(db, `UPDATE events SET status='draft',updated_at=? WHERE id=? AND owner_id=? AND status='published' AND NOT EXISTS(SELECT 1 FROM bookings WHERE event_id=? AND status IN ${RESERVED})`, now, id, uid, id);
             if (!result.meta.changes)
                 fail(409, 'Events with registrations must be cancelled instead.', 'has_registrations');
             return { ok: true };
@@ -263,13 +276,13 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
                 fail(409, 'This request was already cancelled. Start a new registration.', 'request_cancelled');
             return { id: prior.id, existing: true };
         }
-        const existing = await one(db, `SELECT id FROM bookings WHERE user_id=? AND event_id=? AND status IN ${ACTIVE}`, uid, event.id);
+        const existing = await one(db, `SELECT id FROM bookings WHERE user_id=? AND event_id=? AND status IN ${RESERVED}`, uid, event.id);
         if (existing)
             return { id: existing.id, existing: true };
         const id = newId();
-        const result = await run(db, `INSERT INTO bookings(id,user_id,event_id,idempotency_key,player_name,level,rules_revision,consent_at,created_at) SELECT ?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM events e WHERE e.id=? AND e.status='published' AND e.price=0 AND e.starts_at>? AND e.revision=? AND (SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${ACTIVE})<e.capacity) ON CONFLICT DO NOTHING`, id, uid, event.id, key, name, level, event.revision, now, now, event.id, now, event.revision);
+        const result = await run(db, `INSERT INTO bookings(id,user_id,event_id,idempotency_key,player_name,level,rules_revision,consent_at,created_at) SELECT ?,?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM events e WHERE e.id=? AND e.status='published' AND e.price=0 AND e.starts_at>? AND e.revision=? AND (SELECT COUNT(*) FROM bookings b WHERE b.event_id=e.id AND b.status IN ${RESERVED})<e.capacity) ON CONFLICT DO NOTHING`, id, uid, event.id, key, name, level, event.revision, now, now, event.id, now, event.revision);
         if (!result.meta.changes) {
-            const duplicate = await one(db, `SELECT id FROM bookings WHERE user_id=? AND event_id=? AND status IN ${ACTIVE}`, uid, event.id);
+            const duplicate = await one(db, `SELECT id FROM bookings WHERE user_id=? AND event_id=? AND status IN ${RESERVED}`, uid, event.id);
             if (duplicate)
                 return { id: duplicate.id, existing: true };
             fail(409, 'The last spot was taken or this event changed. Please refresh.', 'capacity_changed');
@@ -307,7 +320,7 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         return { ok: true };
     }
     if (m === 'POST' && p[0] === 'saved' && p.length === 2) {
-        const e = await one(db, "SELECT id FROM events WHERE id=? AND status='published'", p[1]);
+        const e = await one(db, "SELECT id FROM events WHERE id=? AND price=0 AND status='published'", p[1]);
         if (!e)
             fail(404, 'Event not found.', 'not_found');
         if (b.saved === true)

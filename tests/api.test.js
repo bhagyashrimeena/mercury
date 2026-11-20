@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, readdirSync } from 'node:fs';
 import { apiHandler } from '../server/api.js';
 import { currentListings } from '../public/catalogue.js';
+import { buildOrganizerMessage } from '../public/organizer-public.js';
 const now = Date.parse('2026-11-01T00:00:00Z');
 const host = { userId: 'host-1', email: 'host@example.test', fullName: 'Host One' };
 const player = n => ({ userId: 'player-' + n, email: `player${n}@example.test`, fullName: 'Player ' + n });
@@ -20,6 +21,28 @@ function database() { const sqlite = new DatabaseSync(':memory:'); sqlite.exec('
 function harness() { const { db, sqlite } = database(); const consented = new Set(); const req = async (path, user = host, body, method = body ? 'POST' : 'GET', options = {}) => { if (user && options.consent !== false && path !== 'account/consent' && !consented.has(user.userId)) { await apiHandler(new Request('https://mercury.test/api/account/consent', { method:'POST',headers:{Origin:'https://mercury.test','Content-Type':'application/json'},body:JSON.stringify({accepted:true,adult:true,version:'2026-11-02'}) }),db,user,{now}); consented.add(user.userId); } const request = new Request('https://mercury.test/api/' + path, { method, headers: { Origin: options.origin || 'https://mercury.test', 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); const r = await apiHandler(request, db, user, { now: options.now ?? now, adminEmail: options.adminEmail ?? 'host@example.test' }); return { status: r.status, data: await r.json() }; }; const create = async (data = {}) => { await req('organizer/profile', host, { name: 'Weekend Club', bio: 'For the love of play', contact: 'host@example.test' }); const result = await req('organizer/events', host, { ...draft, ...data }); assert.equal(result.status, 200); return result.data.id; }; const publish = async (data = {}) => { const id = await create(data); assert.equal((await req(`organizer/events/${id}/publish`, host, {})).status, 200); return id; }; const join = (id, n, extra = {}) => req(`events/${id}/register`, player(n), { name: 'Player ' + n, level: 'Beginner', rulesAccepted: true, adultConfirmed: true, revision: 1, idempotencyKey: 'request-key-player-' + n, ...extra }); return { req, create, publish, join, sqlite }; }
 test('auth, origin and owner boundaries protect private records', async () => { const h = harness(); assert.equal((await h.req('session', null)).data.user, null); assert.equal((await h.req('organizer/events', null)).status, 401); const id = await h.publish(); assert.equal((await h.req('organizer/events/' + id + '/attendees', player(1))).status, 404); assert.equal((await h.req('organizer/events/' + id, player(1), { ...draft, revision: 1 }, 'PATCH')).status, 404); assert.equal((await h.req('profile', host, { name: 'Changed' }, 'POST', { origin: 'https://evil.test' })).status, 403); assert.equal((await h.req('organizer/events/' + id + '/cancel', player(1), {})).status, 404); h.sqlite.close(); });
 test('drafts are private; free publication and paid blocking are enforced', async () => { const h = harness(); const id = await h.create(); assert.equal((await h.req('events')).data.events.length, 0); assert.equal((await h.req('events/' + id)).status, 404); await h.req('organizer/events/' + id + '/publish', host, {}); assert.equal((await h.req('events')).data.events.length, 1); const paid = await h.create({ price: 450 }); const result = await h.req('organizer/events/' + paid + '/publish', host, {}); assert.equal(result.status, 409); assert.equal(result.data.error.code, 'payments_unavailable'); assert.equal((await h.join(paid, 1)).status, 409); h.sqlite.close(); });
+test('a paid event published by a newer database release is never advertised by the free-only API', async () => {
+  const h = harness();
+  const id = await h.create({ price: 1993 });
+  // Simulate a deployed database with a published paid event. Do not create
+  // payment records or use a live organizer submission.
+  h.sqlite.prepare("UPDATE events SET status='published' WHERE id=?").run(id);
+  assert.deepEqual((await h.req('events', null)).data.events, []);
+  assert.equal((await h.req('events/' + id, null)).status, 404);
+  assert.equal((await h.req('saved/' + id, player(1), { saved: true })).status, 404);
+  // Owners still have access to their record for support and reconciliation.
+  assert.equal((await h.req('organizer/events', host)).data.events.length, 1);
+  h.sqlite.close();
+});
+test('health rejects missing database columns required for organizer and registration writes', async () => {
+  const h = harness();
+  assert.equal((await h.req('health', null)).status, 200);
+  h.sqlite.exec('ALTER TABLE events DROP COLUMN level');
+  const result = await h.req('health', null);
+  assert.equal(result.status, 503);
+  assert.equal(result.data.error.code, 'schema_incompatible');
+  h.sqlite.close();
+});
 test('simultaneous requests never oversell the final places', async () => { const h = harness(); const id = await h.publish(); const results = await Promise.all(Array.from({ length: 12 }, (_, i) => h.join(id, i))); assert.equal(results.filter(r => r.status === 200).length, 2); assert.equal(results.filter(r => r.status === 409).length, 10); assert.equal((await h.req('events/' + id)).data.event.spots, 0); assert.equal(h.sqlite.prepare('SELECT count(*) n FROM bookings').get().n, 2); h.sqlite.close(); });
 test('retry and duplicate requests create exactly one active registration', async () => { const h = harness(); const id = await h.publish(); const results = await Promise.all([h.join(id, 1), h.join(id, 1), h.join(id, 1, { idempotencyKey: 'another-key-player-1' })]); assert.ok(results.every(r => r.status === 200)); assert.equal(new Set(results.map(r => r.data.id)).size, 1); assert.equal((await h.req('bookings', player(1))).data.bookings.length, 1); assert.equal((await h.req('bookings', player(2))).data.bookings.length, 0); h.sqlite.close(); });
 test('consent, event revision and start time are checked server-side', async () => { const h = harness(); const id = await h.publish(); assert.equal((await h.join(id, 1, { adultConfirmed: false })).status, 422); assert.equal((await h.join(id, 1, { rulesAccepted: false })).status, 422); assert.equal((await h.join(id, 1, { revision: 0 })).data.error.code, 'event_changed'); const updated = await h.req('organizer/events/' + id, host, { ...draft, title: 'Changed session name', revision: 1 }, 'PATCH'); assert.equal(updated.status, 200); assert.equal((await h.join(id, 1)).status, 409); assert.equal((await h.join(id, 1, { revision: 2 })).status, 200); const expired = await h.req('events/' + id + '/register', player(2), { name: 'Player Two', level: 'Beginner', adultConfirmed: true, rulesAccepted: true, idempotencyKey: 'expired-test-key-2', revision: 2 }, 'POST', { now: Date.parse('2026-11-09') }); assert.equal(expired.data.error.code, 'event_started'); h.sqlite.close(); });
@@ -120,6 +143,36 @@ test('sign-in alone persists no profile; consent is explicit, versioned and adul
   for(const body of [{accepted:false,adult:true,version:'2026-11-02'},{accepted:true,adult:false,version:'2026-11-02'},{accepted:true,adult:true,version:'old'}]) assert.equal((await h.req('account/consent',u,body)).status,422);
   assert.equal((await h.req('account/consent',u,{accepted:true,adult:true,version:'2026-11-02'})).status,200);
   assert.equal((await h.req('session',u,undefined,'GET',opts)).data.consentAccepted,true);
+  h.sqlite.close();
+});
+test('public list-event-style submission is durable in the private owner inbox, never published', async () => {
+  const h = harness();
+  const message = buildOrganizerMessage({
+    registrationUrl: 'https://sports.example.test/december-rally',
+    title: 'Community December Rally',
+    sport: 'Badminton',
+    date: '2026-12-20',
+    venue: 'Powai, Mumbai',
+    fee: 'Free, registration required',
+    notes: 'Organizer proposes an event for manual review.'
+  });
+  const submitted = await h.req('support', null, {
+    name: 'Synthetic Organizer', email: 'organizer@example.test',
+    category: 'Organizer enquiry', message, consent: true, website: ''
+  });
+  assert.equal(submitted.status, 200);
+  assert.ok(submitted.data.id);
+  assert.match(submitted.data.message, /support inbox/i);
+  const stored = h.sqlite.prepare('SELECT * FROM support_requests WHERE id=?').get(submitted.data.id);
+  assert.equal(stored.category, 'Organizer enquiry');
+  assert.match(stored.message, /manual review required/);
+  assert.match(stored.message, /https:\/\/sports.example.test\/december-rally/);
+  assert.equal(stored.status, 'open');
+  assert.equal((await h.req('admin/overview', player(1))).status, 403);
+  const owner = await h.req('admin/overview', host);
+  assert.equal(owner.status, 200);
+  assert.ok(owner.data.support.some(row => row.id === submitted.data.id));
+  assert.equal(h.sqlite.prepare('SELECT COUNT(*) AS n FROM events').get().n, 0);
   h.sqlite.close();
 });
 test('public support validates permission and limits abuse without leaking requests', async()=>{

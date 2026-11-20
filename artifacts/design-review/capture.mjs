@@ -462,8 +462,11 @@ try {
     const reset = JSON.parse(await evaluate('JSON.stringify({url:location.search,availability:document.querySelector("#directory-filters [name=availability]").value,clearHidden:document.querySelector("#clear-filters").hidden})'));
     if (reset.url || reset.availability !== 'All upcoming' || !reset.clearHidden) throw new Error(`Filter reset failed: ${JSON.stringify(reset)}`);
     await evaluate('document.querySelector("#directory-filters [name=area]").value="Andheri";document.querySelector("#directory-filters [name=area]").dispatchEvent(new Event("change",{bubbles:true}));document.querySelector("#directory-filters [name=when]").value="Next 7 days";document.querySelector("#directory-filters [name=when]").dispatchEvent(new Event("change",{bubbles:true}))');
-    const timeAndArea = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,areas:[...document.querySelectorAll("#directory-results .directory-card .photo-area")].map(element=>element.textContent)})'));
-    if (!timeAndArea.url.includes('area=Andheri') || !timeAndArea.url.includes('when=Next+7+days') || !timeAndArea.cards || timeAndArea.cards >= initial.cards || timeAndArea.areas.some(area=>!area.includes('Andheri'))) throw new Error(`Date and area filters failed: ${JSON.stringify(timeAndArea)}`);
+    const timeAndArea = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,areas:[...document.querySelectorAll("#directory-results .directory-card .photo-area")].map(element=>element.textContent),empty:!!document.querySelector(".explore-empty")})'));
+    // Date-relative inventory is not guaranteed to contain an Andheri event.
+    // Verify either genuine filtered matches or a useful zero-results message,
+    // rather than requiring a fabricated listing to satisfy the browser test.
+    if (!timeAndArea.url.includes('area=Andheri') || !timeAndArea.url.includes('when=Next+7+days') || timeAndArea.cards >= initial.cards || (!timeAndArea.cards && !timeAndArea.empty) || timeAndArea.areas.some(area => !area.includes('Andheri'))) throw new Error(`Date and area filters failed: ${JSON.stringify(timeAndArea)}`);
     await evaluate('document.querySelector("#clear-filters").click()');
     await evaluate('document.querySelector("#directory-filters [name=query]").value="no-such-game";document.querySelector("#directory-filters [name=query]").dispatchEvent(new Event("input",{bubbles:true}))');
     const empty = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,empty:!!document.querySelector(".explore-empty"),url:location.search})'));
