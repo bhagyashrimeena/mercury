@@ -70,10 +70,10 @@ export default function CompetitionView({ tournament, bracket, groups }: Props) 
           </div>)}</article>)}</div></div>)}</div>
         : <div className={styles.emptySmall}>The organizer has not published the knockout bracket yet.</div>}
     </section> : <section aria-label="Group standings" className={styles.section}>
-      <div className={styles.sectionHeading}><h2>Groups & standings</h2><p>Updated from confirmed results</p></div>
+      <div className={styles.sectionHeading}><h2>Groups & standings</h2><p>Updated from recorded results</p></div>
       {groups.length ? <div className={styles.groups}>{groups.map((group, index) => <article className={styles.group} key={group.groupId}>
-        <h3>Group {String.fromCharCode(65 + index)}</h3><div className={styles.tableScroll}><table><thead><tr><th scope="col">#</th><th scope="col">Team</th><th scope="col">P</th><th scope="col">W</th><th scope="col">Pts</th>{tournament.sport.toLowerCase().includes('cricket') ? <th scope="col">NRR</th> : null}</tr></thead>
-          <tbody>{group.rows.map(row => <tr key={row.position + row.entityName}><td>{row.position}</td><th scope="row">{row.entityName}</th><td>{row.played}</td><td>{row.won}</td><td><strong>{row.points}</strong></td>{tournament.sport.toLowerCase().includes('cricket') ? <td>{nrr(row.sportStats?.netRunRate)}</td> : null}</tr>)}</tbody></table></div>
+        <h3>Group {String.fromCharCode(65 + index)}</h3><div className={styles.tableScroll}><table><thead><tr><th scope="col">#</th><th scope="col">Team</th><th scope="col">P</th><th scope="col">W</th><th scope="col">D</th><th scope="col">L</th><th scope="col">Pts</th>{tournament.sport.toLowerCase().includes('football') ? <th scope="col">GD</th> : null}{tournament.sport.toLowerCase().includes('cricket') ? <th scope="col">NRR</th> : null}</tr></thead>
+          <tbody>{group.rows.map(row => <tr key={row.position + row.entityName}><td>{row.position}</td><th scope="row">{row.entityName}</th><td>{row.played}</td><td>{row.won}</td><td>{row.drawn}</td><td>{row.lost}</td><td><strong>{row.points}</strong></td>{tournament.sport.toLowerCase().includes('football') ? <td>{String(row.sportStats?.goalDifference ?? '—')}</td> : null}{tournament.sport.toLowerCase().includes('cricket') ? <td>{nrr(row.sportStats?.netRunRate)}</td> : null}</tr>)}</tbody></table></div>
       </article>)}</div> : <div className={styles.emptySmall}>Standings will appear when the organizer publishes the groups.</div>}
     </section>}
     <footer className={styles.footer}><span>Mercury by NextPlay Sports</span><a href="/explore">Discover more games ↗</a></footer>
