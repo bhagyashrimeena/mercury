@@ -12,6 +12,16 @@ test('catalogue has unique identities, dated primary provenance and HTTPS-only d
     for (const key of ['venue', 'host', 'eligibility', 'priceNote', 'deadlineLabel', 'registrationNote']) assert.ok(e[key].length > 5);
   }
 });
+test('Mumbai Pickleball Cup Season 3 uses the current edition venue and dated fee units', () => {
+  const event = findListing('mumbai-pickleball-cup-s3');
+  assert.equal(event.area, 'Borivali');
+  assert.match(event.venue, /AT Arena.*Borivali West/);
+  assert.doesNotMatch(event.venue, /Stratum Play|Malad/);
+  assert.match(event.priceNote, /₹1,200.*20 November 2026/);
+  assert.match(event.priceNote, /₹1,500.*21 November/);
+  assert.match(event.priceNote, /Doubles entry covers both players/);
+  assert.equal(event.checkedOn, '2026-11-20');
+});
 test('deadline timestamp closes exactly at cutoff; date-only deadlines do not invent a time', () => {
   const state = findListing('bombay-gymkhana-state-2026');
   assert.equal(listingStatus(state, at('2026-11-02T12:29:59Z')).code, 'check');
