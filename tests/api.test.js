@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, readdirSync } from 'node:fs';
 import { apiHandler } from '../server/api.js';
 import { currentListings } from '../public/catalogue.js';
+import { buildOrganizerMessage } from '../public/organizer-public.js';
 const now = Date.parse('2026-11-01T00:00:00Z');
 const host = { userId: 'host-1', email: 'host@example.test', fullName: 'Host One' };
 const player = n => ({ userId: 'player-' + n, email: `player${n}@example.test`, fullName: 'Player ' + n });
@@ -142,6 +143,36 @@ test('sign-in alone persists no profile; consent is explicit, versioned and adul
   for(const body of [{accepted:false,adult:true,version:'2026-11-02'},{accepted:true,adult:false,version:'2026-11-02'},{accepted:true,adult:true,version:'old'}]) assert.equal((await h.req('account/consent',u,body)).status,422);
   assert.equal((await h.req('account/consent',u,{accepted:true,adult:true,version:'2026-11-02'})).status,200);
   assert.equal((await h.req('session',u,undefined,'GET',opts)).data.consentAccepted,true);
+  h.sqlite.close();
+});
+test('public list-event-style submission is durable in the private owner inbox, never published', async () => {
+  const h = harness();
+  const message = buildOrganizerMessage({
+    registrationUrl: 'https://sports.example.test/december-rally',
+    title: 'Community December Rally',
+    sport: 'Badminton',
+    date: '2026-12-20',
+    venue: 'Powai, Mumbai',
+    fee: 'Free, registration required',
+    notes: 'Organizer proposes an event for manual review.'
+  });
+  const submitted = await h.req('support', null, {
+    name: 'Synthetic Organizer', email: 'organizer@example.test',
+    category: 'Organizer enquiry', message, consent: true, website: ''
+  });
+  assert.equal(submitted.status, 200);
+  assert.ok(submitted.data.id);
+  assert.match(submitted.data.message, /support inbox/i);
+  const stored = h.sqlite.prepare('SELECT * FROM support_requests WHERE id=?').get(submitted.data.id);
+  assert.equal(stored.category, 'Organizer enquiry');
+  assert.match(stored.message, /manual review required/);
+  assert.match(stored.message, /https:\/\/sports.example.test\/december-rally/);
+  assert.equal(stored.status, 'open');
+  assert.equal((await h.req('admin/overview', player(1))).status, 403);
+  const owner = await h.req('admin/overview', host);
+  assert.equal(owner.status, 200);
+  assert.ok(owner.data.support.some(row => row.id === submitted.data.id));
+  assert.equal(h.sqlite.prepare('SELECT COUNT(*) AS n FROM events').get().n, 0);
   h.sqlite.close();
 });
 test('public support validates permission and limits abuse without leaking requests', async()=>{
