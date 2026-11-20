@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title, description,
     robots: { index: false, follow: false },
     alternates: { canonical: `${siteOrigin()}/competition/${encodeURIComponent(id)}` },
-    openGraph: { title, description, type: 'website', images: ['/opengraph-image'] },
+    openGraph: { title, description, type: 'website', images: [`/competition/${encodeURIComponent(id)}/opengraph-image`] },
   };
 }
 
