@@ -115,6 +115,7 @@ export default async function SignIn({ searchParams }: { searchParams: Promise<S
           <div className="signin-links">
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
+            <Link href="/community-rules">Community Guidelines</Link>
             <Link href="/support?category=Sign-in%20issue">Trouble signing in?</Link>
           </div>
         </section>

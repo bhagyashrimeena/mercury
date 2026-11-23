@@ -28,6 +28,7 @@ export const shell = `
       <a href="/support">Support</a>
       <a href="/privacy">Privacy</a>
       <a href="/terms">Terms</a>
+      <a href="/community-rules" target="_top">Community Guidelines</a>
       <span>© 2026 NextPlay Sports Private Limited</span>
     </div>
   </footer>
