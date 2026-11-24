@@ -35,8 +35,9 @@ await new Promise((resolve, reject) => {
 let nextId = 0;
 const pending = new Map();
 const outboundRequests = [];
+const organizerSubmissions = [];
 const organizerFixture = ['fixture-organizer', 'fixture-preview', 'fixture-roster'].includes(mode);
-const ownerFixture = mode === 'fixture-owner';
+const ownerFixture = ['fixture-owner','fixture-owner-review'].includes(mode);
 const accountFixture = ['fixture-account', 'fixture-pass', 'fixture-register'].includes(mode) || pastBookingMode || cancelledBookingMode || organizerFixture || ownerFixture;
 const fixtureBooking = {
   id: 'review-pass', event_id: fixtureEvent.id, status: cancelledBookingMode ? 'event_cancelled' : 'confirmed', title: fixtureEvent.title,
@@ -63,6 +64,8 @@ socket.addEventListener('message', event => {
         paymentsEnabled: false, consentAccepted: accountFixture, isAdmin: ownerFixture };
       status = 200;
     } else if (parts[1] === 'support' && mode === 'fixture-event-submission') {
+      try { organizerSubmissions.push(JSON.parse(message.params.request.postData || '{}')); }
+      catch { organizerSubmissions.push({ invalid: true }); }
       payload = { id: 'test-organizer-request-123', message: 'Request is in the private owner inbox.' };
       status = 200;
     } else if (parts[1] === 'support' && mode === 'fixture-support-failure') {
@@ -91,7 +94,22 @@ socket.addEventListener('message', event => {
       payload = { event: fixtureEvent, attendees: organizerFixture ? [fixtureBooking] : [] };
       status = 200;
     } else if (parts[1] === 'admin' && parts[2] === 'overview') {
-      payload = { support: [], corrections: [], overrides: [], clicks: [{ listing_id: 'mumbai-flex-nov-2026', count: 9 }],
+      payload = { support: mode === 'fixture-owner-review' ? [{
+          id: 'review-enquiry', status: 'open', category: 'Organizer enquiry',
+          name: 'Review Organizer', email: 'review@example.test', internal_note: '', created_at: Date.now(),
+          message: [
+            'EVENT LISTING REQUEST — manual review required',
+            'Event / registration URL: https://example.org/events/winter',
+            'Name: Winter Badminton Open',
+            'Sport: Badminton',
+            'Date: 2026-12-20',
+            'Venue: Powai, Mumbai',
+            'Fee overview: ₹900 per player',
+            'Proposed categories (UNVERIFIED; verify against official source):',
+            '1. Open Singles | ₹900 per player [entry_unit=player]',
+            'Applicant confirms adult consent and permission. Ownership is NOT verified.'
+          ].join('\n')
+        }] : [], corrections: [], overrides: [], clicks: [{ listing_id: 'mumbai-flex-nov-2026', count: 9 }],
         metrics: [{ metric: 'home_view', count: 42 }, { metric: 'explore_view', count: 24 }, { metric: 'external_detail_view', count: 12 }, { metric: 'zero_results', count: 3 }, { metric: 'signin_error', count: 2 }, { metric: 'booking_confirmed', count: 1 }],
         metricsAvailable: true, saves: [], users: 5, listings: [] };
       status = 200;
@@ -303,6 +321,30 @@ try {
       throw Error('Public guide failed: '+reading.result.value);
     await writeFile(output,JSON.stringify(state,null,2));
     process.stdout.write(output+' publicly readable How It Works passed\n');
+  } else if (scope === 'repeat-edition') {
+    const reading = await send('Runtime.evaluate', {
+      expression:'JSON.stringify({path:location.pathname,search:location.search,'+
+        'intro:document.querySelector(".organizer-submission-intro")?.textContent,'+
+        'sport:document.querySelector("#public-event-submission [name=sport]")?.value,'+
+        'title:document.querySelector("#public-event-submission [name=title]")?.value,'+
+        'date:document.querySelector("#public-event-submission [name=date]")?.value,'+
+        'venue:document.querySelector("#public-event-submission [name=venue]")?.value,'+
+        'link:document.querySelector("#public-event-submission [name=registrationUrl]")?.value,'+
+        'contact:document.querySelector("#public-event-submission [name=email]")?.value,'+
+        'fees:[...document.querySelectorAll(".organizer-category-edit [data-category-field=fee]")].map(x=>x.value),'+
+        'names:[...document.querySelectorAll(".organizer-category-edit [data-category-field=name]")].map(x=>x.value),'+
+        'overflow:document.documentElement.scrollWidth>innerWidth})',
+      returnByValue:true
+    });
+    const state=JSON.parse(reading.result.value);
+    if(state.path!=='/list-event'||!state.search.includes('template=rotary-queen-city-half-marathon-2026')||
+      !state.intro?.includes('not an ownership claim')||state.sport!=='Running'||
+      state.title||state.date||state.venue||state.link||state.contact||
+      state.names.length!==4||!state.names.includes('5K Timed')||
+      state.fees.some(Boolean)||state.overflow)
+      throw Error('New-edition starter copied stale or sensitive event data: '+reading.result.value);
+    await writeFile(output,JSON.stringify(state,null,2));
+    process.stdout.write(output+' repeat-edition starter contains only public structure\\n');
   } else if (scope === 'public-submission') {
     const first=await send('Runtime.evaluate',{
       expression:'JSON.stringify({path:location.pathname,form:!!document.querySelector("#public-event-submission"),'+
@@ -326,6 +368,33 @@ try {
     const state=JSON.parse(fill.result.value);
     if(state.preview!=='Sunday Fun Run'||state.source!=='example.org')
       throw Error('Preview did not update: '+fill.result.value);
+    const categoryDraft=await send('Runtime.evaluate',{expression:'(() => {'+
+      'const form=document.querySelector("#public-event-submission");'+
+      'form.querySelector("[name=sport]").dispatchEvent(new Event("change",{bubbles:true}));'+
+      'const preset=document.querySelector("#organizer-category-preset");'+
+      'const option=[...preset.options].find(x=>x.textContent==="10K Run");'+
+      'if(!option)return JSON.stringify({present:false,presetOptions:[...preset.options].map(x=>x.textContent)});'+
+      'preset.value=option.value;preset.dispatchEvent(new Event("change",{bubbles:true}));'+
+      'document.querySelector("#organizer-use-preset").click();'+
+      'const row=document.querySelector(".organizer-category-edit");'+
+      'if(!row)return JSON.stringify({present:false});'+
+      'const name=row.querySelector("[data-category-field=name]").value;'+
+      'const unit=row.querySelector("[data-category-field=unit]").value;'+
+      'const feeBlank=row.querySelector("[data-category-field=fee]").value==="";'+
+      'form.requestSubmit();'+
+      'const invalid=document.querySelector("#event-submission-error")?.textContent;'+
+      'row.querySelector("[data-category-field=fee]").value="₹1,100";'+
+      'row.querySelector("[data-category-field=notes]").value="Age 18+";'+
+      'row.dispatchEvent(new Event("input",{bubbles:true}));'+
+      'return JSON.stringify({present:true,name,unit,feeBlank,invalid,preview:document.querySelector("#organizer-category-preview")?.textContent,'+
+      'count:document.querySelectorAll(".organizer-category-edit").length,'+
+      'overflow:document.documentElement.scrollWidth>innerWidth});})()',returnByValue:true});
+    const category=JSON.parse(categoryDraft.result.value);
+    if(!category.present||category.name!=='10K Run'||category.unit!=='distance'||!category.feeBlank||
+      !category.invalid?.includes('state the currency')||category.count!==1||
+      !category.preview?.includes('10K Run')||!category.preview?.includes('₹1,100 per distance')||
+      !category.preview?.includes('Age 18+')||category.overflow)
+      throw Error('Organizer category preset and preview failed: '+categoryDraft.result.value);
     await send('Runtime.evaluate',{expression:'document.querySelector("#public-event-submission").requestSubmit()'});
     await new Promise(resolve=>setTimeout(resolve,900));
     const result=await send('Runtime.evaluate',{expression:'JSON.stringify({ref:document.querySelector("#submitted-event-ref")?.textContent,'+
@@ -334,8 +403,49 @@ try {
     const completed=JSON.parse(result.result.value);
     if(completed.ref!=='test-organizer-request-123'||!completed.text.includes('manual review')||completed.overflow)
       throw Error('Review intake did not finish: '+result.result.value);
-    await writeFile(output,JSON.stringify({initial,preview:state,completed},null,2));
+    if(organizerSubmissions.length !== 1 || !organizerSubmissions[0]?.message?.includes('10K Run | ₹1,100 per distance') ||
+      !organizerSubmissions[0].message.includes('[entry_unit=distance]') ||
+      !organizerSubmissions[0].message.includes('UNVERIFIED'))
+      throw Error('Reviewed category data did not reach the existing intake request.');
+    await writeFile(output,JSON.stringify({initial,preview:state,category,completed,categoryIntakeVerified:true},null,2));
     process.stdout.write(output+' no-login organizer event submission passed\n');
+  } else if (scope === 'owner-review') {
+    const read = async expression => {
+      const result = await send('Runtime.evaluate',{expression,returnByValue:true});
+      if (result.exceptionDetails) throw Error(result.exceptionDetails.text);
+      return JSON.parse(result.result.value);
+    };
+    const initial = await read('JSON.stringify({path:location.pathname,worksheet:!!document.querySelector("[data-organizer-review]"),unverified:document.querySelector("[data-organizer-review]")?.textContent.includes("unverified"),published:document.querySelector("[data-organizer-review]")?.textContent.includes("automatic publication"),overflow:document.documentElement.scrollWidth>innerWidth})');
+    if(initial.path!=='/admin'||!initial.worksheet||!initial.unverified||!initial.published||initial.overflow)
+      throw Error('Owner review worksheet missing or incorrectly presented: '+JSON.stringify(initial));
+    const draft = await read('(() => {const section=document.querySelector("[data-organizer-review]");section.open=true;section.querySelector("[data-owner-review-check][value=source]").checked=true;section.querySelector("[data-owner-review-note]").click();const article=section.closest("article");return JSON.stringify({note:article.querySelector("textarea[name=note]")?.value,status:article.querySelector("select[name=status]")?.value,notice:section.querySelector("[data-owner-review-result]")?.textContent,overflow:document.documentElement.scrollWidth>innerWidth})})()');
+    if(!draft.note?.includes('NOT PUBLISHED')||!draft.note?.includes('[x] Confirm official source')||
+      !draft.note?.includes('[ ] Confirm organizer identity')||draft.status!=='open'||
+      !draft.notice?.includes('unpublished')||draft.overflow)
+      throw Error('Owner review cannot create an unsaved, nonpublishing internal note: '+JSON.stringify(draft));
+    const exported = await send('Runtime.evaluate',{
+      expression:'(async () => {'+
+        'let captured,blob;const original=HTMLAnchorElement.prototype.click,originalURL=URL.createObjectURL;'+
+        'URL.createObjectURL=function(value){blob=value;return originalURL.call(URL,value);};'+
+        'HTMLAnchorElement.prototype.click=function(){if(this.download?.startsWith("mercury-catalogue-proposal-"))captured={name:this.download};else original.call(this);};'+
+        'try{document.querySelector("[data-owner-review-export]").click();'+
+        'if(!captured||!blob)return JSON.stringify({captured:false});'+
+        'const packet=JSON.parse(await blob.text());'+
+        'return JSON.stringify({captured:true,filename:captured.name,schema:packet.schema,state:packet.state,'+
+        'sourceRequestId:packet.sourceRequestId,verifiedFields:Object.values(packet.record).filter(x=>x!==null&&(Array.isArray(x)?x.length:x)).length,'+
+        'privateData:JSON.stringify(packet).includes("review@example.test"),checks:Object.values(packet.review.checks),' +
+        'ownerStatus:document.querySelector("form[data-support-id] select[name=status]")?.value});'+
+        '}finally{HTMLAnchorElement.prototype.click=original;URL.createObjectURL=originalURL;}})()',
+      awaitPromise:true,returnByValue:true
+    });
+    if(exported.exceptionDetails) throw Error(exported.exceptionDetails.text);
+    const proposal=JSON.parse(exported.result.value);
+    if(!proposal.captured||!proposal.filename.endsWith('.json')||proposal.schema!=='mercury.catalogue-proposal.v1'||
+      proposal.state!=='needs_independent_review'||proposal.sourceRequestId!=='review-enquiry'||
+      proposal.verifiedFields!==0||proposal.privateData||proposal.checks.some(Boolean)||proposal.ownerStatus!=='open')
+      throw Error('Private catalogue review export violated unpublished safety gates: '+JSON.stringify(proposal));
+    await writeFile(output,JSON.stringify({initial,draft,proposal},null,2));
+    process.stdout.write(output+' organizer owner worksheet and unpublished proposal export passed\\n');
   } else if (scope === 'kinetic-explore') {
     const reading=await send('Runtime.evaluate',{
       expression:'JSON.stringify({arena:!!document.querySelector(".mercury-arena"),paths:document.querySelectorAll(".arena-wave-svg .arena-line").length,'+
@@ -369,6 +479,27 @@ try {
        throw Error('Kinetic listing page failed: '+reading.result.value);
     await writeFile(output,JSON.stringify(state,null,2));
     process.stdout.write(output+' event detail motion and facts passed\n');
+  } else if (scope === 'category-compare') {
+    const read = async expression => {
+      const result = await send('Runtime.evaluate', { expression, returnByValue: true });
+      if (result.exceptionDetails) throw Error(result.exceptionDetails.text);
+      return JSON.parse(result.result.value);
+    };
+    const first = await read('JSON.stringify({path:location.pathname,options:document.querySelectorAll(".category-choice input[type=radio]").length,title:document.querySelector("[data-category-title]")?.textContent,fee:document.querySelector("[data-category-fee]")?.textContent,notes:document.querySelector("[data-category-notes]")?.textContent,overflow:document.documentElement.scrollWidth>innerWidth})');
+    if (first.path !== '/listing/rotary-queen-city-half-marathon-2026' || first.options !== 4 ||
+      first.title !== '2.5K Fun Run' || first.fee !== '₹700' || first.overflow)
+      throw Error('Initial published category comparison failed: ' + JSON.stringify(first));
+    const click = await send('Runtime.evaluate', {
+      expression: 'document.querySelector(".category-choice input[value=\\\"2\\\"]")?.click()',
+      returnByValue: true
+    });
+    if (click.exceptionDetails) throw Error(click.exceptionDetails.text);
+    const second = await read('JSON.stringify({title:document.querySelector("[data-category-title]")?.textContent,fee:document.querySelector("[data-category-fee]")?.textContent,notes:document.querySelector("[data-category-notes]")?.textContent,caveat:document.querySelector("[data-category-eligibility]")?.textContent,unit:document.querySelector("[data-category-unit]")?.textContent,checked:document.querySelectorAll(".category-choice input[type=radio]")[2]?.checked,overflow:document.documentElement.scrollWidth>innerWidth})');
+    if (second.title !== '10K Timed' || second.fee !== '₹1,100' || !second.notes.includes('18+') ||
+      !second.checked || !second.caveat.includes('organizer') || !second.unit.includes('Fee unit not specified') || second.overflow)
+      throw Error('Category comparison choice failed: ' + JSON.stringify(second));
+    await writeFile(output, JSON.stringify({ first, second }, null, 2));
+    process.stdout.write(output + ' category selection, fee and honest eligibility passed\\n');
   } else if (scope === 'kinetic-home') {
     const reading=await send('Runtime.evaluate',{
       expression:'JSON.stringify({photo:!!document.querySelector(".web-hero-image img"),'+
@@ -466,12 +597,25 @@ try {
     const reset = JSON.parse(await evaluate('JSON.stringify({url:location.search,availability:document.querySelector("#directory-filters [name=availability]").value,clearHidden:document.querySelector("#clear-filters").hidden})'));
     if (reset.url || reset.availability !== 'All upcoming' || !reset.clearHidden) throw new Error(`Filter reset failed: ${JSON.stringify(reset)}`);
     await evaluate('document.querySelector("#directory-filters [name=area]").value="Andheri";document.querySelector("#directory-filters [name=area]").dispatchEvent(new Event("change",{bubbles:true}));document.querySelector("#directory-filters [name=when]").value="Next 7 days";document.querySelector("#directory-filters [name=when]").dispatchEvent(new Event("change",{bubbles:true}))');
-    const timeAndArea = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,areas:[...document.querySelectorAll("#directory-results .directory-card .photo-area")].map(element=>element.textContent)})'));
-    if (!timeAndArea.url.includes('area=Andheri') || !timeAndArea.url.includes('when=Next+7+days') || !timeAndArea.cards || timeAndArea.cards >= initial.cards || timeAndArea.areas.some(area=>!area.includes('Andheri'))) throw new Error(`Date and area filters failed: ${JSON.stringify(timeAndArea)}`);
+    const timeAndArea = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,areas:[...document.querySelectorAll("#directory-results .directory-card .photo-area")].map(element=>element.textContent),empty:!!document.querySelector(".explore-empty"),reset:!!document.querySelector("#empty-reset")})'));
+    // The fixture contains dated events: after they finish, the valid filtered result is empty.
+    // Require the correct URL and an honest recovery state instead of inventing events.
+    if (!timeAndArea.url.includes('area=Andheri') || !timeAndArea.url.includes('when=Next+7+days') ||
+      timeAndArea.cards >= initial.cards || timeAndArea.areas.some(area=>!area.includes('Andheri')) ||
+      (!timeAndArea.cards && (!timeAndArea.empty || !timeAndArea.reset)))
+      throw new Error(`Date and area filters failed: ${JSON.stringify(timeAndArea)}`);
     await evaluate('document.querySelector("#clear-filters").click()');
     await evaluate('document.querySelector("#directory-filters [name=query]").value="no-such-game";document.querySelector("#directory-filters [name=query]").dispatchEvent(new Event("input",{bubbles:true}))');
-    const empty = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,empty:!!document.querySelector(".explore-empty"),url:location.search})'));
-    if (empty.cards || !empty.empty || !empty.url.includes('query=no-such-game')) throw new Error(`Empty search failed: ${JSON.stringify(empty)}`);
+    const empty = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,empty:!!document.querySelector(".explore-empty"),reset:!!document.querySelector("#empty-reset"),url:location.search})'));
+    if (empty.cards || !empty.empty || !empty.reset || !empty.url.includes('query=no-such-game')) throw new Error(`Empty search failed: ${JSON.stringify(empty)}`);
+    // The suggested recovery must use the real catalogue and restore results
+    // without removing the chosen sport or inventing a new event.
+    const recovery = JSON.parse(await evaluate('JSON.stringify({exists:!!document.querySelector("[data-recovery=query]"),label:document.querySelector("[data-recovery=query]")?.textContent})'));
+    if (!recovery.exists || !recovery.label?.includes('listing')) throw new Error('No catalogue-backed keyword recovery: '+JSON.stringify(recovery));
+    await evaluate('document.querySelector("[data-recovery=query]").click()');
+    const restoredSearch = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length})'));
+    if (restoredSearch.url.includes('query=no-such-game') || restoredSearch.cards !== initial.cards)
+      throw new Error('Keyword recovery failed: '+JSON.stringify(restoredSearch));
     await evaluate('document.querySelector("#clear-filters").click();document.querySelector("#filter-toggle").click()');
     const advanced = JSON.parse(await evaluate('JSON.stringify({expanded:document.querySelector("#filter-toggle").getAttribute("aria-expanded"),focus:document.activeElement?.name,hidden:document.querySelector("#directory-more-panel").hidden,cards:document.querySelectorAll("#directory-results .directory-card").length})'));
     if (advanced.expanded !== 'true' || advanced.hidden || advanced.focus !== 'sport' || advanced.cards !== initial.cards) throw new Error(`Advanced filters failed: ${JSON.stringify(advanced)}`);
@@ -482,7 +626,7 @@ try {
     await evaluate('document.querySelector("#clear-filters").click()');
     await evaluate('document.querySelectorAll("[data-quick-name=fee]")[0].click()');
     const budget=JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length})'));
-    if(!budget.url.includes('fee=Under')||budget.cards>=initial.cards||!budget.cards)throw new Error('Quick fee filter failed: '+JSON.stringify(budget));
+    if(!budget.url.includes('fee=Under')||budget.cards>=initial.cards||(!budget.cards && !(await evaluate('!!document.querySelector(".explore-empty #empty-reset")'))))throw new Error('Quick fee filter failed: '+JSON.stringify(budget));
     await evaluate('document.querySelector("#clear-filters").click()');
     let native = null;
     if (mode === 'fixture-native-explore') {
