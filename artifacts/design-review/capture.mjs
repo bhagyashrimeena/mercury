@@ -478,9 +478,15 @@ try {
     await evaluate('document.querySelector("#ow-service-form").requestSubmit()');
     await check('empty brief blocked','document.querySelector(".os-error").textContent.includes("15 characters") && document.querySelector("[type=submit]").textContent.includes("Continue")');
     await evaluate('document.querySelector("[name=needs]").click();document.querySelector("[name=brief]").value="Synthetic test request for poster design."');
+    await check('corrected brief clears validation feedback','document.querySelector(".os-error").textContent===""');
     await serviceShot('brief');
     await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
     await send('Input.dispatchKeyEvent',{type:'keyUp',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});
+    // Native dialog close/focus restoration runs asynchronously after Escape.
+    for(let attempt=0;attempt<20;attempt++) {
+      if(await evaluate('!document.querySelector("#os-request-dialog").open && document.activeElement.dataset.service==="poster"'))break;
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }
     await check('escape closes and returns focus','!document.querySelector("#os-request-dialog").open && document.activeElement.dataset.service==="poster"');
     await evaluate('document.querySelector("[data-service=poster]").click()');
     await check('brief retained on reopen','document.querySelector("[name=brief]").value.includes("Synthetic") && document.querySelector("[name=needs]").checked');
