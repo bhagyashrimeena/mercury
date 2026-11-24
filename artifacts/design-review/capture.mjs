@@ -121,7 +121,7 @@ function send(method, params = {}) {
 }
 try {
   await send('Page.enable');
-  if (mode?.startsWith('fixture')) await send('Page.addScriptToEvaluateOnNewDocument', { source: `Date.now = () => ${fixtureNow};` });
+  if (mode?.startsWith('fixture')) await send('Page.addScriptToEvaluateOnNewDocument', { source: `const NativeDate = Date; window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : [${fixtureNow}])); } static now() { return ${fixtureNow}; } };` });
   await send('Runtime.enable');
   await send('Network.enable');
   await send('Network.setCacheDisabled', { cacheDisabled: true });
