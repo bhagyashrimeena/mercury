@@ -1,3 +1,4 @@
+import { homeMarkup } from '../public/home.js';
 import { getDatabase } from '../db/vercel';
 import { currentListings, indiaDay, listingDate, listingStatus } from '../public/catalogue.js';
 import { listingCard, listingHero } from '../public/discovery.js';
@@ -17,11 +18,6 @@ async function visibleListings() {
   } catch {
     return [];
   }
-}
-
-function discoveryCard(listing: Listing) {
-  const status = listingStatus(listing);
-  return `<article class="manage-card"><p class="eyebrow blue">${esc(listing.sport)} · ${esc(listing.type)}</p><h3><a href="/listing/${esc(listing.id)}">${esc(listing.title)}</a></h3><p><time datetime="${esc(listing.date)}">${esc(listingDate(listing))}</time> · ${esc(listing.area)}, Mumbai</p><p>${esc(listing.eligibility)}</p><p><b>${esc(listing.priceLabel)}</b> · ${esc(listing.priceNote)}</p><p class="listing-status ${esc(status.code)}">${esc(status.label)}</p><a class="text-link" href="/listing/${esc(listing.id)}">View entry details ↗</a></article>`;
 }
 
 function compactDiscoveryCard(listing: Listing) { return listingCard(listing); }
@@ -58,7 +54,7 @@ export async function discoveryFallback(view: 'home' | 'explore') {
       '</div>' + waveRibbonMarkup() + '<p class="fine explore-fine">Organizer listings are source-backed, not live inventory. Confirm final fees and eligibility before entering.</p>' +
       '<noscript><p class="fine">Listing details remain available without JavaScript. Interactive search and filters require JavaScript.</p></noscript></section>';
   }
-  return `<section class="page-width"><div class="page-intro"><p class="eyebrow blue">MUMBAI, IN PLAY</p><h1>${view === 'home' ? 'Find your next game in Mumbai.' : 'Explore upcoming games in Mumbai.'}</h1><p>Compare dates, area, eligibility, fee units and entry status. External events are registered with their organizers; selected free sessions can be booked on Mercury.</p></div><div class="manage-grid">${display.length ? display.map(discoveryCard).join('') : '<p>Upcoming games could not be loaded. Please try again shortly.</p>'}</div><a class="button primary" href="/explore">Explore games ↗</a><noscript><p>You can open listing details and organizer links without JavaScript.</p></noscript></section>`;
+  return homeMarkup(display.map(listingCard).join(''));
 }
 
 export function listingFallback(listing: Listing, visibility: 'visible' | 'hidden' | 'unavailable') {

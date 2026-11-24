@@ -1,0 +1,170 @@
+/* Website navigation and editorial home. Loaded after the legacy page styles. */
+body { padding-bottom:0 }
+.header { position:relative; height:88px; gap:24px }
+.header > nav { margin-left:auto }
+.header-actions { margin-left:0; gap:20px }
+.header .location { display:flex; align-items:center; gap:6px; font-size:13px }
+.header .account-link { display:inline-flex;align-items:center;min-height:44px;font-size:13px;font-weight:800;white-space:nowrap }
+.website-menu { position:relative;z-index:20 }
+.website-menu summary { display:flex;align-items:center;gap:7px;cursor:pointer;min-height:44px;min-width:44px;justify-content:center;font-size:13px;font-weight:800;list-style:none }
+.website-menu summary::-webkit-details-marker { display:none }
+.website-menu summary > span:first-child { font-size:22px;line-height:1 }
+.header .website-menu nav { position:absolute;right:0;top:52px;display:flex;flex-direction:column;align-items:stretch;gap:0;background:var(--chalk);width:240px;padding:12px;box-shadow:0 10px 35px #10131a22;border:1px solid var(--border);border-radius:14px }
+.header .website-menu nav a { padding:12px;font-size:14px;border-radius:6px }
+.header .website-menu nav a:hover { background:#e9edff }
+.header .website-menu nav a::after { display:none }
+.website-menu summary:focus-visible,.web-sport-tile:focus-visible { outline:3px solid var(--blue);outline-offset:4px }
+body .mobile-event-cta { bottom:0 }
+body.has-event-cta { padding-bottom:90px }
+.website-home { padding-top:18px }
+.web-kicker { font-size:11px;letter-spacing:.14em;font-weight:800;margin:0 0 18px;color:var(--blue) }
+.web-hero { display:grid;grid-template-columns:1.05fr 1fr;gap:40px;align-items:center;min-height:450px }
+.web-hero-copy { padding:16px 0 24px }
+.web-hero h1 { font-size:clamp(42px,4.9vw,72px);line-height:1.02;letter-spacing:-.065em;margin-bottom:22px }
+.website-home em { font-family:Archivo,Manrope,Arial,sans-serif;font-weight:800;color:var(--blue) }
+.web-hero-description { max-width:430px;font-size:16px;line-height:1.7;color:#51565e;margin-bottom:26px }
+.web-hero .button { min-height:50px;padding:14px 24px;border-radius:8px }
+.web-hero-note { display:block;font-size:12px;color:#5c626b;margin-top:14px }
+.web-hero-image { position:relative;height:440px;margin:0;overflow:hidden;border-radius:12px 12px 70px 12px;background:#0a3039 }
+.web-hero-image img { width:100%;height:100%;object-fit:cover;object-position:58% center }
+.web-photo-word { position:absolute;bottom:36px;left:24px;font:italic 900 clamp(40px,5.5vw,76px)/1 Archivo,Arial,sans-serif;letter-spacing:-.06em;color:var(--lime);transform:rotate(-5deg);text-shadow:0 2px 10px #0004 }
+.web-hero-image figcaption { position:absolute;bottom:0;left:0;right:0;padding:10px 16px;background:#10131acc;color:#fff;font-size:9px;letter-spacing:.02em }
+.web-search { display:grid;grid-template-columns:1fr 1fr 1fr auto;align-items:center;background:#fff;border:1px solid var(--border);box-shadow:0 8px 28px #10131a08;border-radius:12px;padding:12px;margin:26px 0 0;gap:0 }
+.web-search label { min-width:0;display:block;padding:5px 20px;border-right:1px solid var(--border) }
+.web-search label > span { display:block;font-size:10px;letter-spacing:.12em;font-weight:800;color:#666d75;margin-bottom:5px }
+.web-search select { min-height:34px;width:100%;border:0;background:transparent;color:var(--ink);font-size:14px;font-weight:700;padding:0 18px 0 0;cursor:pointer }
+.web-search .button { margin-left:18px;min-height:52px;border-radius:8px;padding:12px 24px }
+.web-sports,.website-home .web-upcoming,.web-how,.web-trust { padding-top:64px }
+.web-section-heading { display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:24px }
+.web-section-heading h2 { font-size:clamp(28px,3vw,42px);line-height:1.12;margin-bottom:0;letter-spacing:-.05em }
+.web-section-heading p:not(.web-kicker) { font-size:14px;color:#5c626b;line-height:1.5;margin:12px 0 0 }
+.web-section-heading .text-link { white-space:nowrap;font-size:13px;min-height:44px;display:flex;align-items:center;gap:14px }
+.web-sport-grid { display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px }
+.web-sport-image { overflow:hidden;border-radius:10px;background:#e5e8de;aspect-ratio:4/3 }
+.web-sport-image img { width:100%;height:100%;object-fit:cover;transition:transform .25s ease }
+.web-sport-tile > span { display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:15px;padding:12px 2px }
+.web-sport-tile > span > span { color:var(--blue) }
+.web-sport-tile:hover img { transform:scale(1.04) }
+.website-home #featured-grid { grid-template-columns:repeat(3,minmax(0,1fr));gap:22px }
+.website-home .directory-card.photo-card { border-radius:12px;box-shadow:none }
+.website-home .photo-card .photo-card-link { display:flex;flex-direction:column;height:100%;min-height:0 }
+.website-home .photo-card .listing-photo { height:auto;min-height:0;max-height:none;aspect-ratio:16/10;flex:none }
+.website-home .photo-card .listing-photo::after { display:none }
+.website-home .photo-card .photo-card-copy { min-height:0;padding:18px;gap:10px }
+.website-home .photo-card h3 { font-size:20px;line-height:1.25;-webkit-line-clamp:3;line-clamp:3 }
+.website-home .photo-card .photo-card-facts { font-size:12px;gap:7px }
+.website-home .photo-card .photo-card-foot { margin-top:8px;padding-top:8px }
+.website-home .photo-card .photo-sport { padding:0;background:none;font-size:10px;color:var(--blue) }
+.website-home .photo-card .photo-price strong { font-size:22px }
+/* The whole card is already a link; its affordance need not be a second button. */
+.photo-card .photo-cta { background:transparent;color:var(--blue);border:0;border-radius:0;padding:4px 0;min-height:0;font-weight:800 }
+.explore-page .photo-card .photo-card-link { min-height:0 }
+.explore-page .photo-card .photo-card-copy { min-height:0 }
+.explore-page .photo-card .photo-card-foot { margin-top:10px }
+.web-lineup-empty { grid-column:1/-1;padding:28px;background:#eef0e8;border-radius:12px }
+.web-lineup-empty h3 { margin-bottom:10px;font-size:22px }
+.web-lineup-empty p { color:#5c626b;font-size:14px }
+.web-how { margin-top:20px }
+.web-steps { list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px }
+.web-steps li { border-top:1px solid #cdd1c7;padding-top:20px }
+.web-steps li > span { display:block;color:var(--blue);font-size:13px;font-weight:800;margin-bottom:22px }
+.web-steps h3 { font-size:21px;margin-bottom:12px }
+.web-steps p { color:#5c626b;font-size:14px;line-height:1.7;margin:0 }
+.web-trust { display:grid;grid-template-columns:1fr 1fr;gap:70px;padding:40px;margin-top:64px;background:#eceee5;border-radius:12px }
+.web-trust h2 { font-size:34px;margin-bottom:18px }
+.web-trust p { font-size:14px;line-height:1.7;color:#555d64 }
+.web-trust-points { display:grid;gap:20px }
+.web-trust-points h3 { font-size:17px;margin-bottom:6px }
+.web-trust-points p { margin:0 }
+.web-trust-points a { text-decoration:underline }
+.web-organizers { background:var(--blue);color:white;border-radius:12px 12px 50px 12px;display:grid;grid-template-columns:1fr auto;gap:50px;align-items:center;padding:48px;margin:64px 0 16px }
+.web-organizers .web-kicker { color:var(--lime) }
+.web-organizers h2 { font-size:clamp(30px,3.4vw,46px);line-height:1.1;margin-bottom:20px }
+.web-organizers em { color:var(--lime) }
+.web-organizers p:not(.web-kicker) { max-width:560px;font-size:15px;line-height:1.7 }
+.web-organizers ul { display:flex;gap:10px 24px;flex-wrap:wrap;padding-left:18px;font-size:12px;margin:20px 0 0;line-height:1.6 }
+.web-organizer-actions { display:flex;flex-direction:column;gap:16px;text-align:center;font-size:13px;font-weight:700 }
+.web-organizer-actions .button { border-radius:8px;min-height:50px }
+@media(max-width:1000px) {
+  .header { gap:14px }
+  .header > nav { gap:18px }
+  .header-actions { gap:12px }
+  .header .location { display:flex }
+  .web-hero { gap:28px }
+  .web-hero-image { height:400px }
+  .web-organizers { grid-template-columns:1fr;padding:32px;gap:24px }
+  .web-organizer-actions { align-items:flex-start }
+}
+@media(max-width:760px) {
+  body .header,body:has(.explore-page) .header { height:72px;gap:10px;padding:0 18px;flex-wrap:nowrap }
+  .header .brand img { width:112px;height:auto }
+  .header > nav { display:none }
+  .header-actions { margin-left:auto;gap:12px }
+  .header .location { display:flex;font-size:12px;padding:0;min-height:44px;gap:4px }
+  .header .location span:last-child { display:none }
+  .header .account-link { font-size:12px }
+  .website-menu .menu-label { display:none }
+  .website-home { padding-top:8px }
+  .web-hero { grid-template-columns:1fr;gap:18px;min-height:0 }
+  .web-hero-copy { padding:12px 0 0 }
+  .web-kicker { font-size:10px;margin-bottom:14px }
+  .web-hero h1 { font-size:clamp(39px,9vw,58px);line-height:1.02;margin-bottom:16px;max-width:540px }
+  .web-hero-description { font-size:14px;line-height:1.65;margin-bottom:18px;max-width:500px }
+  .web-hero .button { min-height:46px;padding:12px 20px }
+  .web-hero-note { font-size:11px;margin-top:10px }
+  .web-hero-image { height:220px;border-radius:10px 10px 42px 10px }
+  .web-hero-image img { object-position:center 42% }
+  .web-photo-word { font-size:48px;left:18px;bottom:29px }
+  .web-hero-image figcaption { font-size:8px;padding:7px 12px }
+  .web-search { grid-template-columns:1fr 1fr;margin-top:18px;padding:8px;gap:8px }
+  .web-search label { padding:8px 10px;border:0 }
+  .web-search label:first-child { border-right:1px solid var(--border) }
+  .web-search label > span { font-size:9px }
+  .web-search select { font-size:13px;min-height:32px }
+  .web-search .button { margin:0;min-height:48px;padding:10px 12px;font-size:13px;justify-content:space-between }
+  .web-sports,.website-home .web-upcoming,.web-how { padding-top:40px }
+  .web-section-heading { gap:12px;margin-bottom:18px;align-items:center }
+  .web-section-heading h2 { font-size:29px }
+  .web-section-heading .text-link { font-size:11px;gap:6px;white-space:normal;text-align:right }
+  .web-section-heading p:not(.web-kicker) { font-size:12px }
+  .web-sport-grid { grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 12px }
+  .web-sport-tile > span { font-size:12px;padding-top:8px }
+  .web-sport-image { aspect-ratio:1; border-radius:9px }
+  .website-home #featured-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:14px }
+  .website-home .photo-card .photo-card-copy { padding:14px }
+  .website-home .photo-card h3 { font-size:18px }
+  .web-steps { gap:20px;grid-template-columns:1fr }
+  .web-steps li { position:relative;padding:18px 0 0 45px }
+  .web-steps li > span { position:absolute;left:0;top:20px }
+  .web-steps h3 { font-size:19px;margin-bottom:8px }
+  .web-steps p { font-size:13px }
+  .web-how .web-section-heading { align-items:flex-end }
+  .web-trust { grid-template-columns:1fr;gap:24px;margin-top:40px;padding:24px }
+  .web-trust h2 { font-size:29px }
+  .web-organizers { padding:28px 24px;margin-top:40px;gap:24px }
+  .web-organizers h2 { font-size:31px }
+  .web-organizers p:not(.web-kicker) { font-size:14px }
+  footer { margin-bottom:0;padding-bottom:32px }
+}
+@media(max-width:480px) {
+  .website-home #featured-grid { grid-template-columns:1fr }
+  .website-home .photo-card .listing-photo { aspect-ratio:16/9 }
+  .web-sport-grid { grid-template-columns:repeat(2,minmax(0,1fr)) }
+  .web-sport-image { aspect-ratio:4/3 }
+  .web-sport-tile > span { font-size:14px }
+  .web-sport-tile:last-child { grid-column:1/-1;display:flex;align-items:center;gap:14px;background:#eceee5;border-radius:9px;padding:10px }
+  .web-sport-tile:last-child .web-sport-image { width:60px;aspect-ratio:1 }
+  .web-sport-tile:last-child > span { flex:1 }
+}
+@media(max-width:360px) {
+  body .header,body:has(.explore-page) .header { padding:0 12px;gap:6px }
+  .header .brand img { width:96px }
+  .header-actions { gap:7px }
+  .header .location { font-size:11px }
+  .header .location span:first-child { display:none }
+  .website-menu summary { min-width:36px }
+  .web-hero h1 { font-size:36px }
+}
+@media(prefers-reduced-motion:reduce) {
+  .website-home *, .website-home *::before, .website-home *::after { animation:none!important;transition:none!important;scroll-behavior:auto!important }
+}

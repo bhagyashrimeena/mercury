@@ -9,15 +9,12 @@ export const shell = `
     </nav>
     <div class="header-actions">
       <button class="location" id="location-button" aria-label="Choose location"><span>⌖</span> Mumbai <span>⌄</span></button>
-      <a class="button small dark" href="/my-games">My games <span>↗</span></a>
+      <a class="account-link" id="account-link" href="/account">Sign in</a>
+      <details class="website-menu"><summary aria-label="Website menu"><span aria-hidden="true">☰</span><span class="menu-label">Menu</span></summary>
+        <nav aria-label="Website menu"><a href="/" data-nav="home">Home</a><a href="/explore" data-nav="explore">Explore games</a><a href="/my-games" data-nav="my-games">My games</a><a href="/how-it-works" data-nav="how-it-works">How it works</a><a href="/for-organizers" data-nav="for-organizers">For organizers</a><a href="/list-event">List your event ↗</a><a href="/support">Support</a></nav>
+      </details>
     </div>
   </header>
-  <nav class="mobile-nav" aria-label="Mobile navigation">
-    <a href="/" data-nav="home"><span aria-hidden="true">⌂</span>Home</a>
-    <a href="/explore" data-nav="explore"><span aria-hidden="true">⌕</span>Explore</a>
-    <a href="/my-games" data-nav="my-games"><span aria-hidden="true">♡</span>My games</a>
-    <a href="/for-organizers" data-nav="for-organizers"><span aria-hidden="true">⊕</span>Organizers</a>
-  </nav>
   <dialog id="action-sheet" aria-labelledby="sheet-title"></dialog>
   <main id="main" tabindex="-1">__SERVER_CONTENT__</main>
   <footer>

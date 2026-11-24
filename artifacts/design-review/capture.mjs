@@ -367,21 +367,21 @@ try {
     process.stdout.write(output+' event detail motion and facts passed\n');
   } else if (scope === 'kinetic-home') {
     const reading=await send('Runtime.evaluate',{
-      expression:'JSON.stringify({trail:!!document.querySelector(".home-speedlines"),'+
+      expression:'JSON.stringify({photo:!!document.querySelector(".web-hero-image img"),'+
         'featured:document.querySelectorAll("#featured-grid .photo-card").length,'+
-        'hero:!!document.querySelector(".home-journey .hero"),'+
+        'hero:!!document.querySelector(".web-hero"),'+
         'overflow:document.documentElement.scrollWidth>innerWidth})',
       returnByValue:true
     });
     const state=JSON.parse(reading.result.value);
-    if(!state.trail||!state.hero||!state.featured||state.overflow)
+    if(!state.photo||!state.hero||!state.featured||state.overflow)
       throw Error('Kinetic homepage failed: '+reading.result.value);
     await writeFile(output,JSON.stringify(state,null,2));
-    process.stdout.write(output+' animated Home hero and featured cards passed\n');
+    process.stdout.write(output+' photographic Home hero and featured cards passed\n');
   } else if (scope === 'ux-home') {
     const reading = await send('Runtime.evaluate', {
       expression: '(() => { const root=document.querySelector(".home-journey");' +
-        'const positions=[".quickline","#hero-search",".discovery-section",".hero",".host-banner"].map(s=>[...root.children].indexOf(root.querySelector(s)));' +
+        'const positions=[".web-hero","#hero-search",".web-sports",".discovery-section",".web-how",".web-trust",".web-organizers"].map(s=>[...root.children].indexOf(root.querySelector(s)));' +
         'return JSON.stringify({positions,featured:document.querySelectorAll("#featured-grid .directory-card").length,overflow:document.documentElement.scrollWidth>innerWidth,location:location.pathname});})()',
       returnByValue: true
     });
