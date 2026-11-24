@@ -27,8 +27,9 @@ const main = document.querySelector("main");
 const safeStorage = { getItem: (key) => localStorage.getItem(key) };
 document.querySelector(".skip").onclick = (e) => {
   e.preventDefault();
-  main.focus();
-  main.scrollIntoView();
+  const content = main.querySelector("#organizer-content") || main;
+  content.focus();
+  content.scrollIntoView();
 };
 const esc = (s) =>
   String(s).replace(

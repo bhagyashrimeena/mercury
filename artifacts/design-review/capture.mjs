@@ -85,7 +85,7 @@ socket.addEventListener('message', event => {
       payload = { bookings: accountFixture ? [fixtureBooking] : [] };
       status = 200;
     } else if (parts[1] === 'organizer' && parts[2] === 'requests') {
-      payload = { requests: [{ id: 'fixture-request-1', category: 'Organizer enquiry', message: '[Review fixture] Poster design assistance for a community event.', status: 'open', created_at: fixtureNow, updated_at: fixtureNow }] }; status = 200;
+      payload = { requests: [{ id: 'fixture-request-1', category: 'Organizer enquiry', message: '[Review fixture] Poster design assistance for a community event.', status: 'open', created_at: String(fixtureNow), updated_at: String(fixtureNow) }] }; status = 200;
     } else if (parts[1] === 'support' && mode === 'fixture-organizer-workspace') {
       payload = { id: 'fixture-request-1' }; status = 200;
     } else if (parts[1] === 'organizer' && parts[2] === 'events' && parts.length === 3) {
@@ -469,7 +469,7 @@ try {
     await check('service selection','document.querySelector("#ow-service-form [name=service]").value==="poster"');
     await evaluate('const form=document.querySelector("#ow-service-form");form.elements.name.value="Review Organizer";form.elements.email.value="review@example.test";form.elements.brief.value="Synthetic test request for poster design.";form.elements.consent.checked=true;form.requestSubmit()');
     await new Promise(resolve=>setTimeout(resolve,600));
-    await check('request persisted response and history','location.pathname==="/host/requests" && document.querySelector(".ow-request-list").textContent.includes("fixture-request-1")');
+    await check('request persisted response and history','location.pathname==="/host/requests" && document.querySelector(".ow-request-list").textContent.includes("fixture-request-1") && !document.querySelector(".ow-request-list").textContent.includes("Invalid Date")');
     await move('/host/settings');
     await check('profile remains connected','!!document.querySelector("#organizer-profile") && !document.querySelector("#event-form")');
     await move('/explore');
