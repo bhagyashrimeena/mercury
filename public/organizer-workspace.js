@@ -1,3 +1,5 @@
+import { servicesView, bindServices } from './organizer-services.js';
+export { ORGANIZER_SERVICES, serviceRequestMessage } from './organizer-services.js';
 // Website-first organizer workspace. All event/participant/request records come
 // from authenticated Mercury endpoints; the reference prototype's data is absent.
 export const encode = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -88,27 +90,6 @@ function overview(e,attendees) {
     ['Participants','Find players, export a roster and check them in.','/roster/'+encodeURIComponent(e.id)],['Creative Studio','Make an event poster using your saved details.',href('creative',e.id)],['Competition','Get help planning your draw and court schedule.',href('competition',e.id)],['Event day','Open the live player check-in list.','/roster/'+encodeURIComponent(e.id)+'?tab=eventday'],['Promote','Share your event with your community.',href('promote',e.id)],['Service requests','Ask the Mercury team for event assistance.','/host/services?event='+encodeURIComponent(e.id)]
   ].map(([title,desc,url])=>`<a href="${E(url)}"><b>${title} ↗</b><p>${desc}</p></a>`).join('')}</div><h3>About this event</h3><p>${E(e.description)}</p></section><aside class="ow-card"><h2>Event information</h2><dl class="ow-facts">${[['Status',eventStatus(e)],['Sport',e.sport],['Venue',e.venue],['Date',date(e)],['Start time',e.time+' IST'],['Playing level',e.level],['Capacity',e.capacity+' players']].map(([k,v])=>`<div><dt>${k}</dt><dd>${E(v)}</dd></div>`).join('')}</dl><div class="ow-actions">${e.status==='draft'&&Number(e.price)===0&&Number(e.startsAt)>Date.now()?`<button class="ow-btn primary" data-ow-action="publish">Publish free event ↗</button>`:''}${e.status==='published'&&!Number(e.registered)?'<button class="ow-btn" data-ow-action="unpublish">Return to draft</button>':''}${e.status!=='cancelled'?'<button class="ow-btn danger" data-ow-action="cancel">Cancel event</button>':''}</div>${e.status==='draft'?'<p class="ow-fine">Your draft is private. Only future free events can be published.</p>':''}</aside></div>`;
 }
-export const ORGANIZER_SERVICES = [
-  ['listing','Discovery','Event listing review','Submit an existing registration link for review.'],
-  ['promotion','Discovery','Promotion planning','Ask for help planning how to reach your sports community.'],
-  ['poster','Creative','Poster & flyer design','Request a design brief, poster or social asset pack.'],
-  ['branding','Creative','Tournament branding','Discuss a visual identity and reusable event assets.'],
-  ['operations','Operations','Tournament planning','Ask about draws, schedules, courts and event-day operations.'],
-  ['registration','Operations','Registration support','Get help planning player registration and check-in.'],
-  ['partners','Partners','Venue & partner assistance','Discuss venue, equipment or specialist support needs.'],
-  ['sponsors','Partners','Sponsorship planning','Prepare your sponsorship requirements and proposal brief.']
-];
-export function serviceRequestMessage({service,event,deadline,budget,brief}) {
-  const item=ORGANIZER_SERVICES.find(s=>s[0]===service);
-  if(!item) throw Error('Choose a service.');
-  if(String(brief||'').trim().length<15)throw Error('Describe what you need in at least 15 characters.');
-  return `[Mercury service request]\nService: ${item[2]}\nEvent: ${event||'Not selected'}\nNeeded by: ${deadline||'Flexible'}\nBudget: ${budget||'To discuss'}\n\n${String(brief).trim()}`.slice(0,2000);
-}
-function services(events,session) {
-  const params=new URLSearchParams(location.search),selection=params.get('service')||'';
-  return heading('MERCURY SERVICES','Everything your event needs.','Tell us what you need. The team will review availability, scope and any quote before work begins.',link('My requests ↗','/host/requests'))+
-    `<div class="ow-status-filters" aria-label="Service category">${['All','Discovery','Creative','Operations','Partners'].map(c=>`<button type="button" data-service-filter="${c}" aria-pressed="${c==='All'}">${c}</button>`).join('')}</div><div class="ow-service-grid">${ORGANIZER_SERVICES.map(([id,category,title,body])=>`<article class="ow-card" data-service-category="${category}"><p class="ow-eyebrow">${category}</p><h2>${title}</h2><p>${body}</p>${id==='listing'?link('Submit event link ↗','/list-event'): `<button class="ow-btn" type="button" data-service="${id}">Request assistance ↗</button>`}</article>`).join('')}</div><section class="ow-card ow-request-form"><h2>Tell us about your event</h2><p>Submitting an enquiry does not book a service or charge a fee. Availability and delivery dates are confirmed by the team.</p><form id="ow-service-form"><div class="ow-fields"><label>Service<select name="service" required><option value="">Choose a service</option>${ORGANIZER_SERVICES.filter(s=>s[0]!=='listing').map(([id,,title])=>`<option value="${id}" ${id===selection?'selected':''}>${title}</option>`).join('')}</select></label><label>Event<select name="event"><option value="">Not linked to an event</option>${events.map(e=>`<option value="${E(e.id)}" ${params.get('event')===e.id?'selected':''}>${E(e.title)}</option>`).join('')}</select></label><label>Your name<input name="name" value="${E(session.organizer?.name||session.user?.name||'')}" minlength="2" maxlength="80" required></label><label>Reply email<input name="email" type="email" value="${E(session.user?.email||'')}" maxlength="254" required></label><label>Needed by<input name="deadline" type="date"></label><label>Budget (optional)<input name="budget" maxlength="100" placeholder="e.g. ₹5,000 or to discuss"></label></div><label>What do you need?<textarea name="brief" rows="4" minlength="15" maxlength="1300" required placeholder="Tell us about the event, scope and timings."></textarea></label><label class="ow-check"><input name="consent" type="checkbox" required><span>I agree Mercury may contact me about this request. <a href="/privacy">Privacy notice</a>.</span></label><p role="alert" tabindex="-1"></p><button class="ow-btn primary" type="submit">Send request ↗</button><p class="ow-fine">Track the status in My requests. Email notifications are not automatic.</p></form></section>`;
-}
 function requestsView(requests) {
   return heading('SERVICES / MY REQUESTS','Your service requests','Requests linked to this signed-in account. Status is updated by the Mercury team.',link('Explore services ↗','/host/services','primary'))+
     (requests.length?`<div class="ow-request-list">${requests.map(r=>`<article class="ow-card"><div class="ow-section-title"><div><p class="ow-eyebrow">${E(r.category)}</p><h2>Request ${E(r.id.slice(0,8))}</h2></div>${status(r.status)}</div><p class="ow-fine">Submitted ${E(new Date(Number(r.created_at)).toLocaleDateString('en-IN',{timeZone:'Asia/Kolkata'}))}</p><pre>${E(r.message)}</pre><p class="ow-fine">Reference: ${E(r.id)}</p></article>`).join('')}</div>`:empty('No requests yet.','Requests you send while signed in appear here.',link('Explore services','/host/services','primary')));
@@ -145,18 +126,13 @@ export async function renderOrganizerWorkspace({main,session,api,go,toast,confir
   if(event){if(['overview','insights'].includes(tab)){const result=await api('organizer/events/'+encodeURIComponent(event.id)+'/attendees');people=result.attendees;}
     content=tab==='overview'?overview(event,people):['promote','creative'].includes(tab)?promote(event,tab==='creative'):tab==='insights'?insights(event,people):unavailable(event,tab);
   }else if(section==='events')content=eventsView(events);
-  else if(section==='services')content=services(events,session);
+  else if(section==='services')content=servicesView();
   else if(section==='requests'){const result=await api('organizer/requests');content=requestsView(result.requests);}
   else content=home(events,session);
   main.innerHTML=workspaceFrame(content,{session,tab:section,event,events,eventTab:tab});
   bindEventSwitch(main,go,tab);
   if(section==='events')bindEventList(main,events);
-  if(section==='services'){
-    main.querySelectorAll('[data-service-filter]').forEach(button=>button.onclick=()=>{main.querySelectorAll('[data-service-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));main.querySelectorAll('[data-service-category]').forEach(card=>card.hidden=button.dataset.serviceFilter!=='All'&&card.dataset.serviceCategory!==button.dataset.serviceFilter);});
-    const form=main.querySelector('#ow-service-form');
-    main.querySelectorAll('[data-service]').forEach(b=>b.onclick=()=>{form.elements.namedItem('service').value=b.dataset.service;form.scrollIntoView({behavior:'smooth',block:'start'});form.elements.namedItem('brief').focus({preventScroll:true});});
-    form.onsubmit=async ev=>{ev.preventDefault();if(form.dataset.busy||!form.reportValidity())return;form.dataset.busy='1';const button=form.querySelector('button[type=submit]'),alert=form.querySelector('[role=alert]');button.disabled=true;alert.textContent='';try{const data=Object.fromEntries(new FormData(form));const selected=events.find(e=>e.id===data.event);const message=serviceRequestMessage({...data,event:selected?selected.title+' ('+selected.id+')':''});const result=await api('support',{name:data.name,email:data.email,category:'Organizer enquiry',message,consent:data.consent==='on'});toast('Request sent. Reference: '+result.id);go('/host/requests');}catch(error){if(error.name!=='AbortError'){alert.textContent=error.message;alert.focus();}}finally{delete form.dataset.busy;button.disabled=false;}};
-  }
+  if(section==='services')bindServices(main,{events,session,api,go,toast});
   if(event){
     main.querySelectorAll('[data-ow-action]').forEach(b=>b.onclick=()=>{const act=b.dataset.owAction;confirmAction(act==='publish'?'Publish this event?':act==='cancel'?'Cancel this event?':'Return to draft?',act==='publish'?'Confirm your venue is ready. Players will be able to reserve a free place.':act==='cancel'?'All active registrations will be cancelled. Players receive an in-app update. This cannot be undone.':'The event will no longer appear in discovery.',act==='publish'?'Publish event':act==='cancel'?'Cancel event':'Return to draft',async()=>{await api('organizer/events/'+encodeURIComponent(event.id)+'/'+act,{});go(href('overview',event.id));toast('Event updated.');});});
     const copy=main.querySelector('#ow-copy-link');if(copy)copy.onclick=async()=>{try{await navigator.clipboard.writeText(main.querySelector('#ow-share-url').value);toast('Event link copied.');}catch{main.querySelector('#ow-share-url').select();toast('Select and copy the event link.');}};

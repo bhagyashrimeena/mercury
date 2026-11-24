@@ -24,3 +24,21 @@ test('organizer shell escapes account names and isolates contextual navigation',
  assert.ok(html.includes('aria-label="Organizer navigation"'));assert.ok(html.includes('Mobile organizer navigation'));
  assert.ok(!html.includes('sidebar'));assert.ok(!html.includes('LOCAL DEMO'));
 });
+
+test('service discovery matches actual needs and combines query with category',async()=>{
+ const {filterServices}=await import('../public/organizer-services.js');
+ assert.deepEqual(filterServices('court','Operations').map(s=>s.id),['operations']);
+ assert.deepEqual(filterServices('poster','Creative').map(s=>s.id),['poster']);
+ assert.equal(filterServices('poster','Partners').length,0);
+ assert.equal(filterServices('nonexistent').length,0);
+ assert.equal(filterServices().length,8);
+});
+test('guided requests accept selected needs, exclude forged choices and preserve scope',async()=>{
+ const {selectedServiceNeeds}=await import('../public/organizer-services.js');
+ assert.deepEqual(selectedServiceNeeds('poster',['Event poster','Event poster','Pay ₹900','Match schedule']),['Event poster']);
+ assert.throws(()=>serviceRequestMessage({service:'poster',needs:['Unknown'],brief:''}),/15 characters/);
+ const m=serviceRequestMessage({service:'operations',needs:['Court allocation','Match schedule'],event:'League',brief:'',deadline:'2026-12-01',budget:'Under ₹5,000'});
+ assert.match(m,/Match schedule, Court allocation/);assert.match(m,/League/);assert.match(m,/2026-12-01/);assert.match(m,/Under ₹5,000/);
+ const long=serviceRequestMessage({service:'poster',needs:['Event poster'],event:'e'.repeat(2000),budget:'b'.repeat(2000),brief:'Keep this important brief. '+ 'x'.repeat(2000)});
+ assert.ok(long.length<=2000);assert.match(long,/Keep this important brief/);
+});
