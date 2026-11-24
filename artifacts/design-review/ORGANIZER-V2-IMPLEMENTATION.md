@@ -53,3 +53,11 @@ pnpm build
 Local verification: 124 unit tests, syntax checks, typecheck and a webpack production build passed. The normal production build and real-browser workflow also run in GitHub Actions before publication.
 
 Screenshots from the isolated browser workflow contain explicitly synthetic review fixtures and a frozen test date. They show the implemented application, not production inventory or real private participant data. The visual reference is captured at the same widths for comparison. Public live verification is performed after deployment without creating production events or requests.
+
+## Services discovery follow-up
+
+Services now opens with visual goal-based browsing, instant search, an empty-state reset and direct links to event listing and the self-service poster maker. Seven assisted services use a native accessible dialog: service-specific multi-select brief, event/contact details, then a review with explicit contact consent. The page keeps Mercury’s palette and website navigation. District’s public category discovery informed the browse-first structure; no District assets or proprietary organizer behavior are copied.
+
+Requests use the existing authenticated support endpoint and account-scoped history. The dialog preserves edits when moving backwards or reopening during the current page visit, retains input on API failure and blocks duplicate submits while pending. It stores no request/contact data in browser persistence. Enquiries remain subject to availability, scope and quote confirmation. Budget ranges are organizer preferences, not prices.
+
+Validation adds search/category and scoped-brief tests (126 tests total). The existing CI browser harness checks all three steps at 320, 390 and 1440 pixels, keyboard Escape/focus return, editing, consent, event deep links, failed-submit retry, duplicate protection, submitted payload and mobile overflow. CI captures the browse screen and each request step with synthetic review fixtures.
