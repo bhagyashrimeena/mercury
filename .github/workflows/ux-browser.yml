@@ -68,12 +68,15 @@ jobs:
           node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/organizer-desktop.json fixture-organizer ux-organizer
           node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/organizer-phone.json fixture-organizer ux-organizer
           node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/roster-phone.json fixture-roster ux-roster
-      - name: Organizer workspace behavior and screenshots
+      - name: Organizer workspace behavior
         run: |
           for size in "1440 900 laptop" "390 844 mobile" "320 740 small"; do
             set -- $size
             node artifacts/design-review/capture.mjs http://localhost:3002/host "$1" "$2" "/tmp/mercury-ux-captures/organizer-workspace-$3.json" fixture-organizer-workspace ux-workspace
           done
+      - name: Organizer workspace screenshots
+        if: always()
+        run: |
           for size in "1440 900 laptop" "390 844 mobile"; do
             set -- $size
             node artifacts/design-review/capture.mjs http://localhost:3002/__organizer-reference.html "$1" "$2" "/tmp/mercury-ux-captures/organizer-reference-$3.png" organizer-reference full

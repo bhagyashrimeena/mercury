@@ -137,7 +137,9 @@ try {
     try { new PerformanceObserver(list => { for (const entry of list.getEntries()) window.__mercuryPerf.lcp = entry.startTime; }).observe({ type: 'largest-contentful-paint', buffered: true }); } catch {}
     try { new PerformanceObserver(list => { for (const entry of list.getEntries()) if (!entry.hadRecentInput) { window.__mercuryPerf.cls += entry.value; window.__mercuryPerf.shifts.push({ value: entry.value, sources: entry.sources.map(source => ({ node: source.node?.tagName + '.' + source.node?.className, previous: source.previousRect, current: source.currentRect })) }); } }).observe({ type: 'layout-shift', buffered: true }); } catch {}
   ` });
-  await send('Page.navigate', { url });
+  // Bootstrap the public shell before injecting a synthetic organizer session.
+  // Direct private-route requests correctly pass through the real sign-in gate.
+  await send('Page.navigate', { url: mode === 'fixture-organizer-workspace' ? new URL('/', url).href : url });
   await new Promise(resolve => setTimeout(resolve, mode === 'loading' ? 850 : 2400));
   if (mode === 'fixture-open-filters') {
     await send('Runtime.evaluate', { expression: 'document.querySelector("#filter-toggle")?.click()' });
@@ -450,7 +452,7 @@ try {
     const evaluate = async expression => { const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true}); if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text); return r.result.value; };
     const move = async path => { await evaluate('history.pushState(null,"",'+JSON.stringify(path)+');dispatchEvent(new PopStateEvent("popstate"))'); await new Promise(resolve=>setTimeout(resolve,450)); };
     const checks=[];
-    const check=async(label,expression)=>{const result=await evaluate(expression);if(!result)throw Error('Organizer workspace failed: '+label);checks.push(label);};
+    const check=async(label,expression)=>{const result=await evaluate(expression);if(!result){const shot=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});await writeFile(output.replace(/\.json$/, '-failure.png'),Buffer.from(shot.data,'base64'));const detail=await evaluate('JSON.stringify({url:location.href,text:document.querySelector("main").innerText.slice(0,1600),overflow:[...document.querySelectorAll("main *")].filter(e=>e.getBoundingClientRect().right>innerWidth+1).slice(0,10).map(e=>e.className)})');throw Error('Organizer workspace failed: '+label+' '+detail);}checks.push(label);};
     await check('dashboard, owned metrics, no public header or overflow','!!document.querySelector(".ow-start-grid") && document.querySelectorAll(".ow-kpi").length===4 && getComputedStyle(document.querySelector(".header")).display==="none" && document.documentElement.scrollWidth<=innerWidth');
     await move('/host/events');
     await check('owned event list','document.querySelectorAll(".ow-event-card").length===1');
