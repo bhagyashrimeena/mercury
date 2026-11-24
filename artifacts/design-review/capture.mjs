@@ -5,6 +5,9 @@ const [url, widthText, heightText, output, mode, scope] = process.argv.slice(2);
 if (!url || !output) throw new Error('Usage: capture.mjs URL WIDTH HEIGHT OUTPUT');
 const width = Number(widthText), height = Number(heightText);
 if (!Number.isInteger(width) || !Number.isInteger(height)) throw new Error('Invalid viewport');
+// Keep mocked catalogue checks deterministic as the real calendar advances.
+const fixtureNow = Date.parse('2026-11-10T06:00:00Z');
+if (mode?.startsWith('fixture')) Date.now = () => fixtureNow;
 const pastBookingMode = ['fixture-past-games', 'fixture-expired-pass'].includes(mode);
 const cancelledBookingMode = mode === 'fixture-cancelled-booking';
 const fixtureDate = indiaDay(Date.now() + (pastBookingMode ? -1 : 7) * 86400000);
@@ -118,6 +121,7 @@ function send(method, params = {}) {
 }
 try {
   await send('Page.enable');
+  if (mode?.startsWith('fixture')) await send('Page.addScriptToEvaluateOnNewDocument', { source: `Date.now = () => ${fixtureNow};` });
   await send('Runtime.enable');
   await send('Network.enable');
   await send('Network.setCacheDisabled', { cacheDisabled: true });

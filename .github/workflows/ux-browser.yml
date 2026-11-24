@@ -37,6 +37,11 @@ jobs:
         run: |
           mkdir -p /tmp/mercury-ux-captures
           node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/home-desktop.json fixture-home ux-home
+          node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/home-phone.json fixture-home ux-home
+          node artifacts/design-review/capture.mjs http://localhost:3002/ 320 740 /tmp/mercury-ux-captures/home-small.json fixture-home ux-home
+          node artifacts/design-review/capture.mjs http://localhost:3002/ 768 900 /tmp/mercury-ux-captures/home-tablet.json fixture-home ux-home
+          node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/home-phone.png fixture-home
+          node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/home-desktop.png fixture-home
           node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/explore-warm-navigation.json fixture-slow-session explore-fast
           node artifacts/design-review/capture.mjs http://localhost:3002/how-it-works 390 844 /tmp/mercury-ux-captures/explore-cold-navigation.json fixture-slow-session explore-fast
           node artifacts/design-review/capture.mjs http://localhost:3002/for-organizers 1440 900 /tmp/mercury-ux-captures/organizer-landing-desktop.json fixture-home public-organizer
@@ -58,11 +63,6 @@ jobs:
           node artifacts/design-review/capture.mjs http://localhost:3002/explore 1440 900 /tmp/mercury-ux-captures/explore-desktop.png fixture-explore
           node artifacts/design-review/capture.mjs http://localhost:3002/explore 390 844 /tmp/mercury-ux-captures/explore-phone.png fixture-explore
           node artifacts/design-review/capture.mjs http://localhost:3002/explore 390 844 /tmp/mercury-ux-captures/explore-handoff.json fixture-explore handoff
-          node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/home-phone.json fixture-home ux-home
-          node artifacts/design-review/capture.mjs http://localhost:3002/ 320 740 /tmp/mercury-ux-captures/home-small.json fixture-home ux-home
-          node artifacts/design-review/capture.mjs http://localhost:3002/ 768 900 /tmp/mercury-ux-captures/home-tablet.json fixture-home ux-home
-          node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/home-phone.png fixture-home
-          node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/home-desktop.png fixture-home
           node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/organizer-desktop.json fixture-organizer ux-organizer
           node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/organizer-phone.json fixture-organizer ux-organizer
           node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/roster-phone.json fixture-roster ux-roster
