@@ -60,3 +60,27 @@ body.in-play{--muted:#62666e;--border:#d7dad2;--line:#d7dad2;--soft:#edefe7;marg
 .in-play .organizer-public-actions .button.primary{background:var(--lime);color:var(--ink)}
 .in-play .organizer-public-actions .button.outline{border-color:#ffffff80;color:#fff}
 .in-play .explore-page .sport-pill[aria-pressed=true]{background:var(--ink);color:var(--lime);border-color:var(--ink)}
+/* Remove residual editorial styles on components mapped from the prototype. */
+body.in-play .page-width{padding-bottom:0}
+body.in-play .header{display:grid;grid-template-columns:1fr auto 1fr}
+body.in-play .header>nav{margin-left:0}
+body.in-play .header-actions{justify-self:end}
+body.in-play footer>div{margin-left:0;font-size:12px}
+body.in-play .ip-hero.organizer-public-hero{align-items:stretch}
+body.in-play .organizer-public-hero>div.ip-hero-copy>p:not(.ip-eyebrow){color:#fff;font-size:17px;line-height:1.5}
+body.in-play .organizer-public-hero>div.ip-hero-copy>p.ip-eyebrow{color:var(--lime);font-size:12px}
+body.in-play .organizer-value{border:0}
+body.in-play .organizer-funnel-steps article>b{display:block;width:auto;height:auto;background:none;border-radius:0;color:var(--lime);transform:none}
+body.in-play .organizer-submission-preview .eyebrow{color:var(--blue)}
+body.in-play #public-event-submission .support-trap{display:none}
+body.in-play .form-card .organizer-consent{display:flex;align-items:flex-start;gap:10px}
+body.in-play .organizer-consent input{flex:none;margin-top:4px}
+body.in-play .explore-page #directory-filters :is(input,select){min-height:46px;height:46px;font-size:16px;background:#fff;border-radius:8px;padding:10px 12px}
+body.in-play .explore-page #directory-filters input[name=query]{padding-left:40px}
+body.in-play .explore-page #filter-toggle{min-height:46px;font-size:14px;border-radius:8px;background:var(--blue);border-color:var(--blue)}
+body.in-play .explore-page #directory-filters .directory-extra{padding:20px;border:1px solid var(--line)}
+body.in-play .explore-page .results-heading h2{font-family:Manrope,Arial,sans-serif;font-style:normal}
+body.in-play .explore-page .results-heading h2:after{display:none}
+body.in-play .page-width .booking-panel .button{border-radius:8px;box-shadow:none;transform:none}
+body.in-play .page-width .booking-panel .button.primary{background:var(--blue);color:#fff}
+@media(max-width:800px){body.in-play .header{display:flex}body.in-play .web-how>.ip-display{font-size:32px}body.in-play .explore-page #directory-filters .directory-extra{padding:16px}}

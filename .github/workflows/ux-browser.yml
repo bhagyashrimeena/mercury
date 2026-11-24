@@ -73,11 +73,14 @@ jobs:
           for size in "1440 900 laptop" "390 844 mobile"; do
             set -- $size
             node artifacts/design-review/capture.mjs http://localhost:3002/__approved-reference.html "$1" "$2" "/tmp/mercury-ux-captures/reference-$3.png" live full
-            for page in home explore for-organizers how-it-works list-event about support privacy terms account my-games; do
+            for page in home explore for-organizers how-it-works list-event about support privacy terms account my-games community-rules; do
               route="$page"
               if [ "$page" = home ]; then route=""; fi
               node artifacts/design-review/capture.mjs "http://localhost:3002/$route" "$1" "$2" "/tmp/mercury-ux-captures/$page-$3.png" fixture-home full
             done
+            node artifacts/design-review/capture.mjs http://localhost:3002/listing/mumbai-flex-nov-2026 "$1" "$2" "/tmp/mercury-ux-captures/event-external-$3.png" fixture-explore full
+            node artifacts/design-review/capture.mjs http://localhost:3002/event/review-state "$1" "$2" "/tmp/mercury-ux-captures/event-mercury-$3.png" fixture-home full
+            node artifacts/design-review/capture.mjs http://localhost:3002/explore "$1" "$2" "/tmp/mercury-ux-captures/filters-$3.png" fixture-open-filters full
           done
       - name: Upload fixture reports
         if: always()
