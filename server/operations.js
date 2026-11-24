@@ -12,7 +12,7 @@ async function digest(value) { return [...new Uint8Array(await crypto.subtle.dig
 export async function consumeLimit(db, key, limit, now, fail) {
   const hour = Math.floor(now / 3600000);
   const bucket = await digest(key + ':' + hour);
-  const result = await run(db, 'INSERT INTO request_limits(bucket,count,expires_at) VALUES(?,1,?) ON CONFLICT(bucket) DO UPDATE SET count=count+1 WHERE count<?', bucket, (hour + 2) * 3600000, limit);
+  const result = await run(db, 'INSERT INTO request_limits(bucket,count,expires_at) VALUES(?,1,?) ON CONFLICT(bucket) DO UPDATE SET count=request_limits.count+1 WHERE request_limits.count<?', bucket, (hour + 2) * 3600000, limit);
   if (!result.meta.changes) fail(429, 'Too many requests. Please try again later.', 'rate_limited');
   await run(db, 'DELETE FROM request_limits WHERE expires_at<?', now);
 }

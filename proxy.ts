@@ -4,8 +4,8 @@ import { canEnterPrivatePilot } from './lib/access';
 import { publicBrowse } from './lib/site-config';
 
 export async function proxy(request: NextRequest) {
-  // The community rules must stay available without session or provider access.
-  if (request.nextUrl.pathname === '/community-rules') return NextResponse.next();
+  // These exact public information routes do not depend on a website session.
+  if (['/community-rules', '/account/delete'].includes(request.nextUrl.pathname)) return NextResponse.next();
   let response = NextResponse.next({ request });
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
