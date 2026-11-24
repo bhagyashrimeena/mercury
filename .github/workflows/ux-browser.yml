@@ -15,6 +15,7 @@ jobs:
           node-version: 24
       - run: corepack enable
       - run: corepack pnpm install --frozen-lockfile
+      - run: cp artifacts/design-review/approved-in-play.html public/__approved-reference.html
       - run: pnpm run build
       - name: Start isolated Mercury and Chrome
         shell: bash
@@ -66,6 +67,21 @@ jobs:
           node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/organizer-desktop.json fixture-organizer ux-organizer
           node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/organizer-phone.json fixture-organizer ux-organizer
           node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/roster-phone.json fixture-roster ux-roster
+      - name: Approved design screenshots
+        if: always()
+        run: |
+          for size in "1440 900 laptop" "390 844 mobile"; do
+            set -- $size
+            node artifacts/design-review/capture.mjs http://localhost:3002/__approved-reference.html "$1" "$2" "/tmp/mercury-ux-captures/reference-$3.png" live full
+            for page in home explore for-organizers how-it-works list-event about support privacy terms account my-games community-rules; do
+              route="$page"
+              if [ "$page" = home ]; then route=""; fi
+              node artifacts/design-review/capture.mjs "http://localhost:3002/$route" "$1" "$2" "/tmp/mercury-ux-captures/$page-$3.png" fixture-home full
+            done
+            node artifacts/design-review/capture.mjs http://localhost:3002/listing/mumbai-flex-nov-2026 "$1" "$2" "/tmp/mercury-ux-captures/event-external-$3.png" fixture-explore full
+            node artifacts/design-review/capture.mjs http://localhost:3002/event/review-state "$1" "$2" "/tmp/mercury-ux-captures/event-mercury-$3.png" fixture-home full
+            node artifacts/design-review/capture.mjs http://localhost:3002/explore "$1" "$2" "/tmp/mercury-ux-captures/filters-$3.png" fixture-open-filters full
+          done
       - name: Upload fixture reports
         if: always()
         uses: actions/upload-artifact@v4

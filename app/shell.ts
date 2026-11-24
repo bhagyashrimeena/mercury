@@ -4,7 +4,7 @@ export const shell = `
     <a href="/" class="brand" aria-label="Mercury home"><img src="/assets/mercury-wordmark.png" alt="" width="154" height="55"></a>
     <nav aria-label="Main navigation">
       <a href="/explore" data-nav="explore">Explore</a>
-      <a href="/how-it-works" data-nav="how-it-works">How it works</a>
+      <a href="/my-games" data-nav="my-games">My games</a>
       <a href="/for-organizers" data-nav="for-organizers">For organizers</a>
     </nav>
     <div class="header-actions">
@@ -21,7 +21,8 @@ export const shell = `
     <a href="/" class="brand" aria-label="Mercury home"><img src="/assets/mercury-wordmark.png" alt="" width="136" height="49" loading="lazy"></a>
     <p>More playing. Less planning.</p>
     <div>
-      <a href="/about">About Mercury</a>
+      <a href="/about">About</a>
+      <a href="/how-it-works">How it works</a>
       <a href="/support">Support</a>
       <a href="/privacy">Privacy</a>
       <a href="/terms">Terms</a>

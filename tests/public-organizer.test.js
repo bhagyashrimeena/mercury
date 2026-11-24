@@ -8,7 +8,7 @@ import { findListing, listingStatus } from '../public/catalogue.js';
 
 test('organizers see the benefit and submission link without a sign-in gate', () => {
   const html = organizerLandingMarkup();
-  assert.match(html, /We help people find it/);
+  assert.match(html, /We help the right players find it/);
   assert.match(html, /href="\/list-event"/);
   assert.match(html, /Keep your checkout/);
   assert.match(html, /not confirmed third-party sign-ups/);

@@ -2,7 +2,7 @@ import { homeMarkup } from '../public/home.js';
 import { getDatabase } from '../db/vercel';
 import { currentListings, indiaDay, listingDate, listingStatus } from '../public/catalogue.js';
 import { listingCard, listingHero } from '../public/discovery.js';
-import { arenaIntroMarkup, waveRibbonMarkup, listingFlowMarkup } from '../public/kinetic-art.js';
+import { exploreBanner } from '../public/in-play.js';
 
 type Listing = ReturnType<typeof currentListings>[number];
 const esc = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
@@ -31,7 +31,7 @@ export async function discoveryFallback(view: 'home' | 'explore') {
   const calendar = visible.filter(listing =>
     listing.date >= today && !['started', 'ended', 'withdrawn'].includes(listingStatus(listing).code)
   );
-  const display = view === 'home' ? current.slice(0, 3) : calendar.sort((a, b) =>
+  const display = view === 'home' ? [...current, ...calendar.filter(listing => !current.includes(listing))].slice(0, 3) : calendar.sort((a, b) =>
     a.date.localeCompare(b.date) || a.title.localeCompare(b.title)
   );
   const needsRecheck = view === 'explore' && display.length > 0 &&
@@ -39,7 +39,7 @@ export async function discoveryFallback(view: 'home' | 'explore') {
     display.some(listing => listingStatus(listing).code === 'stale');
   if (view === 'explore') {
     return '<section class="page-width explore-page">' +
-      arenaIntroMarkup() +
+      exploreBanner() +
       '<div class="results-heading"><div><h2>Explore events</h2>' +
       '<p>' + display.length + ' events · Soonest first</p></div></div>' +
       (needsRecheck
@@ -51,10 +51,10 @@ export async function discoveryFallback(view: 'home' | 'explore') {
         : '<div class="empty explore-empty"><h3>Upcoming event details are being checked.</h3>' +
           '<p>Explore all upcoming events or return when organizers have confirmed details.</p>' +
           '<a class="button outline" href="/explore?availability=All%20upcoming">See all upcoming ↗</a></div>') +
-      '</div>' + waveRibbonMarkup() + '<p class="fine explore-fine">Organizer listings are source-backed, not live inventory. Confirm final fees and eligibility before entering.</p>' +
+      '</div>' + '<p class="fine explore-fine">Organizer listings are source-backed, not live inventory. Confirm final fees and eligibility before entering.</p>' +
       '<noscript><p class="fine">Listing details remain available without JavaScript. Interactive search and filters require JavaScript.</p></noscript></section>';
   }
-  return homeMarkup(display.map(listingCard).join(''));
+  return homeMarkup(display.map(listing => listingCard(listing)).join(''));
 }
 
 export function listingFallback(listing: Listing, visibility: 'visible' | 'hidden' | 'unavailable') {
@@ -83,7 +83,7 @@ export function listingFallback(listing: Listing, visibility: 'visible' | 'hidde
   const reviewMessage = 'reason' in status && status.reason
     ? '<p class="inline-notice">' + esc(status.reason) + '</p>' : '';
   return '<div class="page-width listing-page">' +
-    '<a class="back" href="/explore">← All listings</a>' + stage + listingFlowMarkup() +
+    '<a class="back" href="/explore">← All listings</a>' + stage +
     '<div class="detail-layout"><article>' +
     '<div class="tags"><span class="blue-tag">External listing</span><span>' + esc(listing.type) + '</span></div>' +
     '<p class="host-by">Listed organizer: ' + esc(listing.host) + '</p>' +

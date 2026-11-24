@@ -1,7 +1,7 @@
 import { indiaDay, listingStatus } from './catalogue.js';
 import { listingCard } from './discovery.js';
 import { trackMetric } from './metrics.js';
-import { arenaIntroMarkup, waveRibbonMarkup } from './kinetic-art.js';
+import { exploreBanner } from './in-play.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const defaults = { query: '', sport: 'All sports', when: 'Any date', area: 'All Mumbai', type: 'All formats', source: 'All listings', level: 'Any level', availability: 'All upcoming', fee: 'Any fee', sort: 'Soonest first', from: '', to: '' };
@@ -94,7 +94,7 @@ export function sortForDiscovery(items, mode = 'Soonest first', now = Date.now()
 // preserved by the router and never overwritten with these placeholders.
 export function renderExploreLoading(main) {
   main.innerHTML = '<div class="page-width explore-page explore-pending" aria-busy="true">' +
-    arenaIntroMarkup() +
+    exploreBanner() +
     '<section class="explore-skeleton-search" aria-label="Loading search and filters">' +
     '<div class="explore-skeleton-searchbar" aria-hidden="true"></div>' +
     '<div class="explore-skeleton-pills" aria-hidden="true">' +
@@ -110,7 +110,7 @@ export function renderExploreLoading(main) {
     '</div></div>';
 }
 
-export function renderExplore({ main, events, listings, gameCard }) {
+export function renderExplore({ main, events, listings, gameCard, getSavedListings = () => [] }) {
   trackMetric('explore_view');
   const items = [
     ...events.map(event => ({ ...event, external: false })),
@@ -140,7 +140,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
 
   main.innerHTML = [
     '<div class="page-width explore-page">',
-    arenaIntroMarkup(),
+    exploreBanner(),
     '<section class="explore-search" aria-label="Find something to play">',
     '<div class="explore-sports" role="group" aria-label="Filter by sport">',
     ['All sports', ...sports].map(sportButton).join(''),
@@ -179,7 +179,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
     '<div id="active-filters" class="active-filters" role="group" aria-label="Active filters"></div>',
     '<p class="explore-freshness" id="explore-freshness" hidden></p>',
     '<div class="event-grid" id="directory-results" aria-label="Upcoming sporting opportunities"></div>',
-    waveRibbonMarkup(),
+
     '<details class="explore-how"><summary>How joining a game works on Mercury</summary>',
     '<p>Some events send you to the organizer to register. For free sessions booked directly on Mercury, your confirmed place appears in <a href="/my-games">My games</a>. Saving a listing is not a booking.</p>',
     '</details>',
@@ -244,7 +244,7 @@ export function renderExplore({ main, events, listings, gameCard }) {
     main.querySelector('#clear-filters').hidden = !Object.entries(filters).some(([name, value]) =>
       name === 'solo' || (value && value !== defaults[name]));
     main.querySelector('#directory-results').innerHTML = result.length
-      ? result.map(event => event.external ? listingCard(event) : gameCard(event)).join('')
+      ? result.map(event => event.external ? listingCard(event, getSavedListings().includes(event.id)) : gameCard(event)).join('')
       : '<div class="empty explore-empty"><span aria-hidden="true">✳</span><h3>No games match those filters.</h3>' +
         '<p>' + (widened.length
           ? widened.length + ' opportunities match when the area, dates and search are widened.'
