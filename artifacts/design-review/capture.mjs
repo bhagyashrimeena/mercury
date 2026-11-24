@@ -13,7 +13,7 @@ const fixtureEvent = {
   type: 'Social play', area: 'Powai', venue: 'Sample court, Powai, Mumbai',
   date: fixtureDate, time: '18:00', startsAt: Date.parse(`${fixtureDate}T18:00:00+05:30`),
   duration: 90, capacity: 12, registered: mode === 'fixture-roster' ? 1 : ['fixture-account', 'fixture-pass', 'fixture-register', 'fixture-native-explore'].includes(mode) ? 10 : 12,
-  spots: mode === 'fixture-roster' ? 11 : ['fixture-account', 'fixture-pass', 'fixture-register', 'fixture-native-explore'].includes(mode) ? 2 : 0, price: 0,
+  spots: mode === 'fixture-roster' ? 11 : ['fixture-account', 'fixture-pass', 'fixture-register', 'fixture-native-explore', 'fixture-home', 'fixture-slow-session'].includes(mode) ? 2 : 0, price: 0,
   level: 'All levels', host: 'Review fixture organizer', hostBio: 'A test organizer for visual review.',
   hostContact: '', description: 'A sample free doubles session for reviewing full and cancelled game states.',
   included: ['Court time and shuttlecocks'], bring: 'Bring a racket, indoor shoes and water.',
@@ -66,7 +66,7 @@ socket.addEventListener('message', event => {
       payload = { error: { code: 'database_unavailable', message: 'Mercury is temporarily unavailable. Please try again.' } };
       status = 503;
     } else if (parts[1] === 'events' && parts.length === 2) {
-      payload = { events: accountFixture || ['fixture-cancelled', 'fixture-full', 'fixture-native-explore'].includes(mode) ? [fixtureEvent] : [] };
+      payload = { events: accountFixture || ['fixture-cancelled', 'fixture-full', 'fixture-native-explore', 'fixture-home', 'fixture-slow-session'].includes(mode) ? [fixtureEvent] : [] };
       status = 200;
     } else if (parts[1] === 'events' && parts.length === 3 && parts[2] === fixtureEvent.id) {
       payload = { event: fixtureEvent };
