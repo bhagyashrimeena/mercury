@@ -5,7 +5,7 @@ body { padding-bottom:0 }
 .header-actions { margin-left:0; gap:20px }
 .header .location { display:flex; align-items:center; gap:6px; font-size:13px }
 .header .account-link { display:inline-flex;align-items:center;min-height:44px;font-size:13px;font-weight:800;white-space:nowrap }
-.website-menu { position:relative;z-index:20 }
+.website-menu { position:relative;z-index:20;margin:0;padding:0;border:0 }
 .website-menu summary { display:flex;align-items:center;gap:7px;cursor:pointer;min-height:44px;min-width:44px;justify-content:center;font-size:13px;font-weight:800;list-style:none }
 .website-menu summary::-webkit-details-marker { display:none }
 .website-menu summary > span:first-child { font-size:22px;line-height:1 }
