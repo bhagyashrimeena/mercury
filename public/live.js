@@ -154,18 +154,19 @@ export async function enhanceHome(main) {
         publicLineupCache = { events, listings, savedAt: Date.now() };
         const all = [...events.map(e => ({ ...e, external: false })), ...listings.map(e => ({ ...e, external: true }))].sort((a,b) => a.date.localeCompare(b.date));
         const upcoming = all.filter(e => actionable(e));
-        const quickline = main.querySelector('#quickline-results');
-        if (quickline) quickline.innerHTML = upcoming.length ? upcoming.slice(0, 3).map(e => `<a class="quickline-item" href="/${e.external ? 'listing' : 'event'}/${esc(e.id)}"><time datetime="${esc(e.date)}">${e.external ? listingDate(e) : dateLabel(e)}</time><strong>${esc(e.title)}</strong><span>${esc(e.sport)} · ${esc(e.area)} · ${e.external ? 'Register with organizer' : 'Book free place on Mercury'}</span></a>`).join('') : '<p>No entry-ready games are in the current lineup. Explore the calendar for details.</p>';
-        const render = sport => {
-            const selected = upcoming.filter(e => sport === 'All sports' || e.sport === sport).slice(0, 3);
-            section.querySelector('#featured-grid').innerHTML = selected.length ? selected.map(e => e.external ? listingCard(e) : gameCard(e)).join('') : empty('No entry-ready games in this sport.', 'Try another sport or see the full calendar, including closed entries.', btn('Explore the calendar', '/explore'));
-        };
-        section.querySelectorAll('[data-home-sport]').forEach(b => b.onclick = () => {
-            section.querySelectorAll('[data-home-sport]').forEach(x => { x.classList.toggle('selected', x === b); x.setAttribute('aria-pressed', String(x === b)); });
-            render(b.dataset.homeSport);
-        });
-        render('All sports');
-    } catch (e) { if (section?.isConnected) { section.querySelector('#featured-grid').innerHTML = notice(esc(e.message)) + btn('Try again', '/'); const quickline = main.querySelector('#quickline-results'); if (quickline) quickline.innerHTML = '<p>Upcoming games could not load. <a href="/">Try again ↗</a></p>'; } }
+        const selected = upcoming.slice(0, 3);
+        section.querySelector('#featured-grid').innerHTML = selected.length
+            ? selected.map(e => e.external ? listingCard(e) : gameCard(e)).join('')
+            : '<div class="web-lineup-empty"><h3>More games are on the way.</h3><p>Explore the full calendar for upcoming events and entry details that need checking.</p><a class="text-link" href="/explore">Explore the calendar ↗</a></div>';
+
+    } catch (e) {
+        if (section?.isConnected) {
+            // Preserve source-backed server cards if refreshing the lineup fails.
+            if (!section.querySelector('.photo-card')) section.querySelector('#featured-grid').innerHTML =
+                '<div class="web-lineup-empty"><h3>We couldn’t refresh the games.</h3><p>Please try again in a moment.</p><button type="button" class="button outline" id="retry-home">Try again ↗</button></div>';
+            section.querySelector('#retry-home')?.addEventListener('click', () => enhanceHome(main));
+        }
+    }
 }
 async function explore(expectedTurn) {
     // Events and curated public listings load together, never behind /api/session.

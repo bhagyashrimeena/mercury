@@ -5,6 +5,9 @@ const [url, widthText, heightText, output, mode, scope] = process.argv.slice(2);
 if (!url || !output) throw new Error('Usage: capture.mjs URL WIDTH HEIGHT OUTPUT');
 const width = Number(widthText), height = Number(heightText);
 if (!Number.isInteger(width) || !Number.isInteger(height)) throw new Error('Invalid viewport');
+// Keep mocked catalogue checks deterministic as the real calendar advances.
+const fixtureNow = Date.parse('2026-11-10T06:00:00Z');
+if (mode?.startsWith('fixture')) Date.now = () => fixtureNow;
 const pastBookingMode = ['fixture-past-games', 'fixture-expired-pass'].includes(mode);
 const cancelledBookingMode = mode === 'fixture-cancelled-booking';
 const fixtureDate = indiaDay(Date.now() + (pastBookingMode ? -1 : 7) * 86400000);
@@ -13,7 +16,7 @@ const fixtureEvent = {
   type: 'Social play', area: 'Powai', venue: 'Sample court, Powai, Mumbai',
   date: fixtureDate, time: '18:00', startsAt: Date.parse(`${fixtureDate}T18:00:00+05:30`),
   duration: 90, capacity: 12, registered: mode === 'fixture-roster' ? 1 : ['fixture-account', 'fixture-pass', 'fixture-register', 'fixture-native-explore'].includes(mode) ? 10 : 12,
-  spots: mode === 'fixture-roster' ? 11 : ['fixture-account', 'fixture-pass', 'fixture-register', 'fixture-native-explore'].includes(mode) ? 2 : 0, price: 0,
+  spots: mode === 'fixture-roster' ? 11 : ['fixture-account', 'fixture-pass', 'fixture-register', 'fixture-native-explore', 'fixture-home', 'fixture-slow-session'].includes(mode) ? 2 : 0, price: 0,
   level: 'All levels', host: 'Review fixture organizer', hostBio: 'A test organizer for visual review.',
   hostContact: '', description: 'A sample free doubles session for reviewing full and cancelled game states.',
   included: ['Court time and shuttlecocks'], bring: 'Bring a racket, indoor shoes and water.',
@@ -66,7 +69,7 @@ socket.addEventListener('message', event => {
       payload = { error: { code: 'database_unavailable', message: 'Mercury is temporarily unavailable. Please try again.' } };
       status = 503;
     } else if (parts[1] === 'events' && parts.length === 2) {
-      payload = { events: accountFixture || ['fixture-cancelled', 'fixture-full', 'fixture-native-explore'].includes(mode) ? [fixtureEvent] : [] };
+      payload = { events: accountFixture || ['fixture-cancelled', 'fixture-full', 'fixture-native-explore', 'fixture-home', 'fixture-slow-session'].includes(mode) ? [fixtureEvent] : [] };
       status = 200;
     } else if (parts[1] === 'events' && parts.length === 3 && parts[2] === fixtureEvent.id) {
       payload = { event: fixtureEvent };
@@ -118,6 +121,7 @@ function send(method, params = {}) {
 }
 try {
   await send('Page.enable');
+  if (mode?.startsWith('fixture')) await send('Page.addScriptToEvaluateOnNewDocument', { source: `const NativeDate = Date; window.Date = class extends NativeDate { constructor(...args) { super(...(args.length ? args : [${fixtureNow}])); } static now() { return ${fixtureNow}; } };` });
   await send('Runtime.enable');
   await send('Network.enable');
   await send('Network.setCacheDisabled', { cacheDisabled: true });
@@ -367,21 +371,21 @@ try {
     process.stdout.write(output+' event detail motion and facts passed\n');
   } else if (scope === 'kinetic-home') {
     const reading=await send('Runtime.evaluate',{
-      expression:'JSON.stringify({trail:!!document.querySelector(".home-speedlines"),'+
+      expression:'JSON.stringify({photo:!!document.querySelector(".web-hero-image img"),'+
         'featured:document.querySelectorAll("#featured-grid .photo-card").length,'+
-        'hero:!!document.querySelector(".home-journey .hero"),'+
+        'hero:!!document.querySelector(".web-hero"),'+
         'overflow:document.documentElement.scrollWidth>innerWidth})',
       returnByValue:true
     });
     const state=JSON.parse(reading.result.value);
-    if(!state.trail||!state.hero||!state.featured||state.overflow)
+    if(!state.photo||!state.hero||!state.featured||state.overflow)
       throw Error('Kinetic homepage failed: '+reading.result.value);
     await writeFile(output,JSON.stringify(state,null,2));
-    process.stdout.write(output+' animated Home hero and featured cards passed\n');
+    process.stdout.write(output+' photographic Home hero and featured cards passed\n');
   } else if (scope === 'ux-home') {
     const reading = await send('Runtime.evaluate', {
       expression: '(() => { const root=document.querySelector(".home-journey");' +
-        'const positions=[".quickline","#hero-search",".discovery-section",".hero",".host-banner"].map(s=>[...root.children].indexOf(root.querySelector(s)));' +
+        'const positions=[".web-hero","#hero-search",".web-sports",".discovery-section",".web-how",".web-trust",".web-organizers"].map(s=>[...root.children].indexOf(root.querySelector(s)));' +
         'return JSON.stringify({positions,featured:document.querySelectorAll("#featured-grid .directory-card").length,overflow:document.documentElement.scrollWidth>innerWidth,location:location.pathname});})()',
       returnByValue: true
     });
