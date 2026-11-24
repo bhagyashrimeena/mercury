@@ -217,3 +217,20 @@ test('game pass includes the event duration without exposing request keys or acc
     assert.equal(data.bookings[0].idempotency_key, undefined);
   } finally { h.sqlite.close(); }
 });
+
+test('organizer request history is account scoped and excludes internal notes and contacts', async()=>{
+ const h=harness(),a=player(31),b=player(32);
+ const request={name:'Organizer One',email:a.email,category:'Organizer enquiry',message:'Please help us create an event poster.',consent:true};
+ const first=await h.req('support',a,request);assert.equal(first.status,200);
+ await h.req('admin/support/'+first.data.id,host,{status:'resolved',note:'Private staff discussion'});
+ await h.req('support',b,{...request,email:b.email});
+ await h.req('support',a,{...request,category:'General help'});
+ const history=await h.req('organizer/requests',a);
+ assert.equal(history.status,200);assert.equal(history.data.requests.length,1);
+ assert.equal(history.data.requests[0].id,first.data.id);assert.equal(history.data.requests[0].status,'resolved');
+ for(const field of ['internal_note','email','name','user_id'])assert.equal(history.data.requests[0][field],undefined);
+ assert.equal((await h.req('organizer/requests',player(33))).data.requests.length,0);
+ assert.equal((await h.req('organizer/requests',null)).status,401);
+ assert.equal((await h.req('organizer/requests',player(34),undefined,'GET',{consent:false})).status,403);
+ h.sqlite.close();
+});
