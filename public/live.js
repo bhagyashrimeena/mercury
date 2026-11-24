@@ -1,3 +1,4 @@
+import { renderOrganizerWorkspace, workspaceFrame, bindEventSwitch, organizerSignIn } from './organizer-workspace.js';
 import { renderAccount, renderSupport, renderAdmin, renderPolicy } from './service-ui.js';
 import { listingCard, renderListing } from './discovery.js';
 import { organizerLandingMarkup, eventSubmissionMarkup, howItWorksMarkup, mountEventSubmission } from './organizer-public.js';
@@ -340,21 +341,36 @@ function organizerCard(event) {
         '</article>';
 }
 
-async function host(editId) {
-    if (!requireUser())
-        return;
+async function host(editId, { settings = false } = {}) {
+    if (!session?.user || !session.consentAccepted) { ctx.main.innerHTML = organizerSignIn(session); return; }
     const { events } = await api('organizer/events');
     const edit = editId ? events.find(e => e.id === editId) : null;
     if (editId && !edit)
         throw Error('This draft is not available in your organizer account.');
     const org = session.organizer;
-    const d = edit?.draft || { sport: 'Badminton', area: 'Powai', level: 'All levels', format: 'Social play', capacity: 12, price: 0, cancellation: policy };
+    const duplicateId = !editId ? new URLSearchParams(location.search).get('duplicate') : null;
+    const source = duplicateId ? events.find(e => e.id === duplicateId) : null;
+    if (duplicateId && !source) throw Error('This event is not available in your organizer account.');
+    const d = edit?.draft || (source ? { ...source.draft, title: source.title.slice(0, 85) + ' — Next edition', date: '', time: '' } : null) || { sport: 'Badminton', area: 'Powai', level: 'All levels', format: 'Social play', capacity: 12, price: 0, cancellation: policy };
     page(heading('FOR THE GAME-MAKERS', 'Bring people<br>into <em>play.</em>', 'Your organizer studio. Draft a session, publish it, welcome your players.') + notice('Private pilot · Publish free events now. Paid events can be saved as drafts, but paid registration is not enabled.') + `<div class="studio-layout"><section><details class="profile-details" ${org ? '' : 'open'}><summary>${org ? 'Organizer profile · ' + esc(org.name) : '01 / Set up your organizer profile'}</summary><form class="form-card" id="organizer-profile">${input('name', 'Club or organizer name', org?.name || '', 'minlength="3" maxlength="80" required')}${textarea('bio', 'About your community', org?.bio || '', 0, 500)}${input('contact', 'Public contact email (optional)', org?.contact || '', 'type="email" maxlength="150"')}<p class="fine">Your name, bio and contact email appear on your events. Your account email stays private.</p>${err}<button class="button primary" type="submit">Save organizer profile ↗</button></form></details>${org ? `<form class="form-card" id="event-form"><div class="section-heading"><h2>${edit ? 'Edit your event' : 'Create your next game'}</h2>${edit ? '<a class="text-link" href="/host">New event ↗</a>' : ''}</div>${edit && edit.registered ? notice('Players have registered. Event details are locked to protect their confirmed plans. If the time or venue changes, cancel the event and contact players directly; Mercury updates are in-app only.') : ''}<fieldset ${edit && (edit.registered || edit.status === 'cancelled') ? 'disabled' : ''}><section class="editor-section"><h3>1. Basics</h3><div class="form-grid">${input('title', 'Event name', d.title || '', 'required minlength="4" maxlength="100"')}${select('sport', 'Sport', ['Badminton', 'Tennis', 'Pickleball'], d.sport)}${select('format', 'Format', ['Social play', 'Tournament'], d.format)}</div></section><section class="editor-section"><h3>2. Time and place</h3><div class="form-grid">${select('area', 'Neighbourhood', ['Powai', 'Chandivali', 'Andheri', 'Bandra', 'BKC', 'Borivali', 'Malad', 'Ghatkopar', 'Vile Parle', 'South Mumbai', 'Nerul, Navi Mumbai', 'Thane'], d.area)}${input('date', 'Date', d.date || '', `type="date" min="${indiaDate()}" required`)}${input('time', 'Start time (IST)', d.time || '', 'type="time" required')}</div>${input('venue', 'Venue name and full address', d.venue || '', 'minlength="4" maxlength="150" required')}<p class="fine">Confirm the venue, address and court permission before publishing.</p></section><section class="editor-section"><h3>3. Eligibility and capacity</h3><div class="form-grid">${select('level', 'Playing level', ['All levels', 'Beginner friendly', 'Intermediate', 'Advanced', 'Competitive'], d.level)}${input('capacity', 'Player capacity', d.capacity, 'type="number" min="2" max="500" required')}${input('price', 'Price per player (₹) · ₹0 to publish', d.price, 'type="number" min="0" max="100000" required')}</div><p class="fine">Players must be 18 or older to book on Mercury. Paid events remain drafts until payment is enabled.</p></section><section class="editor-section"><h3>4. Player instructions</h3>${textarea('description', 'What will the session be like? Include any eligibility rules.', d.description || '', 20, 1500)}${textarea('included', 'What’s included (one item per line)', d.included || '', 5, 500)}${textarea('bring', 'What should players bring?', d.bring || '', 3, 300)}${textarea('cancellation', 'Cancellation and organizer notes', d.cancellation || policy, 15, 1000)}</section><section class="editor-section editor-review"><h3>5. Review and publish</h3><p class="fine">Sessions last 90 minutes. Free places can be cancelled before start time. Preview the public page, then save a draft. Publishing happens from Your events.</p><label class="checkbox"><input type="checkbox"><span>I have checked the event details and can host this session.</span></label>${err}<div class="action-row"><button class="button primary" type="submit">Save ${edit ? 'changes' : 'draft'} ↗</button><button class="button outline" type="button" id="preview-event">Preview public page</button></div><p class="fine">A saved draft stays private until you publish it.</p></section></fieldset></form>` : notice('Save your organizer profile to create your first event.')}</section><aside><h2>Your events</h2><div class="host-event-list">${events.map(organizerCard).join('') || '<p class="muted">Your first game belongs here.</p>'}</div><p class="fine">Only your account can manage these events and their attendees.</p></aside></div>`);
-    formSubmit('#organizer-profile', async (data) => { await api('organizer/profile', data); await loadSession(); ctx.toast('Organizer profile saved.'); await host(editId); });
-    if (org) {
+    const editor = ctx.main.querySelector('.page-width');
+    if (settings) {
+        editor.innerHTML = '<div class="ow-page-heading"><div><p class="ow-eyebrow">ACCOUNT & ORGANIZATION</p><h1>Organization settings</h1><p class="ow-subtitle">Your public identity on Mercury. Your account email stays private.</p></div></div>' + editor.querySelector('.profile-details').outerHTML;
+        editor.querySelector('.profile-details').open = true;
+    } else {
+        editor.querySelector('.page-intro').innerHTML = '<p class="ow-eyebrow">CREATE / EDIT EVENT</p><h1>' + (edit ? 'Edit your event.' : 'Build your event, your way.') + '</h1><p>Save a private draft, check the player preview, then publish when you are ready.</p>';
+        editor.querySelector('.studio-layout > aside').remove();
+        const choices = document.createElement('div'); choices.className = 'ow-editor-top';
+        choices.innerHTML = '<a class="ow-btn" href="/host/events">← My events</a><p>Already accepting entries elsewhere? <a href="/list-event" class="text-link">List your existing event ↗</a></p>';
+        editor.prepend(choices);
+    }
+    ctx.main.innerHTML = workspaceFrame(editor.innerHTML, { session, tab: settings ? 'settings' : 'events', event: edit, events, eventTab: 'edit' });
+    bindEventSwitch(ctx.main, ctx.go);
+    formSubmit('#organizer-profile', async (data) => { await api('organizer/profile', data); await loadSession(); ctx.toast('Organizer profile saved.'); await host(editId, { settings }); });
+    if (org && !settings) {
         const eventForm = document.querySelector('#event-form');
         const journey = mountOrganizerJourney(eventForm, {
-            editId: edit?.id || null, revision: edit?.revision ?? null,
+            editId: edit?.id || (source ? 'copy-' + source.id : null), revision: edit?.revision ?? null,
             locked: Boolean(edit && (edit.registered || edit.status === 'cancelled'))
         });
         eventForm.querySelector('#preview-event').onclick = () => {
@@ -389,7 +405,7 @@ async function host(editId) {
             window.scrollTo(0, 0);
         };
         formSubmit('#event-form', async (data) => { const checked = validateDraft(data); if (!checked.valid)
-            throw Object.assign(Error('Check the highlighted event details.'), { fields: checked.errors }); await api('organizer/events' + (edit ? '/' + edit.id : ''), { ...checked.value, revision: edit?.revision }, edit ? 'PATCH' : 'POST'); journey.clear(); ctx.toast('Draft saved to your account.'); ctx.go('/host'); });
+            throw Object.assign(Error('Check the highlighted event details.'), { fields: checked.errors }); await api('organizer/events' + (edit ? '/' + edit.id : ''), { ...checked.value, revision: edit?.revision }, edit ? 'PATCH' : 'POST'); journey.clear(); ctx.toast('Draft saved to your account.'); ctx.go('/host/events'); });
     }
     action('[data-copy-event]', async b => {
         const url = location.origin + '/event/' + encodeURIComponent(b.dataset.copyEvent);
@@ -405,7 +421,7 @@ async function host(editId) {
     action('[data-event-action]', async (b) => { const act = b.dataset.eventAction; const title = act === 'publish' ? 'Publish this game?' : act === 'cancel' ? 'Cancel this event?' : 'Return to draft?'; const body = act === 'publish' ? 'People with access to Mercury will be able to reserve a free place. Confirm your venue is ready.' : act === 'cancel' ? 'All active registrations will be cancelled. Players will see an update in My games. This cannot be undone.' : 'This event will no longer appear in discovery.'; confirmAction(title, body, act === 'publish' ? 'Publish game' : act === 'cancel' ? 'Cancel event' : 'Return to draft', async () => { await api('organizer/events/' + b.dataset.id + '/' + act, {}); await host(); ctx.toast(act === 'publish' ? 'Your game is published.' : 'Event updated.'); }); });
 }
 async function roster(id, filters = {}) {
-    if (!requireUser()) return;
+    if (!session?.user || !session.consentAccepted) { ctx.main.innerHTML = organizerSignIn(session); return; }
     const { event: e, attendees } = await api('organizer/events/' + id + '/attendees');
     const rows = [...attendees].sort((a, b) => {
         const order = { confirmed: 0, checked_in: 1 };
@@ -434,6 +450,10 @@ async function roster(id, filters = {}) {
         '</div><div class="roster-list">' +
         (rows.map(row).join('') || empty('Your crew is on its way.', 'Registrations appear here as players join.')) +
         '</div><p class="fine">The roster contains personal information. Keep downloads private and use them only to run this session.</p>');
+    const { events } = await api('organizer/events');
+    const rosterContent = ctx.main.querySelector('.page-width').innerHTML;
+    ctx.main.innerHTML = workspaceFrame(rosterContent, { session, tab: 'events', event: e, events, eventTab: new URLSearchParams(location.search).get('tab') === 'eventday' ? 'eventday' : 'participants' });
+    bindEventSwitch(ctx.main, ctx.go);
     mountRosterSearch(ctx.main, filters);
     const currentFilters = () => ({
         query: ctx.main.querySelector('#roster-search')?.value || '',
@@ -472,7 +492,8 @@ export async function liveRoute(path, context) {
         a.textContent = 'Account';
         document.querySelector('.header-actions').prepend(a);
     }
-    const [, route, id] = path.split('/');
+    const [, route, id, workspaceEventId] = path.split('/');
+    document.body?.classList?.toggle('organizer-mode', ['host', 'roster'].includes(route));
     const knownListingTitle = route === 'listing' && id ? findListing(id)?.title : null;
     document.title = (knownListingTitle || { host: 'Organizer studio', roster: 'Attendee roster', account: 'Your account', admin: 'Owner desk', 'my-games': 'My games', booking: 'Your game pass', explore: 'Find a game', listing: 'Listing details', event: 'Game details', register: 'Book free place', privacy: 'Your privacy', terms: 'Terms', support: 'Help & contact', 'how-it-works': 'How Mercury works', 'for-organizers': 'For organizers', 'list-event': 'Submit a sports event' }[route] || 'Your next game starts here') + ' — Mercury';
     const sample = samples.some(e => e.id === id);
@@ -529,8 +550,13 @@ export async function liveRoute(path, context) {
             await register(id);
         else if (route === 'my-games' || route === 'booking')
             await myGames(id);
-        else if (route === 'host')
-            await host(id);
+        else if (route === 'host') {
+            if (id === 'new') await host(null);
+            else if (id === 'settings') await host(null, { settings: true });
+            else if (!id || ['events','services','requests','event'].includes(id))
+                await renderOrganizerWorkspace({ ...ctx, api, session, confirmAction, section: id || 'home', eventId: id === 'event' ? workspaceEventId : null });
+            else await host(id);
+        }
         else if (route === 'roster')
             await roster(id);
         else if (route === 'account')

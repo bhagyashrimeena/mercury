@@ -167,6 +167,12 @@ async function dispatch({ request, db, user, now, path: p, method: m, body: b, c
         await run(db, 'INSERT INTO organizers(user_id,name,bio,contact,created_at) VALUES(?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET name=excluded.name,bio=excluded.bio,contact=excluded.contact', uid, name, bio, contact, now);
         return { ok: true };
     }
+    if (m === 'GET' && route === 'organizer/requests') {
+        // Ownership is tied to the authenticated account, never an email query.
+        // Internal review notes and contact information are not exposed here.
+        const requests = await all(db, 'SELECT id,category,message,status,created_at,updated_at FROM support_requests WHERE user_id=? AND category=? ORDER BY created_at DESC LIMIT 100', uid, 'Organizer enquiry');
+        return { requests };
+    }
     if (m === 'GET' && route === 'organizer/events') {
         const rows = await all(db, `${PUBLIC_SELECT} WHERE e.owner_id=? ORDER BY e.created_at DESC LIMIT 100`, uid);
         return { events: rows.map(row => ({ ...publicEvent(row), draft: { title: row.title, sport: row.sport, area: row.area, date: row.date, time: row.time, capacity: row.capacity, price: row.price, level: row.level, format: row.format, venue: row.venue, description: row.description, included: row.included, bring: row.bring, cancellation: row.cancellation } })) };

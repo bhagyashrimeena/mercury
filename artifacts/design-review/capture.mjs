@@ -35,7 +35,7 @@ await new Promise((resolve, reject) => {
 let nextId = 0;
 const pending = new Map();
 const outboundRequests = [];
-const organizerFixture = ['fixture-organizer', 'fixture-preview', 'fixture-roster'].includes(mode);
+const organizerFixture = ['fixture-organizer', 'fixture-preview', 'fixture-roster', 'fixture-organizer-workspace'].includes(mode);
 const ownerFixture = mode === 'fixture-owner';
 const accountFixture = ['fixture-account', 'fixture-pass', 'fixture-register'].includes(mode) || pastBookingMode || cancelledBookingMode || organizerFixture || ownerFixture;
 const fixtureBooking = {
@@ -84,6 +84,10 @@ socket.addEventListener('message', event => {
     } else if (parts[1] === 'bookings' && parts.length === 2) {
       payload = { bookings: accountFixture ? [fixtureBooking] : [] };
       status = 200;
+    } else if (parts[1] === 'organizer' && parts[2] === 'requests') {
+      payload = { requests: [{ id: 'fixture-request-1', category: 'Organizer enquiry', message: '[Review fixture] Poster design assistance for a community event.', status: 'open', created_at: String(fixtureNow), updated_at: String(fixtureNow) }] }; status = 200;
+    } else if (parts[1] === 'support' && mode === 'fixture-organizer-workspace') {
+      payload = { id: 'fixture-request-1' }; status = 200;
     } else if (parts[1] === 'organizer' && parts[2] === 'events' && parts.length === 3) {
       payload = { events: organizerFixture ? [fixtureEvent] : [] };
       status = 200;
@@ -133,14 +137,20 @@ try {
     try { new PerformanceObserver(list => { for (const entry of list.getEntries()) window.__mercuryPerf.lcp = entry.startTime; }).observe({ type: 'largest-contentful-paint', buffered: true }); } catch {}
     try { new PerformanceObserver(list => { for (const entry of list.getEntries()) if (!entry.hadRecentInput) { window.__mercuryPerf.cls += entry.value; window.__mercuryPerf.shifts.push({ value: entry.value, sources: entry.sources.map(source => ({ node: source.node?.tagName + '.' + source.node?.className, previous: source.previousRect, current: source.currentRect })) }); } }).observe({ type: 'layout-shift', buffered: true }); } catch {}
   ` });
-  await send('Page.navigate', { url });
+  // Bootstrap the public shell before injecting a synthetic organizer session.
+  // Direct private-route requests correctly pass through the real sign-in gate.
+  await send('Page.navigate', { url: mode === 'fixture-organizer-workspace' ? new URL('/', url).href : url });
   await new Promise(resolve => setTimeout(resolve, mode === 'loading' ? 850 : 2400));
   if (mode === 'fixture-open-filters') {
     await send('Runtime.evaluate', { expression: 'document.querySelector("#filter-toggle")?.click()' });
     await new Promise(resolve => setTimeout(resolve, 250));
   }
+  if (mode === 'organizer-reference') {
+    await send('Runtime.evaluate', { expression: 'document.querySelector("[data-action=enter-demo]")?.click()' });
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
   if (accountFixture) {
-    const destination = ['fixture-pass', 'fixture-expired-pass'].includes(mode) ? '/booking/review-pass' : mode === 'fixture-register' ? '/register/review-state' : mode === 'fixture-roster' ? '/roster/review-state' : organizerFixture ? '/host' : ownerFixture ? '/admin' : '/my-games';
+    const destination = ['fixture-pass', 'fixture-expired-pass'].includes(mode) ? '/booking/review-pass' : mode === 'fixture-register' ? '/register/review-state' : mode === 'fixture-roster' ? '/roster/review-state' : organizerFixture ? (mode === 'fixture-organizer-workspace' ? new URL(url).pathname + new URL(url).search : '/host/new') : ownerFixture ? '/admin' : '/my-games';
     await send('Runtime.evaluate', { expression: `history.pushState(null, '', '${destination}'); dispatchEvent(new PopStateEvent('popstate'))` });
     await new Promise(resolve => setTimeout(resolve, 1100));
   }
@@ -398,12 +408,12 @@ try {
     const initial = await send('Runtime.evaluate', {
       expression: 'JSON.stringify({steps:document.querySelectorAll(".organizer-progress-item").length,'+
         'active:document.querySelector(".organizer-step:not([hidden])")?.dataset.step,'+
-        'primary:document.querySelector(".organizer-event-card .organizer-primary-action")?.textContent,'+
+        'workspace:!!document.querySelector(".organizer-workspace"),'+
         'overflow:document.documentElement.scrollWidth>innerWidth})',
       returnByValue: true
     });
     const state=JSON.parse(initial.result.value);
-    if(state.steps!==3||state.active!=='0'||!state.primary?.includes('Manage players')||state.overflow)
+    if(state.steps!==3||state.active!=='0'||!state.workspace||state.overflow)
       throw Error('Organizer editor first-screen failed: '+initial.result.value);
     const values={
       title:'Review fixture: Thursday Badminton',sport:'Badminton',format:'Social play',
@@ -438,6 +448,33 @@ try {
       throw Error('Organizer preview return lost edits: '+restored.result.value);
     await writeFile(output,JSON.stringify({initial:state,details,back},null,2));
     process.stdout.write(output+' organizer editor, review and preview return passed\n');
+  } else if (scope === 'ux-workspace') {
+    const evaluate = async expression => { const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true}); if(r.exceptionDetails)throw Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text); return r.result.value; };
+    const move = async path => { await evaluate('history.pushState(null,"",'+JSON.stringify(path)+');dispatchEvent(new PopStateEvent("popstate"))'); await new Promise(resolve=>setTimeout(resolve,450)); };
+    const checks=[];
+    const check=async(label,expression)=>{const result=await evaluate(expression);if(!result){const shot=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});await writeFile(output.replace(/\.json$/, '-failure.png'),Buffer.from(shot.data,'base64'));const detail=await evaluate('JSON.stringify({url:location.href,text:document.querySelector("main").innerText.slice(0,1600),overflow:[...document.querySelectorAll("main *")].filter(e=>e.getBoundingClientRect().right>innerWidth+1).slice(0,10).map(e=>e.className)})');throw Error('Organizer workspace failed: '+label+' '+detail);}checks.push(label);};
+    await check('dashboard, owned metrics, no public header or overflow','!!document.querySelector(".ow-start-grid") && document.querySelectorAll(".ow-kpi").length===4 && getComputedStyle(document.querySelector(".header")).display==="none" && document.documentElement.scrollWidth<=innerWidth');
+    await move('/host/events');
+    await check('owned event list','document.querySelectorAll(".ow-event-card").length===1');
+    await evaluate('document.querySelector("#ow-search").value="absent-event";document.querySelector("#ow-search").dispatchEvent(new Event("input"))');
+    await check('empty search','document.querySelectorAll(".ow-event-card").length===0 && document.querySelector("#ow-result-count").textContent.includes("0 events")');
+    await evaluate('document.querySelector("#ow-search").value="";document.querySelector("#ow-search").dispatchEvent(new Event("input"));document.querySelector("[data-view=table]").click()');
+    await check('table and no overflow','document.querySelectorAll(".ow-table-wrap tbody tr").length===1 && document.documentElement.scrollWidth<=innerWidth');
+    await move('/host/event/review-state');
+    await check('event context','document.querySelectorAll(".ow-event-tabs a").length>=5 && document.querySelector(".ow-context-title h2").textContent.includes("Review fixture")');
+    await move('/host/event/review-state?tab=creative');
+    await check('real canvas export surface','document.querySelector("#ow-poster").width===1080 && document.querySelector("#ow-poster").height===1350 && document.querySelector("#ow-poster").toDataURL("image/png").length>10000 && !document.querySelector("#ow-export-poster").disabled');
+    await move('/host/services');
+    await evaluate('document.querySelector("[data-service=poster]").click()');
+    await check('service selection','document.querySelector("#ow-service-form [name=service]").value==="poster"');
+    await evaluate('const form=document.querySelector("#ow-service-form");form.elements.name.value="Review Organizer";form.elements.email.value="review@example.test";form.elements.brief.value="Synthetic test request for poster design.";form.elements.consent.checked=true;form.requestSubmit()');
+    await new Promise(resolve=>setTimeout(resolve,600));
+    await check('request persisted response and history','location.pathname==="/host/requests" && document.querySelector(".ow-request-list").textContent.includes("fixture-request-1") && !document.querySelector(".ow-request-list").textContent.includes("Invalid Date")');
+    await move('/host/settings');
+    await check('profile remains connected','!!document.querySelector("#organizer-profile") && !document.querySelector("#event-form")');
+    await move('/explore');
+    await check('public navigation restored','!document.body.classList.contains("organizer-mode") && getComputedStyle(document.querySelector(".header")).display!=="none"');
+    await writeFile(output,JSON.stringify({checks,width,height},null,2));process.stdout.write(output+' organizer workspace passed\n');
   } else if (scope === 'ux-roster') {
     const expression='(() => { const input=document.querySelector("#roster-search"),checkbox=document.querySelector("#roster-unchecked");'+
       'if(!input||!checkbox)return JSON.stringify({present:false});input.value="not-a-player";input.dispatchEvent(new Event("input",{bubbles:true}));'+

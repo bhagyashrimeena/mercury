@@ -16,6 +16,7 @@ jobs:
       - run: corepack enable
       - run: corepack pnpm install --frozen-lockfile
       - run: cp artifacts/design-review/approved-in-play.html public/__approved-reference.html
+      - run: cp artifacts/design-review/approved-organizer-v2.html public/__organizer-reference.html
       - run: pnpm run build
       - name: Start isolated Mercury and Chrome
         shell: bash
@@ -67,6 +68,26 @@ jobs:
           node artifacts/design-review/capture.mjs http://localhost:3002/ 1440 900 /tmp/mercury-ux-captures/organizer-desktop.json fixture-organizer ux-organizer
           node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/organizer-phone.json fixture-organizer ux-organizer
           node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/roster-phone.json fixture-roster ux-roster
+      - name: Organizer workspace behavior
+        run: |
+          for size in "1440 900 laptop" "390 844 mobile" "320 740 small"; do
+            set -- $size
+            node artifacts/design-review/capture.mjs http://localhost:3002/host "$1" "$2" "/tmp/mercury-ux-captures/organizer-workspace-$3.json" fixture-organizer-workspace ux-workspace
+          done
+      - name: Organizer workspace screenshots
+        if: always()
+        run: |
+          for size in "1440 900 laptop" "390 844 mobile"; do
+            set -- $size
+            node artifacts/design-review/capture.mjs http://localhost:3002/__organizer-reference.html "$1" "$2" "/tmp/mercury-ux-captures/organizer-reference-$3.png" organizer-reference full
+            for route in home events new settings services requests event/review-state event/review-state?tab=promote event/review-state?tab=creative event/review-state?tab=competition event/review-state?tab=finance event/review-state?tab=insights event/review-state?tab=sponsors; do
+              path="$route"
+              if [ "$route" = home ]; then path=""; fi
+              name="$(echo "$route" | tr '/?=' '---')"
+              node artifacts/design-review/capture.mjs "http://localhost:3002/host/$path" "$1" "$2" "/tmp/mercury-ux-captures/organizer-$name-$3.png" fixture-organizer-workspace full
+            done
+            node artifacts/design-review/capture.mjs "http://localhost:3002/roster/review-state" "$1" "$2" "/tmp/mercury-ux-captures/organizer-participants-$3.png" fixture-organizer-workspace full
+          done
       - name: Approved design screenshots
         if: always()
         run: |
