@@ -466,8 +466,13 @@ try {
     const reset = JSON.parse(await evaluate('JSON.stringify({url:location.search,availability:document.querySelector("#directory-filters [name=availability]").value,clearHidden:document.querySelector("#clear-filters").hidden})'));
     if (reset.url || reset.availability !== 'All upcoming' || !reset.clearHidden) throw new Error(`Filter reset failed: ${JSON.stringify(reset)}`);
     await evaluate('document.querySelector("#directory-filters [name=area]").value="Andheri";document.querySelector("#directory-filters [name=area]").dispatchEvent(new Event("change",{bubbles:true}));document.querySelector("#directory-filters [name=when]").value="Next 7 days";document.querySelector("#directory-filters [name=when]").dispatchEvent(new Event("change",{bubbles:true}))');
-    const timeAndArea = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,areas:[...document.querySelectorAll("#directory-results .directory-card .photo-area")].map(element=>element.textContent)})'));
-    if (!timeAndArea.url.includes('area=Andheri') || !timeAndArea.url.includes('when=Next+7+days') || !timeAndArea.cards || timeAndArea.cards >= initial.cards || timeAndArea.areas.some(area=>!area.includes('Andheri'))) throw new Error(`Date and area filters failed: ${JSON.stringify(timeAndArea)}`);
+    const timeAndArea = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,areas:[...document.querySelectorAll("#directory-results .directory-card .photo-area")].map(element=>element.textContent),empty:!!document.querySelector(".explore-empty")})'));
+    // Inventory changes with calendar dates. Zero events is legitimate when the search
+    // is correctly filtered and the empty state appears; never require a fake result.
+    if (!timeAndArea.url.includes('area=Andheri') || !timeAndArea.url.includes('when=Next+7+days') ||
+        timeAndArea.cards >= initial.cards || (!timeAndArea.cards && !timeAndArea.empty) ||
+        timeAndArea.areas.some(area=>!area.includes('Andheri')))
+      throw new Error(`Date and area filters failed: ${JSON.stringify(timeAndArea)}`);
     await evaluate('document.querySelector("#clear-filters").click()');
     await evaluate('document.querySelector("#directory-filters [name=query]").value="no-such-game";document.querySelector("#directory-filters [name=query]").dispatchEvent(new Event("input",{bubbles:true}))');
     const empty = JSON.parse(await evaluate('JSON.stringify({cards:document.querySelectorAll("#directory-results .directory-card").length,empty:!!document.querySelector(".explore-empty"),url:location.search})'));
@@ -489,6 +494,38 @@ try {
       await evaluate('document.querySelector("#directory-filters [name=source]").value="Book on Mercury";document.querySelector("#directory-filters [name=source]").dispatchEvent(new Event("change",{bubbles:true}))');
       native = JSON.parse(await evaluate('JSON.stringify({url:location.search,cards:document.querySelectorAll("#directory-results .directory-card").length,route:document.querySelector(".mercury-card .photo-card-link")?.getAttribute("href"),action:document.querySelector(".mercury-card .photo-cta")?.textContent})'));
       if (!native.url.includes('source=Book+on+Mercury') || native.cards !== 1 || native.route !== '/event/review-state' || !native.action.includes('View event')) throw new Error(`Native booking route failed: ${JSON.stringify(native)}`);
+      // Future-dated fixture guarantees one Powai event, with no corresponding
+      // Andheri event. Exercise real DOM/URL changes without fragile live supply.
+      const areaSetup = {
+        sport: 'Badminton', area: 'Andheri', query: 'Review fixture',
+        source: 'Book on Mercury', type: 'Social play', level: 'All levels',
+        fee: 'Free', availability: 'Entry possible', from: fixtureDate, to: fixtureDate
+      };
+      await evaluate('(() => { const form = document.querySelector("#directory-filters"); const fields = ' +
+        JSON.stringify(areaSetup) +
+        '; for (const [name, value] of Object.entries(fields)) { const input = form.elements.namedItem(name); input.value = value; input.dispatchEvent(new Event(name === "query" ? "input" : "change", { bubbles: true })); } })()');
+      const readAreaRecovery = 'JSON.stringify({filters:Object.fromEntries(new FormData(document.querySelector("#directory-filters"))),' +
+        'url:location.search,cards:document.querySelectorAll("#directory-results .mercury-card").length,' +
+        'offered:!!document.querySelector("#widen-area"),restorable:!!document.querySelector("#restore-area"),' +
+        'origin:history.state?.mercuryAreaRecoveryFrom||null,focused:document.activeElement?.id,' +
+        'overflow:document.documentElement.scrollWidth>innerWidth})';
+      const before = JSON.parse(await evaluate(readAreaRecovery));
+      if (before.cards !== 0 || !before.offered || !before.url.includes('area=Andheri'))
+        throw new Error('Area recovery setup failed: ' + JSON.stringify(before));
+      await evaluate('document.querySelector("#widen-area").click()');
+      const expanded = JSON.parse(await evaluate(readAreaRecovery));
+      const preserved = ['sport', 'when', 'query', 'type', 'source', 'level', 'availability', 'fee', 'sort', 'from', 'to'];
+      if (expanded.filters.area !== 'All Mumbai' || expanded.cards !== 1 || !expanded.restorable ||
+          expanded.origin !== 'Andheri' || expanded.focused !== 'directory-count' || expanded.overflow ||
+          preserved.some(key => expanded.filters[key] !== before.filters[key]))
+        throw new Error('Area-only expansion failed: ' + JSON.stringify({ before, expanded }));
+      await evaluate('document.querySelector("#restore-area").click()');
+      const restored = JSON.parse(await evaluate(readAreaRecovery));
+      if (restored.filters.area !== 'Andheri' || restored.cards !== 0 ||
+          !restored.offered || restored.restorable || restored.origin ||
+          preserved.some(key => restored.filters[key] !== before.filters[key]))
+        throw new Error('Area restoration failed: ' + JSON.stringify({ before, expanded, restored }));
+      native.areaRecovery = { before, expanded, restored };
     }
     const report = { page, initial, sport, reset, timeAndArea, empty, advanced, native };
     await writeFile(output, JSON.stringify(report, null, 2));
