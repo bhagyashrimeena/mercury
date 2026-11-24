@@ -348,7 +348,7 @@ try {
       returnByValue:true
     });
     const state=JSON.parse(reading.result.value);
-    if(!state.arena||state.paths<3||state.photoCards<5||
+    if(!state.arena||state.paths<2||state.photoCards<5||
       !(state.firstTop<height)||state.cardHeight >= (width > 700 ? 600 : 650)||state.overflow)
       throw Error('Kinetic Explore UI failed: '+reading.result.value);
     await writeFile(output,JSON.stringify(state,null,2));

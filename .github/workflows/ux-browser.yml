@@ -68,6 +68,7 @@ jobs:
           node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/organizer-phone.json fixture-organizer ux-organizer
           node artifacts/design-review/capture.mjs http://localhost:3002/ 390 844 /tmp/mercury-ux-captures/roster-phone.json fixture-roster ux-roster
       - name: Approved design screenshots
+        if: always()
         run: |
           for size in "1440 900 laptop" "390 844 mobile"; do
             set -- $size
