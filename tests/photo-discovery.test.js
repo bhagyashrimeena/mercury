@@ -44,7 +44,9 @@ test('each listing uses one event-details action, not an unconfirmed direct regi
   const html = listingCard(item);
   assert.match(html, /photo-card/);
   assert.match(html, /View event/);
-  assert.match(html, /Illustrative photo/);
+  assert.match(html, /MERCURY \/ SPORT COVER/);
+  assert.match(html, /<\/a><button type="button" class="ip-heart"/);
+  assert.match(html, /data-card-kind="listing"/);
   assert.doesNotMatch(html, /Register with organizer/);
   assert.doesNotMatch(html, /Check availability/);
   assert.doesNotMatch(html, /data-outbound=/);

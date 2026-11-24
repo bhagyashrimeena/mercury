@@ -1,3 +1,4 @@
+import { aboutMarkup } from './in-play.js';
 import {liveRoute, enhanceHome} from './live.js';
 import { homeMarkup } from './home.js';
 import { trackMetric } from './metrics.js';
@@ -467,7 +468,7 @@ function organizer(name) {
   bindSaves();
 }
 function info() {
-  main.innerHTML = `<div class="page-width prose"><p class="eyebrow blue">FOR THE LOVE OF THE GAME</p><h1>Meet <em>Mercury.</em></h1><h2>More playing. Less planning.</h2><p>Mercury is built by NextPlay Sports Private Limited to make sports opportunities easier to find. We’re starting around Mumbai with tournaments, leagues and camps across badminton, tennis and pickleball.</p><p>We research listings from organizers and booking platforms, show the source and check date, and send you to the organizer to confirm details and register. An external listing is not a partnership or a reserved place.</p><p>Run an event? <a href="/support?category=Organizer%20enquiry" class="text-link">Tell us about it</a>. Found a detail that changed? Send a correction from the listing.</p><a class="button primary" href="/explore">Find your next game ↗</a></div>`;
+  main.innerHTML = aboutMarkup();
 }
 
 function openSheet(title, body) {

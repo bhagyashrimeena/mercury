@@ -1,8 +1,8 @@
 import { renderAccount, renderSupport, renderAdmin, renderPolicy } from './service-ui.js';
 import { listingCard, renderListing } from './discovery.js';
 import { organizerLandingMarkup, eventSubmissionMarkup, howItWorksMarkup, mountEventSubmission } from './organizer-public.js';
-import { sportPhoto } from './sport-media.js';
-import { actionable, renderExplore, renderExploreLoading } from './explore.js';
+import { sportCover, cardSaveButton } from './in-play.js';
+import { filterLineup, rankForDiscovery, renderExplore, renderExploreLoading } from './explore.js';
 import { findListing, listingDate } from './catalogue.js';
 import { events as samples, dateLabel, timeLabel } from './data.js';
 import { newId, validateDraft, indiaDate } from './domain.js';
@@ -32,6 +32,34 @@ document.addEventListener('click', event => {
     // The external link opens independently of this best-effort request.
     fetch('/api/listings/' + encodeURIComponent(link.dataset.outbound) + '/click', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}', keepalive: true }).catch(() => {});
 });
+
+function syncCardSaves() {
+    document.querySelectorAll?.('[data-card-save]').forEach(button => {
+        const saved = !!session?.[button.dataset.cardKind === 'listing' ? 'savedListings' : 'saved']?.includes(button.dataset.cardSave);
+        button.setAttribute('aria-pressed', String(saved));
+        button.setAttribute('aria-label', (saved ? 'Remove saved event: ' : 'Save event: ') + (button.closest('article')?.querySelector('h3')?.textContent || 'event'));
+    });
+}
+document.addEventListener('click', async event => {
+    const button = event.target.closest?.('[data-card-save]');
+    if (!button || !ctx || button.disabled) return;
+    event.preventDefault(); event.stopPropagation(); button.disabled = true;
+    try {
+        await loadSession();
+        if (!session?.user || !session.consentAccepted) {
+            ctx.go('/account?return_to=' + encodeURIComponent(location.pathname + location.search)); return;
+        }
+        const id = button.dataset.cardSave;
+        const key = button.dataset.cardKind === 'listing' ? 'savedListings' : 'saved';
+        const saved = !session[key]?.includes(id);
+        await api(key === 'savedListings' ? 'listings/' + encodeURIComponent(id) + '/save' : 'saved/' + encodeURIComponent(id), { saved });
+        session[key] = saved ? [...(session[key] || []), id] : (session[key] || []).filter(value => value !== id);
+        syncCardSaves();
+        ctx.toast(saved ? 'Saved in My games. No place has been reserved.' : 'Removed from saved games.');
+    } catch (error) { if (error.name !== 'AbortError') ctx.toast(error.message); }
+    finally { button.disabled = false; }
+});
+
 const btn = (text, url, kind = 'primary') => `<a class="button ${kind}" href="${url}">${text} ↗</a>`;
 const heading = (label, title, sub = '') => `<section class="page-intro"><p class="eyebrow blue">${label}</p><h1>${title}</h1><p>${sub}</p></section>`;
 const notice = t => `<div class="inline-notice">${t}</div>`;
@@ -61,7 +89,7 @@ async function api(path, body, method = body ? 'POST' : 'GET') {
     return result;
 }
 async function loadSession() { session = await api('session'); const a = document.querySelector('#account-link'); if (a)
-    a.textContent = session.user ? 'Account' : 'Sign in'; return session; }
+    a.textContent = session.user ? 'Account' : 'Sign in'; syncCardSaves(); return session; }
 function requireUser() {
     if (session?.user && session.consentAccepted) return true;
     const account = '/account?return_to=' + encodeURIComponent(location.pathname + location.search);
@@ -120,7 +148,6 @@ finally {
 const err = '<p class="error" role="alert" tabindex="-1"></p>';
 function gameCard(e, bookingId = '') {
     const state = eventState(e);
-    const media = sportPhoto(e);
     const view = bookingId ? '/booking/' + esc(bookingId) : '/event/' + esc(e.id);
     const status = bookingId ? 'Your place is confirmed'
         : state.code === 'full' ? 'Game full'
@@ -131,10 +158,7 @@ function gameCard(e, bookingId = '') {
     return '<article class="event-card directory-card photo-card mercury-card ' + sportClass + '">' +
         '<a class="photo-card-link" href="' + view + '" aria-label="' +
         (bookingId ? 'View confirmed pass for ' : 'View event details for ') + esc(e.title) + '">' +
-        '<div class="listing-photo ' + sportClass + '" aria-hidden="true">' +
-        '<div class="photo-fallback">' + esc(e.sport) + '</div>' +
-        '<img class="sport-stock-img" src="' + esc(media.src) + '" alt="" loading="lazy" decoding="async" width="560" height="440">' +
-        '<span class="photo-disclosure">' + (media.source === 'stock' ? 'Illustrative photo' : 'Organizer image') + '</span></div>' +
+        sportCover(e) +
         '<div class="photo-card-copy"><div class="photo-card-top"><span class="photo-sport">' + esc(e.sport) +
         ' · ' + esc(e.type) + '</span>' +
         (status ? '<span class="photo-status ' + esc(state.code) + '">' + esc(status) + '</span>' : '') +
@@ -143,8 +167,8 @@ function gameCard(e, bookingId = '') {
         '<span class="photo-area">' + esc(e.area) + '</span></div>' +
         '<div class="photo-card-foot"><div class="photo-price"><strong>' +
         (Number(e.price) ? '₹' + esc(e.price) : 'Free') + '</strong><small>Booked on Mercury</small></div>' +
-        '<span class="photo-cta">' + (bookingId ? 'View pass' : 'View event') + ' ↗</span>' +
-        '</div></div></a></article>';
+        '<span class="photo-cta">' + (bookingId ? 'View pass' : 'View event') + ' <span aria-hidden="true">↗</span></span>' +
+        '</div></div></a>' + (bookingId ? '' : cardSaveButton(e, false, !!session?.saved?.includes(e.id))) + '</article>';
 }
 export async function enhanceHome(main) {
     const section = main.querySelector('.discovery-section');
@@ -153,10 +177,10 @@ export async function enhanceHome(main) {
         if (!section?.isConnected) return;
         publicLineupCache = { events, listings, savedAt: Date.now() };
         const all = [...events.map(e => ({ ...e, external: false })), ...listings.map(e => ({ ...e, external: true }))].sort((a,b) => a.date.localeCompare(b.date));
-        const upcoming = all.filter(e => actionable(e));
+        const upcoming = rankForDiscovery(filterLineup(all, { availability: 'All upcoming' }), { availability: 'All upcoming' });
         const selected = upcoming.slice(0, 3);
         section.querySelector('#featured-grid').innerHTML = selected.length
-            ? selected.map(e => e.external ? listingCard(e) : gameCard(e)).join('')
+            ? selected.map(e => e.external ? listingCard(e, !!session?.savedListings?.includes(e.id)) : gameCard(e)).join('')
             : '<div class="web-lineup-empty"><h3>More games are on the way.</h3><p>Explore the full calendar for upcoming events and entry details that need checking.</p><a class="text-link" href="/explore">Explore the calendar ↗</a></div>';
 
     } catch (e) {
@@ -173,7 +197,7 @@ async function explore(expectedTurn) {
     const [{ events }, { listings }] = await Promise.all([api('events'), api('listings')]);
     if (expectedTurn !== turn) return;
     publicLineupCache = { events, listings, savedAt: Date.now() };
-    renderExplore({ main: ctx.main, events, listings, gameCard });
+    renderExplore({ main: ctx.main, events, listings, gameCard, getSavedListings: () => session?.savedListings || [] });
 }
 async function detail(id) {
     const { event: e } = await api('events/' + id);
@@ -474,7 +498,7 @@ export async function liveRoute(path, context) {
             // The initial HTML contains useful server-rendered results. On in-app
             // transitions use recent public data or the Explore layout immediately.
             if (!initialFallback) {
-                if (cached) renderExplore({ main: ctx.main, ...cached, gameCard });
+                if (cached) renderExplore({ main: ctx.main, ...cached, gameCard, getSavedListings: () => session?.savedListings || [] });
                 else renderExploreLoading(ctx.main);
             }
             // Account state is useful for the header, but is not a dependency of browsing.
