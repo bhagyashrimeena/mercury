@@ -35,7 +35,7 @@ test('external discovery is public, expires in IST and never creates native book
   assert.equal(r.status, 200); assert.equal(r.data.listings.length, currentListings(now).length);
   const id = r.data.listings[0].id;
   assert.equal((await h.req('listings/missing', null)).status, 404);
-  assert.equal((await h.req('listings', null, undefined, 'GET', { now: Date.parse('2027-01-01') })).data.listings.length, 0);
+  assert.equal((await h.req('listings', null, undefined, 'GET', { now: Date.parse('2027-04-01') })).data.listings.length, 0);
   assert.equal((await h.req('listings/' + id, null, undefined, 'GET', { now: Date.parse('2026-11-02T12:30:00Z') })).data.listing.availability.code, 'closed');
   assert.equal((await h.join(id, 1)).status, 409);
   assert.equal(h.sqlite.prepare('SELECT COUNT(*) n FROM bookings').get().n, 0);

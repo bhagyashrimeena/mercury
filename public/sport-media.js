@@ -20,6 +20,15 @@ const PHOTOS = Object.freeze({
     { id: 9686666, source: 'https://www.pexels.com/photo/people-running-a-marathon-in-the-street-9686666/', credit: 'Ruslan Alekso', alt: 'Group of runners in a street race' },
     { id: 19128857, source: 'https://www.pexels.com/photo/people-running-in-marathon-19128857/', credit: 'Row Photo', alt: 'Runners taking part in a city race' }
   ],
+  Padel: [
+    { id: 31012869, source: 'https://www.pexels.com/photo/padel-racket-and-ball-on-blue-court-surface-31012869/', credit: 'Marcia Salido', alt: 'Padel racket and ball on a blue court' }
+  ],
+  Football: [
+    { id: 9519543, source: 'https://www.pexels.com/photo/soccer-balls-on-soccer-field-9519543/', credit: 'Anastasia Shuraeva', alt: 'Football balls on a playing field' }
+  ],
+  Fitness: [
+    { id: 37156645, source: 'https://www.pexels.com/photo/group-outdoor-fitness-event-in-park-setting-37156645/', credit: 'Muhamad Guruh Budi Hartono', alt: 'People taking part in a group outdoor fitness class' }
+  ],
   Chess: [
     { id: 6114998, source: 'https://www.pexels.com/photo/chess-pieces-in-a-chessboard-6114998/', credit: 'Vlada Karpovich', alt: 'Chess pieces on a board' },
     { id: 13143767, source: 'https://www.pexels.com/photo/chess-pieces-on-a-chessboard-13143767/', credit: 'M1DDL3 M7N', alt: 'Chess pieces set up on a board' }

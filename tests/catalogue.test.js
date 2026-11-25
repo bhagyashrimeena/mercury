@@ -153,10 +153,13 @@ test('race format filters distinctly and category-specific deadlines remain hone
   const today = Date.parse('2026-11-10T08:00:00Z');
   const items = listings.map(e => ({ ...e, external: true, availability: listingStatus(e, today) }));
   const races = filterLineup(items, { type: 'Race', availability: 'All upcoming' }, today);
-  assert.equal(races.length, 5);
+  assert.ok(races.length >= 15);
   assert.ok(races.every(e => e.sport === 'Running'));
   const chess = filterLineup(items, { sport: 'Chess', availability: 'All upcoming' }, today);
-  assert.deepEqual(chess.map(e => e.id), ['tarabai-shinde-rapid-chess-2026']);
+  assert.ok(chess.length >= 3);
+  assert.ok(chess.some(e => e.id === 'tarabai-shinde-rapid-chess-2026'));
+  assert.ok(chess.some(e => e.id === 'khannur-chess-festival-2026'));
+  assert.ok(chess.every(e => e.sport === 'Chess'));
   const walk = findListing('nirmal-bang-malad-walkathon-2026');
   assert.equal(walk.deadline, null);
   assert.match(walk.deadlineLabel, /disagree/);
@@ -164,4 +167,20 @@ test('race format filters distinctly and category-specific deadlines remain hone
   assert.equal(listingStatus(goflo, Date.parse('2026-11-21T04:00:00Z')).code, 'closed');
   assert.equal(listingStatus(goflo, Date.parse('2026-11-20T04:00:00Z')).code, 'deadline');
   assert.ok(filterLineup(items, { query: 'Nerul', sport: 'Chess' }, today).length > 0);
+});
+
+test('new multi-sport and free events are source-backed and never masquerade as Mercury bookings', () => {
+  const newEntries = listings.filter(e => e.checkedOn === '2026-11-11');
+  assert.ok(newEntries.length >= 23);
+  assert.ok(['Padel','Football','Fitness','Chess','Running'].every(sport =>
+    newEntries.some(e => e.sport === sport)));
+  const free = newEntries.filter(e => e.priceLabel === 'Free');
+  assert.ok(free.length >= 4);
+  assert.ok(free.every(e => new URL(e.registrationUrl).protocol === 'https:'));
+  assert.match(findListing('football-uhtend-andheri-2026').registrationNote, /host approval/i);
+  for (const listing of free) {
+    const html = listingCard({ ...listing, availability: { code:'check', label:'Check availability' } });
+    assert.match(html, /View event/);
+    assert.doesNotMatch(html, /Book free place on Mercury|Confirmed booking/);
+  }
 });

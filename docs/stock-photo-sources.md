@@ -20,6 +20,9 @@ This is a **generic fallback gallery, not authenticated photos of the actual tou
 | Running | 19128857 | [Row Photo](https://www.pexels.com/photo/people-running-in-marathon-19128857/) |
 | Chess | 6114998 | [Vlada Karpovich](https://www.pexels.com/photo/chess-pieces-in-a-chessboard-6114998/) |
 | Chess | 13143767 | [M1DDL3 M7N](https://www.pexels.com/photo/chess-pieces-on-a-chessboard-13143767/) |
+| Padel | 31012869 | [Marcia Salido](https://www.pexels.com/photo/padel-racket-and-ball-on-blue-court-surface-31012869/) |
+| Football | 9519543 | [Anastasia Shuraeva](https://www.pexels.com/photo/soccer-balls-on-soccer-field-9519543/) |
+| Fitness | 37156645 | [Muhamad Guruh Budi Hartono](https://www.pexels.com/photo/group-outdoor-fitness-event-in-park-setting-37156645/) |
 
 The images are sourced via fixed Pexels CDN URLs, resized to card resolution to reduce bandwidth; avoid fetching the original multi-megabyte images in a listing grid. If images are blocked, the website replaces them with sport-colour fallbacks.
 
