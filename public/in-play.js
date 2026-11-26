@@ -14,8 +14,10 @@ export const playIcon = name => `<svg class="ip-icon" viewBox="0 0 24 24" fill="
 export function sportCover(event) {
   const media = sportPhoto(event);
   if (media.source === 'organizer') return `<div class="ip-cover-photo"><img src="${escapeHtml(media.src)}" alt="${escapeHtml(media.alt)}" loading="lazy" width="800" height="450"><span>Organizer image</span></div>`;
-  const sport = String(event.sport || 'Sports event');
-  return `<div class="ip-art${['Running','Chess'].includes(sport) ? ' ip-art-ink' : ''}" aria-hidden="true"><small>MERCURY / SPORT COVER</small><svg viewBox="0 0 180 130" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 8H160V122H20ZM90 8v114M20 65h140M20 34h140M20 96h140" opacity=".35"/><circle cx="90" cy="65" r="30" stroke="#D9FF38" stroke-width="5"/><path d="m5 110 145-100m-115 120 145-100" stroke="#D9FF38" stroke-width="5" opacity=".6"/></svg><span class="ip-display">${escapeHtml(sport.toUpperCase())}</span></div>`;
+  const sport = String(event.sport || '');
+  const localSports = new Set(['Badminton','Tennis','Pickleball','Running','Chess']);
+  if (localSports.has(sport)) return `<div class="ip-cover-photo"><img src="/assets/in-play/${sport.toLowerCase()}.jpg" alt="Illustrative ${escapeHtml(sport.toLowerCase())} photograph" loading="lazy" width="357" height="266"><span>Illustrative photo</span></div>`;
+  return `<div class="ip-art ip-art-ink" aria-hidden="true"><span class="ip-display">${escapeHtml(sport || 'Sports event')}</span></div>`;
 }
 
 export function cardSaveButton(event, external = false, saved = false) {
@@ -23,7 +25,7 @@ export function cardSaveButton(event, external = false, saved = false) {
 }
 
 export function brandHero({ kicker, heading, description, note = '', image = 'hero', extraClass = '', action = '' }) {
-  return `<section class="ip-hero ${extraClass}"><div class="ip-hero-copy"><p class="ip-eyebrow">${kicker}</p><h1 class="ip-display">${heading}</h1><p>${description}</p>${note ? `<small>${note}</small>` : ''}${action}</div><figure class="ip-hero-photo"><img src="/assets/in-play/${image}.jpg" alt="Runners participating together in a sporting event" width="356" height="266" fetchpriority="high"><span class="ip-phototext ip-display">${image === 'hero' ? 'GO PLAY.' : 'IN PLAY.'}</span><figcaption>Illustrative sports photo</figcaption></figure></section>`;
+  return `<section class="ip-hero ${extraClass}"><div class="ip-hero-copy"><p class="ip-eyebrow">${kicker}</p><h1 class="ip-display">${heading}</h1><p>${description}</p>${note ? `<small>${note}</small>` : ''}${action}</div><figure class="ip-hero-photo"><img src="/assets/in-play/${image}.jpg" alt="Runners participating together in a sporting event" width="356" height="266" fetchpriority="high"><figcaption>Illustrative sports photo</figcaption></figure></section>`;
 }
 
 export function playSteps() {
@@ -31,7 +33,7 @@ export function playSteps() {
 }
 
 export function exploreBanner() {
-  return `<header class="ip-banner explore-intro" aria-labelledby="explore-title"><p class="ip-eyebrow">✳ Mumbai / In play</p><h1 class="ip-display" id="explore-title">FIND YOUR NEXT <span>GAME.</span></h1><p>Tournaments, races, leagues and good reasons to get out and play.</p><svg class="ip-velocity" viewBox="0 0 330 150" fill="none" aria-hidden="true"><path d="M0 145 165 0M45 155 210 0M90 155 255 0M135 155 300 0" stroke="#D9FF38" stroke-width="10"/><path d="M5 155 170 10M140 155 305 10" stroke="#3156F5" stroke-width="3"/></svg></header>`;
+  return `<header class="ip-banner explore-intro" aria-labelledby="explore-title"><p class="ip-eyebrow">Sports in Mumbai</p><h1 class="ip-display" id="explore-title">Find your next <span>game.</span></h1><p>Tournaments, races, leagues and good reasons to get out and play.</p></header>`;
 }
 
 export function aboutMarkup() {
